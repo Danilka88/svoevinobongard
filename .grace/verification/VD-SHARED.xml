@@ -1,0 +1,30 @@
+<GraceVerificationDocument graceVersion="4.0">
+  <VD-SHARED>
+    <Purpose>Верификация общих библиотек: LLM Router и API-контракты.</Purpose>
+
+    <V-M-COMMON>
+      <Priority>high</Priority>
+      <Status>planned</Status>
+      <PlannedIn>C-008</PlannedIn>
+      <Description>LLM Router: fallback chain Ollama gemma4:12b → gemma4:e4b → OpenRouter → YandexGPT;
+        per-provider circuit breaker; cost-velocity breaker; локальный режим без сети; подмена провайдера
+        только через env.</Description>
+      <Scenario id="S-COMMON-1">Отказ провайдера номер один переводит вызов на следующий без правки кода.</Scenario>
+      <Scenario id="S-COMMON-2">После порога отказов провайдер пропускается (circuit open) и восстанавливается в half-open.</Scenario>
+      <Scenario id="S-COMMON-3">Превышение расхода токенов открывает cost-velocity breaker на 30 секунд.</Scenario>
+      <Scenario id="S-COMMON-4">При отсутствии сети работает локальная цепочка Ollama.</Scenario>
+      <Marker>[M-COMMON][LLM][CB_SKIP]</Marker>
+      <Marker>[M-COMMON][LLM][COST_BREAK]</Marker>
+    </V-M-COMMON>
+
+    <V-M-CONTRACTS>
+      <Priority>critical</Priority>
+      <Status>planned</Status>
+      <PlannedIn>C-002</PlannedIn>
+      <Description>Единые схемы API: ScanResponse, Card, TopKItem, EvalPredictResponse, ErrorResponse;
+        сериализация и валидация совпадают у gateway, UI и ML-сервисов.</Description>
+      <Scenario id="S-CONTRACTS-1">ScanResponse содержит slug, confidence, f1_top1, f1_top5, margin, path, latency_ms, top5, not_found, card.</Scenario>
+      <Scenario id="S-CONTRACTS-2">ErrorResponse сериализуется как объект с полями error и detail.</Scenario>
+    </V-M-CONTRACTS>
+  </VD-SHARED>
+</GraceVerificationDocument>

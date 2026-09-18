@@ -1,0 +1,163 @@
+<GraceChangePlan graceVersion="4.0" status="approved">
+  <C-002>
+    <IntentSummary>Собрать Tier-1 baseline: контракты и конфиг, нормализация, каталог в PostgreSQL с pgvector,
+      энкодер и kNN, подключение gateway, замер F1 и latency. Это фундамент для всех дальнейших улучшений
+      и обязательный контракт организатора.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>scripts/catalog/etl_catalog.py</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog.jsonl</Value></MustExist>
+      <MustExist><Value>services/gateway/app/main.py</Value></MustExist>
+      <MustNotExist><Value>services/retrieval/app/main.py</Value></MustNotExist>
+      <MustVerify><Module>M-CATALOG</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>packages/contracts/</Value></MustExist>
+      <MustExist><Value>services/normalize/app/main.py</Value></MustExist>
+      <MustExist><Value>services/retrieval/app/main.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-RETRIEVAL</Module></MustVerify>
+      <MustVerify><Module>M-NORMALIZE</Module></MustVerify>
+      <MustLink><From>M-RETRIEVAL</From><To>M-CATALOG</To></MustLink>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-RETRIEVAL</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-CONTRACTS/>
+      <M-COMMON/>
+      <M-NORMALIZE/>
+      <M-CATALOG/>
+      <M-RETRIEVAL/>
+      <M-GATEWAY/>
+      <M-EVAL/>
+      <V-M-CONTRACTS/>
+      <V-M-NORMALIZE/>
+      <V-M-RETRIEVAL/>
+      <V-M-GATEWAY/>
+      <GraphDocuments/>
+      <ContextArtifacts/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/contracts/</Path>
+      <Path>packages/common/</Path>
+      <Path>services/normalize/</Path>
+      <Path>services/retrieval/</Path>
+      <Path>services/catalog/</Path>
+      <Path>services/gateway/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>tests/</Path>
+      <Path>.grace/</Path>
+      <File>requirements.txt</File>
+      <File>Makefile</File>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Контракты и общая конфигурация: ScanResponse, Card, TopKItem, EvalPredictResponse, ErrorResponse и настройки из env</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>ScanResponse содержит slug, confidence, f1_top1, f1_top5, margin, path, latency_ms, top5, not_found, card.</Criterion>
+          <Criterion>AppSettings читает ENCODER, ENCODER_MODEL, ENCODER_DEVICE, VECTOR_BACKEND, TOP_K, DATABASE_URL из env с дефолтами.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/contracts -v</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Нормализация: EXIF-ориентация, ресайз, детекция этикетки с OpenCV-fallback, выпрямление перспективы, TTA-кропы</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>POST /normalize всегда возвращает минимум один кроп.</Criterion>
+          <Criterion>При отсутствии детектора срабатывает эвристика OpenCV без ошибки.</Criterion>
+          <Criterion>EXIF-ориентация применена к портретным фото.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/normalize -v</Command>
+          <Command>curl -s -X POST -F image=@data/samples/field/30272748.jpeg http://127.0.0.1:8081/normalize</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Каталог в PostgreSQL + pgvector: схема, идемпотентная загрузка 2103 строк, индекс 2037 эмбеддингов</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Таблица catalog содержит 2103 строки с полями slug, name, category, color, region, grape, winery, year, sweetness, image, has_image.</Criterion>
+          <Criterion>Таблица embeddings содержит 2037 векторов и HNSW-индекс.</Criterion>
+          <Criterion>Повторный запуск ETL и загрузки не создаёт дублей.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>python3 scripts/catalog/etl_catalog.py</Command>
+          <Command>.venv/bin/python -m pytest tests/catalog -v</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Энкодер: плагин siglip2 | dinov2 | clip с инференсом на MPS и CPU-fallback</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Переключение энкодера выполняется только переменной ENCODER.</Criterion>
+          <Criterion>Модель под лицензией Apache-2.0 или MIT; AGPL не используется.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/retrieval -v -k encoder</Command>
+        </Verification>
+      </T-004>
+
+      <T-005>
+        <Title>Поиск: kNN Top-K по pgvector или FAISS, агрегация нескольких эмбеддингов на позицию</Title>
+        <DependsOn>T-003, T-004</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>POST /search возвращает Top-K с косинусными скорами, отсортированными по убыванию.</Criterion>
+          <Criterion>VECTOR_BACKEND переключает pgvector и FAISS без правки кода.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/retrieval -v -k search</Command>
+        </Verification>
+      </T-005>
+
+      <T-006>
+        <Title>Подключение gateway: оркестрация normalize → retrieval, плоский slug для организатора и rich ScanResponse</Title>
+        <DependsOn>T-002, T-005</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>POST /v1/eval/predict возвращает 200 и верхнеуровневое поле slug.</Criterion>
+          <Criterion>POST /v1/scan возвращает path retrieval и latency_ms.</Criterion>
+          <Criterion>Ответ укладывается в жёсткий лимит скрипта организатора 10 секунд.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/gateway -v</Command>
+          <Command>curl -s -X POST -F image=@data/samples/eval_queries/019c68d0.jpg http://127.0.0.1:8080/v1/eval/predict</Command>
+        </Verification>
+      </T-006>
+
+      <T-007>
+        <Title>Замер baseline: прогон эвалюатора на data/samples/field и data/samples/eval_queries</Title>
+        <DependsOn>T-006</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Отчёт содержит accuracy@1, accuracy@5 и latency p50/p95/max.</Criterion>
+          <Criterion>Негативы «не-вино» дают низкий скор или not_found.</Criterion>
+          <Criterion>Baseline зафиксирован для сравнения в C-003 и C-004.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>python3 scripts/eval/evaluate.py --images data/samples/field --endpoint http://127.0.0.1:8080/v1/scan --output predictions.field.jsonl</Command>
+          <Command>python3 scripts/eval/evaluate.py --images data/samples/eval_queries --endpoint http://127.0.0.1:8080/v1/scan --output predictions.eval_queries.jsonl</Command>
+        </Verification>
+      </T-007>
+
+      <T-008>
+        <Title>Обновить verification: заполнить V-M-NORMALIZE, V-M-RETRIEVAL, V-M-CONTRACTS, V-M-GATEWAY доказательствами</Title>
+        <DependsOn>T-007</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>У каждого реализованного модуля есть TestFiles и Command в verification.</Criterion>
+          <Criterion>Логи содержат маркеры вида [M-RETRIEVAL][search][TOPK] и [M-NORMALIZE][normalize][CROPS].</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/ -q</Command>
+          <Command>grep -rl "M-RETRIEVAL" services/retrieval</Command>
+        </Verification>
+      </T-008>
+    </ImplementationPlan>
+  </C-002>
+</GraceChangePlan>

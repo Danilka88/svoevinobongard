@@ -1,0 +1,32 @@
+<GraceChangeSpec graceVersion="4.0" status="approved">
+  <C-002>
+    <Summary>M1 — первый работающий end-to-end путь: фото → нормализация → эмбеддинг → kNN по каталогу
+      → Top-K и скоры → gateway отдаёт плоский slug и rich-ответ. Без VLM и без геоверификации.</Summary>
+    <Goals>Дать измеримый baseline F1@1 и F1@5. Закрыть контракт организатора participant_test.sh.
+      Загрузить каталог 2103 позиции в PostgreSQL с pgvector и собрать векторный индекс 2037 эталонных фото.
+      Уложить Tier-1 в latency p95 ниже трёх секунд.</Goals>
+    <Constraints>Только permissive-лицензии: SigLIP 2 и DINOv2 под Apache-2.0. Сервисы не импортируют код
+      друг друга — только HTTP/JSON. UI не участвует. VLM и геоверификация вне scope этого change.</Constraints>
+    <NonGoals>Геоверификация, margin и пороги решения — change C-003. VLM-fallback и matcher — change C-004.
+      UI — change C-005. Flywheel — change C-006. LLM Router — change C-008.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>Таблица catalog содержит 2103 строки; векторный индекс содержит 2037 эмбеддингов.</Criterion>
+      <Criterion>POST /v1/eval/predict возвращает 200 и верхнеуровневое поле slug.</Criterion>
+      <Criterion>POST /v1/scan возвращает ScanResponse с top5 и latency_ms; path равен retrieval.</Criterion>
+      <Criterion>evaluate.py на data/samples/field отдаёт непустые accuracy@1, accuracy@5 и latency p50/p95.</Criterion>
+      <Criterion>latency p95 Tier-1 ниже 3000 ms на Mac M4 с MPS.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-CONTRACTS/>
+      <M-COMMON/>
+      <M-NORMALIZE/>
+      <M-CATALOG/>
+      <M-RETRIEVAL/>
+      <M-GATEWAY/>
+      <M-EVAL/>
+    </AffectedAreas>
+    <VerificationIntent>Замер baseline на data/samples/field (31 изображение) и data/samples/eval_queries (2).
+      Сравнение с baseline C-002 в changes C-003 и C-004. Обновить V-M-NORMALIZE, V-M-RETRIEVAL,
+      V-M-CONTRACTS, V-M-GATEWAY.</VerificationIntent>
+  </C-002>
+</GraceChangeSpec>

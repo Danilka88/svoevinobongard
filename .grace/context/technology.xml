@@ -1,0 +1,95 @@
+<GraceTechnology graceVersion="4.0">
+  <runtime language="Python" version="3.11+"/>
+  <framework name="FastAPI" version="&gt;=0.115"/>
+  <secondaryFrameworks>
+    <framework name="Nuxt 3" role="UI (mobile-first, отделяемый модуль apps/web)"/>
+    <framework name="Uvicorn" version="&gt;=0.30" role="ASGI server"/>
+    <framework name="Docker Compose" role="локальная оркестрация сервисов"/>
+  </secondaryFrameworks>
+
+  <database>
+    <primary engine="PostgreSQL + pgvector" version="pg16" role="каталог + векторный поиск (prod)"/>
+    <alternative engine="FAISS" role="локальная разработка/бенчи (dev)"/>
+    <access>psycopg[binary]&gt;=3.2, pgvector&gt;=0.3</access>
+  </database>
+
+  <ml>
+    <imageEncoders>
+      <encoder name="google/siglip2-so400m-patch16-naflex" license="Apache-2.0" role="основной (ТЗ), NaFlex сохраняет пропорции этикеток"/>
+      <encoder name="facebook/dinov2-large" license="Apache-2.0" role="альтернатива/ансамбль (fine-grained retrieval)"/>
+      <encoder name="OpenCLIP" license="MIT" role="fallback"/>
+    </imageEncoders>
+    <detection>
+      <model name="D-FINE" license="Apache-2.0"/>
+      <model name="RT-DETRv4" license="Apache-2.0"/>
+      <model name="RF-DETR (open)" license="Apache-2.0"/>
+      <model name="YOLOX" license="Apache-2.0" role="permissive-аналог YOLO"/>
+      <forbidden name="YOLOv8/v11 (Ultralytics)" license="AGPL-3.0"/>
+    </detection>
+    <localFeatures>
+      <tool name="SuperPoint + LightGlue (Kornia)" license="Apache-2.0" role="геоверификация near-duplicates"/>
+      <tool name="SIFT/ORB (OpenCV)" license="Apache-2.0" role="дешёвый fallback"/>
+    </localFeatures>
+    <ocr>
+      <tool name="PaddleOCR PP-OCRv5" license="Apache-2.0" role="кириллица, опционально"/>
+      <tool name="DeepSeek-OCR 2" license="MIT"/>
+    </ocr>
+    <vlm>
+      <model name="gemma4:12b" role="основная локальная VLM (Ollama)"/>
+      <model name="gemma4:e4b" role="быстрая/демо"/>
+      <model name="Qwen3-VL" license="Apache-2.0" role="альтернатива без лицензионных оговорок"/>
+      <model name="InternVL3.5" license="MIT"/>
+    </vlm>
+    <textLlm>
+      <model name="qwen3.5:9b / 4b" role="сомелье, нормализация (Ollama)"/>
+    </textLlm>
+    <embeddings>
+      <model name="qwen3-embedding:0.6b" role="текстовые/метаданные эмбеддинги"/>
+      <model name="embeddinggemma-300m" role="альтернатива"/>
+    </embeddings>
+    <infra>
+      <tool name="PyTorch + transformers/timm" role="инференс энкодеров (MPS/ONNX)"/>
+      <tool name="OpenCV" role="нормализация изображений"/>
+      <tool name="Kornia" role="локальные признаки"/>
+      <tool name="Albumentations" license="MIT" role="синтетическая аугментация"/>
+      <tool name="ONNX Runtime" license="MIT" role="быстрый инференс на CPU"/>
+      <tool name="MLflow" license="Apache-2.0" role="реестр экспериментов/моделей"/>
+      <tool name="DVC" license="Apache-2.0" role="версионирование данных"/>
+      <tool name="vLLM" license="Apache-2.0" role="быстрый сервинг VLM (позже)"/>
+      <tool name="Ollama / llama.cpp" license="MIT" role="локальный сервинг VLM"/>
+    </infra>
+  </ml>
+
+  <vlmConnector>
+    <pattern>Единый OpenAI-совместимый коннектор (ADR-003): ollama | lmstudio | openrouter | yandex | custom</pattern>
+    <env>VLM_PROVIDER, VLM_BASE_URL, VLM_API_KEY, VLM_MODEL, VLM_MODEL_FAST, VLM_TIMEOUT_S, VLM_TEMPERATURE, VLM_MAX_TOKENS</env>
+    <requirement>temperature=0, строгая JSON-схема, constrained decoding (Outlines) + fallback-парсер/ремонт JSON</requirement>
+  </vlmConnector>
+
+  <testing>
+    <runner>pytest (де-факто; tests/ пока только README)</runner>
+    <assertion>pytest-assert / plain asserts</assertion>
+    <mock>локальные фикстуры; Ollama/Postgres — через docker-compose или mock</mock>
+    <existing>scripts/eval/evaluate.py — офлайн-эвалюатор (stdlib): accuracy@1/@5, macro-F1, latency p50/p95</existing>
+  </testing>
+
+  <observability>
+    <logger>logging (stdlib) — пока; в плане — структурированные логи с маркерами [M-*][fn][BLOCK]</logger>
+    <format>plain-text сейчас; JSON (structlog) — цель</format>
+    <redaction>логи не содержат сырых изображений и API-ключей; только slug/скоры/latency</redaction>
+  </observability>
+
+  <cicd>
+    <platform>git + локальный запуск (Docker Compose); Yandex Cloud — цель деплоя (C-007)</platform>
+    <lint>ruff (в .gitignore — .ruff_cache)</lint>
+    <formatter>ruff format (план)</formatter>
+  </cicd>
+
+  <constraints>
+    <constraint>Только permissive-лицензии (Apache-2.0 / MIT). AGPL запрещён.</constraint>
+    <constraint>Код из old/ не переиспользуется (clean-room).</constraint>
+    <constraint>Сервисы не импортируют друг друга — только HTTP/JSON через gateway.</constraint>
+    <constraint>UI (apps/web) общается только с gateway.</constraint>
+    <constraint>Локальный запуск: docker-compose up; VLM на хосте (Ollama :11434 / LM Studio :1234).</constraint>
+  </constraints>
+</GraceTechnology>

@@ -1,0 +1,27 @@
+<GraceChangeSpec graceVersion="4.0" status="approved">
+  <C-007>
+    <Summary>M6 — контейнеризация сервисов, манифесты Yandex Cloud, единые команды запуска,
+      финальная документация и видео-демо до семи минут.</Summary>
+    <Goals>Закрыть критерий «Архитектура» (15 баллов): разделение функционала и воспроизводимость.
+      Показать готовность к внедрению через манифесты, не меняя бизнес-логику.</Goals>
+    <Constraints>Бизнес-логика не изменяется. Каждый сервис деплоится независимо. Веса и датасеты
+      не попадают в docker-слой. Демо — локальное, без монтажа.</Constraints>
+    <NonGoals>Реальный деплой в облако как обязательство; нагрузочное тестирование; CI-пайплайн.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>docker build успешен для gateway, normalize, retrieval, vlm, matcher, active-learning.</Criterion>
+      <Criterion>make setup, up, etl, eval работают с чистого клона по README.</Criterion>
+      <Criterion>Существуют container.yaml на каждый сервис и workflow переобучения.</Criterion>
+      <Criterion>README и ARCHITECTURE соответствуют фактическому состоянию.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-GATEWAY/>
+      <M-NORMALIZE/>
+      <M-RETRIEVAL/>
+      <M-VLM/>
+      <M-MATCHER/>
+      <M-ACTIVE-LEARNING/>
+    </AffectedAreas>
+    <VerificationIntent>Проверить сборку образов и воспроизводимость команд; зафиксировать метрики
+      прогона для демо-видео; обновить документацию по границам слоёв.</VerificationIntent>
+  </C-007>
+</GraceChangeSpec>

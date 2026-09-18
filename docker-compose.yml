@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: svoe-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-svoe}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-svoe}
+      POSTGRES_DB: ${POSTGRES_DB:-svoe_vino}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-svoe} -d ${POSTGRES_DB:-svoe_vino}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    container_name: svoe-gateway
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      DATABASE_URL: postgresql://${POSTGRES_USER:-svoe}:${POSTGRES_PASSWORD:-svoe}@postgres:5432/${POSTGRES_DB:-svoe_vino}
+    ports:
+      - "${GATEWAY_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data:ro
+
+  # NOTE: VLM/LLM are expected to run on the host (Ollama :11434, LM Studio :1234).
+  # For Linux hosts you may uncomment an ollama service below.
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   ports: ["11434:11434"]
+  #   volumes: ["ollama:/root/.ollama"]
+
+volumes:
+  pgdata:
+  # ollama:

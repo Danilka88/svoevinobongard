@@ -1,0 +1,90 @@
+<GraceChangePlan graceVersion="4.0" status="draft">
+  <C-008>
+    <IntentSummary>Ввести LLM Router в M-COMMON: конфиг провайдеров, OpenAI-совместимые адаптеры,
+      fallback chain, circuit breaker, cost-velocity breaker и локальный режим. Блокирует C-004.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>packages/common/</Value></MustExist>
+      <MustNotExist><Value>config/providers.yaml</Value></MustNotExist>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>config/providers.yaml</Value></MustExist>
+      <MustExist><Value>packages/common/llm_router.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/common -v</Command></MustPassCommand>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-COMMON/>
+      <M-VLM/>
+      <V-M-COMMON/>
+      <DF-007/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>services/vlm/</Path>
+      <Path>config/</Path>
+      <Path>tests/common/</Path>
+      <File>.env.example</File>
+      <Path>.grace/verification/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Конфиг провайдеров и OpenAI-совместимые адаптеры</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>providers.yaml описывает ollama с двумя моделями, openrouter и yandex с приоритетами.</Criterion>
+          <Criterion>API-ключи читаются из env, а не хранятся в yaml.</Criterion>
+          <Criterion>adapters/base.py задаёт BaseAdapter с chat, embed и health.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/common -v -k adapters</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Ядро роутера: resolve_provider, chat, embed и обход цепочки провайдеров</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Цепочка Ollama gemma4:12b → gemma4:e4b → OpenRouter → YandexGPT обходится автоматически.</Criterion>
+          <Criterion>Триггеры переключения: 5xx, 429, timeout, connection error, открытый circuit breaker.</Criterion>
+          <Criterion>В коде нет захардкоженных имён провайдеров.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/common -v -k fallback</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Per-provider circuit breaker и cost-velocity breaker</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>После порога отказов провайдер помечается open и пропускается без вызова.</Criterion>
+          <Criterion>Cooldown переводит провайдера в half-open, затем в closed при успехе.</Criterion>
+          <Criterion>Расход выше десятикратной плановой ставки открывает cost breaker на 30 секунд.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/common -v -k breaker</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Локальный режим, регистрация ролей VLM и обновление verification</Title>
+        <DependsOn>T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>LLM_LOCAL_ONLY ограничивает работу цепочкой Ollama.</Criterion>
+          <Criterion>Роли vision_model и text_model объявлены в конфиге.</Criterion>
+          <Criterion>V-M-COMMON содержит сценарии fallback, breaker и local mode.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/common -v</Command>
+          <Command>.venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-008>
+</GraceChangePlan>

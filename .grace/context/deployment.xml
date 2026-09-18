@@ -1,0 +1,47 @@
+<GraceDeployment graceVersion="4.0">
+  <Applicability>applicable</Applicability>
+
+  <Annotation>Локальный запуск обязателен (конкурс демонстрируется локально). Деплой в Yandex Cloud —
+    цель этапа M6 (готовность к внедрению), не требование сдачи.</Annotation>
+
+  <LocalRuntime>
+    <Runtime name="docker-compose">
+      <Description>Основной способ поднять сервисы локально: PostgreSQL + pgvector, gateway, ML-сервисы.</Description>
+      <Command>docker-compose up --build</Command>
+      <Endpoint>http://127.0.0.1:8080 (gateway)</Endpoint>
+    </Runtime>
+    <Runtime name="ollama">
+      <Description>Локальный VLM/LLM на хосте (не в compose по умолчанию), OpenAI-совместимый API.</Description>
+      <BaseUrl>http://127.0.0.1:11434/v1</BaseUrl>
+    </Runtime>
+    <Runtime name="lmstudio">
+      <Description>Локальный сервер текстовых моделей и эмбеддингов (vision отсутствует).</Description>
+      <BaseUrl>http://127.0.0.1:1234/v1</BaseUrl>
+    </Runtime>
+    <Runtime name="venv">
+      <Description>Локальное окружение для скриптов и тестов: python3 -m venv --system-site-packages .venv.</Description>
+      <Note>python-multipart обязателен для gateway (services/gateway/requirements.txt).</Note>
+    </Runtime>
+  </LocalRuntime>
+
+  <Hardware>
+    <Profile name="local-dev">Mac M4 / 32GB, MPS-инференс энкодеров; VLM gemma4:12b, быстрая gemma4:e4b.</Profile>
+    <Profile name="cpu-fallback">При отсутствии GPU эксперты оценивают решение на CPU; ENCODER_DEVICE=auto с CPU-фолбэком.</Profile>
+  </Hardware>
+
+  <CloudTarget name="Yandex Cloud">
+    <Service name="Serverless Containers">gateway, normalize, retrieval, vlm, matcher, active-learning — отдельный образ на сервис.</Service>
+    <Service name="Workflow">оркестрация пайплайна и триггеры переобучения.</Service>
+    <Service name="Object Storage">изображения и датасеты.</Service>
+    <Service name="Managed PostgreSQL">каталог + pgvector.</Service>
+    <Service name="Lockbox">секреты и API-ключи провайдеров.</Service>
+    <Service name="Container Registry">реестр docker-образов.</Service>
+  </CloudTarget>
+
+  <Constraints>
+    <Constraint>data/ и models/* — gitignored (датасеты и веса не коммитятся).</Constraint>
+    <Constraint>.env и .env.* — gitignored; секреты только через env / Lockbox.</Constraint>
+    <Constraint>Модуль UI (apps/web) отделяем: удаление не влияет на ML-часть.</Constraint>
+    <Constraint>Сервисы не импортируют код друг друга — только HTTP/JSON.</Constraint>
+  </Constraints>
+</GraceDeployment>

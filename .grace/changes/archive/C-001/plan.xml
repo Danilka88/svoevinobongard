@@ -1,0 +1,108 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-001>
+    <IntentSummary>Заложить фундамент: репозиторий продукта, каталог как данные, эвалюатор как измеритель
+      качества и gateway как единственная точка входа. Без ML-логики.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustNotExist><Value>data/catalog/catalog.jsonl</Value></MustNotExist>
+      <MustNotExist><Value>scripts/catalog/etl_catalog.py</Value></MustNotExist>
+      <MustNotExist><Value>services/gateway/app/main.py</Value></MustNotExist>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>data/catalog/catalog.jsonl</Value></MustExist>
+      <MustExist><Value>data/catalog/stats.json</Value></MustExist>
+      <MustExist><Value>scripts/catalog/etl_catalog.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/evaluate.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/main.py</Value></MustExist>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-CATALOG</Anchor></MustOwn>
+      <MustVerify><Module>M-CATALOG</Module></MustVerify>
+      <MustContain><File>ARCHITECTURE.md</File><Text>gateway</Text></MustContain>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-CATALOG/>
+      <M-EVAL/>
+      <M-GATEWAY/>
+      <ContextArtifacts/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>scripts/</Path>
+      <Path>services/gateway/</Path>
+      <Path>tests/</Path>
+      <Path>data/catalog/</Path>
+      <File>.gitignore</File>
+      <File>docker-compose.yml</File>
+      <File>.env.example</File>
+      <File>README.md</File>
+      <File>ARCHITECTURE.md</File>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Bootstrap репозитория: .gitignore, скелет сервисов, docker-compose, .env.example, README, ARCHITECTURE</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Существуют apps/web, services (7 сервисов), packages (contracts, common), scripts, deploy, tests, data, models.</Criterion>
+          <Criterion>docker-compose.yml поднимает pgvector/pgvector:pg16 и gateway.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>test -f docker-compose.yml</Command>
+          <Command>test -f .env.example</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>ETL каталога: sitemap как авторитетный маппинг slug → фото, дедупликация CSV, запись артефактов</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>catalog.jsonl содержит 2103 строки и 2103 уникальных slug.</Criterion>
+          <Criterion>stats.json фиксирует with_image 2037, without_image 66, shared_reference_images 4.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>python3 scripts/catalog/etl_catalog.py</Command>
+          <Command>.venv/bin/python -m pytest tests/test_catalog_etl.py -v</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Офлайн-эвалюатор: multipart-POST, парсинг slug и top5, latency, accuracy@1/@5, macro-F1</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Ответ и в форме объекта, и в форме массива даёт корректный slug.</Criterion>
+          <Criterion>Отчёт predictions.report.json содержит latency p50 и p95.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>python3 -m py_compile scripts/eval/evaluate.py</Command>
+          <Command>.venv/bin/python -m pytest tests/test_eval_harness.py -v</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Полевые фото и контрольные изображения организатора в data/samples (только изображения, old/ не изменяется)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>data/samples/field содержит 31 изображение, включая негативы «не-вино».</Criterion>
+          <Criterion>data/samples/eval_queries содержит 2 контрольных изображения организатора.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>ls data/samples/field | wc -l</Command>
+          <Command>ls data/samples/eval_queries</Command>
+        </Verification>
+      </T-004>
+
+      <T-005>
+        <Title>Gateway-скелет: /v1/health отвечает 200, pipeline-эндпоинты осознанно возвращают 501</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>GET /v1/health отдаёт status ok и модели retrieval и vlm.</Criterion>
+          <Criterion>POST /v1/eval/predict и POST /v1/scan отдают 501 с контрактом ошибки.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_gateway_health.py -v</Command>
+        </Verification>
+      </T-005>
+    </ImplementationPlan>
+  </C-001>
+</GraceChangePlan>

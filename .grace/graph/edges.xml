@@ -1,0 +1,105 @@
+<GraceGraphDocument graceVersion="4.0">
+  <GD-002>
+    <Purpose>Рёбра и потоки данных. Правило проекта: сервисы не импортируют код друг друга —
+      связи вида invokes/consumes означают HTTP/JSON-вызовы, а не import.</Purpose>
+
+    <EdgeKinds>
+      <Kind>consumes — UI вызывает gateway по HTTP</Kind>
+      <Kind>invokes — gateway оркестрирует сервис по HTTP</Kind>
+      <Kind>depends-on — разделяемая библиотека (реальный import)</Kind>
+      <Kind>reads-index — чтение векторного индекса и метаданных каталога</Kind>
+      <Kind>feeds-logs — передача query-логов в flywheel</Kind>
+      <Kind>probes — эвалюатор шлёт изображения на endpoint</Kind>
+    </EdgeKinds>
+
+    <Acyclicity>
+      <Rule>Граф ациклический. Топологический порядок слоёв:</Rule>
+      <Layer order="1">M-CONTRACTS</Layer>
+      <Layer order="2">M-COMMON, M-CATALOG</Layer>
+      <Layer order="3">M-NORMALIZE, M-RETRIEVAL, M-VLM, M-MATCHER</Layer>
+      <Layer order="4">M-GATEWAY</Layer>
+      <Layer order="5">M-WEB, M-EVAL</Layer>
+      <Rule>Offline-контур flywheel не создаёт цикл: логи идут из gateway, результат — в каталог и индекс,
+        затем читается retrieval как данные, а не как код.</Rule>
+    </Acyclicity>
+
+    <DF-001>
+      <Name>Scan Pipeline Tier-1</Name>
+      <Kind>online</Kind>
+      <Change>C-002</Change>
+      <Description>Основной путь: дешёвый retrieval закрывает большинство запросов.</Description>
+      <Step order="1">POST /v1/scan (multipart image) на <M-GATEWAY/></Step>
+      <Step order="2">normalize → кропы и TTA в <M-NORMALIZE/></Step>
+      <Step order="3">encoder → kNN Top-K в <M-RETRIEVAL/></Step>
+      <Step order="4">geo_verify → скор и margin в <M-RETRIEVAL/></Step>
+      <Step order="5">decision и ScanResponse в <M-GATEWAY/></Step>
+    </DF-001>
+
+    <DF-002>
+      <Name>VLM Fallback Flow</Name>
+      <Kind>online</Kind>
+      <Change>C-004</Change>
+      <Description>Срабатывает только при score ниже порога или margin ниже порога.</Description>
+      <Step order="1">branch non-confident в <M-GATEWAY/></Step>
+      <Step order="2">extract_fields → JSON полей этикетки в <M-VLM/></Step>
+      <Step order="3">fuse retrieval + geo + text → score, margin, top5 в <M-MATCHER/></Step>
+      <Step order="4">единый формат ответа в <M-GATEWAY/></Step>
+    </DF-002>
+
+    <DF-003>
+      <Name>Eval Script Contract</Name>
+      <Kind>offline-eval</Kind>
+      <Change>C-001</Change>
+      <Description>Повторяет participant_test.sh: ответ обязан содержать верхнеуровневый slug.</Description>
+      <Step order="1">run --images --endpoint в <M-EVAL/></Step>
+      <Step order="2">POST /v1/eval/predict → плоский slug в <M-GATEWAY/></Step>
+      <Step order="3">collect slug, top5, latency_ms в <M-EVAL/></Step>
+      <Step order="4">report accuracy и p50/p95 в <M-EVAL/></Step>
+    </DF-003>
+
+    <DF-004>
+      <Name>Catalog ETL and Index</Name>
+      <Kind>offline</Kind>
+      <Change>C-002</Change>
+      <Description>От материалов конкурса до векторного индекса в PostgreSQL + pgvector.</Description>
+      <Step order="1">parse_sitemap → slug и filename (2037) в <M-CATALOG/></Step>
+      <Step order="2">load_csv, dedup, merge_slug, detect_year и sweetness в <M-CATALOG/></Step>
+      <Step order="3">catalog.jsonl (2103) и stats.json в <M-CATALOG/></Step>
+      <Step order="4">load_to_postgres и build_index в <M-CATALOG/></Step>
+    </DF-004>
+
+    <DF-005>
+      <Name>Flywheel</Name>
+      <Kind>offline</Kind>
+      <Change>C-006</Change>
+      <Description>Офлайн-самообучение Tier-1: VLM как учитель.</Description>
+      <Step order="1">query logs из <M-GATEWAY/></Step>
+      <Step order="2">filter margin и errors → очередь ревью в <M-ACTIVE-LEARNING/></Step>
+      <Step order="3">augment (Albumentations) в <M-ACTIVE-LEARNING/></Step>
+      <Step order="4">retrain и eval F1 → реестр в <M-ACTIVE-LEARNING/></Step>
+      <Step order="5">reload-index новой версии в <M-RETRIEVAL/></Step>
+    </DF-005>
+
+    <DF-006>
+      <Name>Post-search Retention</Name>
+      <Kind>online</Kind>
+      <Change>C-005</Change>
+      <Description>После успешного поиска: аналоги, сомелье, энотуризм.</Description>
+      <Step order="1">render card и CTA в <M-WEB/></Step>
+      <Step order="2">GET /v1/similar/{slug} в <M-GATEWAY/></Step>
+      <Step order="3">metadata-query по сорту и региону в <M-CATALOG/></Step>
+      <Step order="4">POST /v1/sommelier → рекомендации и pairing в <M-GATEWAY/></Step>
+    </DF-006>
+
+    <DF-007>
+      <Name>LLM Fallback Chain</Name>
+      <Kind>infra</Kind>
+      <Change>C-008</Change>
+      <Description>Решение роутера при вызове chat(role).</Description>
+      <Step order="1">resolve_provider → первый здоровый из цепочки в <M-COMMON/></Step>
+      <Step order="2">chat → Ollama gemma4:12b в <M-COMMON/></Step>
+      <Step order="3">fail → gemma4:e4b → OpenRouter → YandexGPT в <M-COMMON/></Step>
+      <Step order="4">все отказали → AllProvidersExhausted в <M-COMMON/></Step>
+    </DF-007>
+  </GD-002>
+</GraceGraphDocument>

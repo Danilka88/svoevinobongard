@@ -1,0 +1,25 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-001>
+    <Summary>M0 — каркас репозитория продукта, ETL каталога «Своё Вино» и офлайн-эвалюатор,
+      повторяющий контракт организатора. Завершён и заархивирован.</Summary>
+    <Goals>Создать изолированный git-репозиторий продукта; собрать каталог 2103 slug из CSV и sitemap;
+      дать команде инструмент измерения F1 и latency; подготовить скелет gateway.</Goals>
+    <Constraints>Только stdlib в скриптах ETL и эвалюатора. Код из old/ не переиспользуется.
+      data/ и .env не коммитятся. Статус бандла — applied.</Constraints>
+    <NonGoals>ML-пайплайн (нормализация, retrieval, VLM, matcher) не входит в M0 — это C-002 и далее.
+      Загрузка в PostgreSQL и векторный индекс — не входят (C-002).</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>catalog.jsonl содержит 2103 строки, 2037 slug с эталонным фото, 66 без.</Criterion>
+      <Criterion>evaluate.py воспроизводит контракт организатора: multipart-поле image, ответ с верхнеуровневым slug.</Criterion>
+      <Criterion>docker-compose поднимает PostgreSQL с pgvector и gateway; .env.example описывает переменные.</Criterion>
+      <Criterion>git status не содержит data/, .env, old/, my/ и материалов конкурса.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-CATALOG/>
+      <M-EVAL/>
+      <M-GATEWAY/>
+    </AffectedAreas>
+    <VerificationIntent>Проверить реальным прогоном ETL и pytest: V-M-CATALOG, V-M-EVAL, V-M-GATEWAY.
+      Артефакты — catalog.jsonl, stats.json, predictions.jsonl, report.json.</VerificationIntent>
+  </C-001>
+</GraceChangeSpec>

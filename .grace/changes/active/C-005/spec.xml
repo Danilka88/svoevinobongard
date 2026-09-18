@@ -1,0 +1,25 @@
+<GraceChangeSpec graceVersion="4.0" status="approved">
+  <C-005>
+    <Summary>M4 — Nuxt 3 mobile-first: карточка вина в стилистике портала и retention-фичи: цифровой
+      сомелье, аналоги из других виноделен, энотуризм.</Summary>
+    <Goals>Закрыть критерии «Функция после поиска» (20 баллов) и «Дизайн» (10 баллов); удержать
+      пользователя после успешного поиска.</Goals>
+    <Constraints>apps/web общается только с gateway по HTTP. UI отделяем: удаление не влияет на ML.
+      Корзина не требуется. Метрики F1 в UI не выводятся.</Constraints>
+    <NonGoals>Изменение ML-пайплайна; A/B-тесты; нативные приложения.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>GET /v1/similar/{slug} возвращает аналоги из других виноделен с reason.</Criterion>
+      <Criterion>POST /v1/sommelier возвращает рекомендации и pairing, не пустой список.</Criterion>
+      <Criterion>Мобильный сценарий фото → карточка работает в браузерном smoke-тесте.</Criterion>
+      <Criterion>В apps/web нет прямых обращений к retrieval, vlm или matcher.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-WEB/>
+      <M-GATEWAY/>
+      <M-CATALOG/>
+      <M-CONTRACTS/>
+    </AffectedAreas>
+    <VerificationIntent>Создать V-M-WEB; браузерный smoke основного сценария; проверка границы UI
+      через grep по apps/web.</VerificationIntent>
+  </C-005>
+</GraceChangeSpec>

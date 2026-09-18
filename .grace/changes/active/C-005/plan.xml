@@ -1,0 +1,87 @@
+<GraceChangePlan graceVersion="4.0" status="draft">
+  <C-005>
+    <IntentSummary>Retention-слой: эндпоинты аналогов и сомелье в gateway плюс мобильный UI,
+      который обращается только к gateway.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/gateway/app/main.py</Value></MustExist>
+      <MustNotExist><Value>apps/web/package.json</Value></MustNotExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>apps/web/package.json</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-WEB/>
+      <M-GATEWAY/>
+      <M-CATALOG/>
+      <M-CONTRACTS/>
+      <V-M-WEB/>
+      <DF-006/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>apps/web/</Path>
+      <Path>services/gateway/app/</Path>
+      <Path>services/catalog/</Path>
+      <Path>packages/contracts/</Path>
+      <Path>tests/</Path>
+      <Path>.grace/verification/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Аналоги: запрос по сорту, региону и цвету из других виноделен и эндпоинт GET /v1/similar/{slug}</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Аналоги исключают винодельню искомого вина.</Criterion>
+          <Criterion>Каждый аналог содержит slug, winery, score и reason.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/gateway -v -k similar</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Цифровой сомелье: POST /v1/sommelier через текстовый LLM и схемы SimilarResponse и SommelierResponse</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Ответ содержит recommendations с полем why и список pairing.</Criterion>
+          <Criterion>Пустой список рекомендаций считается ошибкой сценария.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/gateway -v -k sommelier</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Nuxt 3 mobile-first: загрузка фото, карточка вина, сомелье, аналоги, энотуризм</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Загрузка фото с камеры или из галереи вызывает POST /v1/scan.</Criterion>
+          <Criterion>Вёрстка адаптивна (mobile-first) и соответствует стилистике портала.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; npm run build</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Проверка границ и UX-гейт: smoke основного сценария, отсутствие обходов gateway</Title>
+        <DependsOn>T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>В apps/web нет обращений к сервисам retrieval, vlm или matcher.</Criterion>
+          <Criterion>Сценарий фото → карточка проходит браузерный smoke-тест.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -r "v1/scan" apps/web</Command>
+          <Command>.venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-005>
+</GraceChangePlan>

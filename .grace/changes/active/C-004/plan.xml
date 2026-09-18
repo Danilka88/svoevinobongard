@@ -1,0 +1,102 @@
+<GraceChangePlan graceVersion="4.0" status="draft">
+  <C-004>
+    <IntentSummary>Подключить VLM как арбитр для неуверенных запросов и matcher для фьюжна скоров.
+      Требует C-008 (LLM Router) как блокирующую предпосылку.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/gateway/app/main.py</Value></MustExist>
+      <MustNotExist><Value>services/matcher/app/main.py</Value></MustNotExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>services/vlm/</Value></MustExist>
+      <MustExist><Value>services/matcher/</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustVerify><Module>M-MATCHER</Module></MustVerify>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-VLM/>
+      <M-MATCHER/>
+      <M-GATEWAY/>
+      <M-CONTRACTS/>
+      <V-M-VLM/>
+      <V-M-MATCHER/>
+      <DF-002/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>services/vlm/</Path>
+      <Path>services/matcher/</Path>
+      <Path>services/gateway/app/</Path>
+      <Path>packages/contracts/</Path>
+      <Path>tests/</Path>
+      <Path>.grace/verification/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Схема полей этикетки и промпт: winery, wine_name, vintage, wine_type, region, grape, confidence</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Ответ валидируется по схеме VlmFields.</Criterion>
+          <Criterion>Промпт требует temperature ноль и короткий ответ только с полями для API.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/vlm -v -k schema</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Извлечение полей через router.chat и ремонт битого JSON</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>POST /extract возвращает валидный JSON полей этикетки.</Criterion>
+          <Criterion>Битый JSON восстанавливается repair-парсером без исключения наружу.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/vlm -v -k extract</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Matcher: текстовый матч rapidfuzz и ru-эмбеддинги, фьюжн retrieval и geo и text, not_found с аналогами</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>fuse возвращает итоговый скор, margin и top5.</Criterion>
+          <Criterion>При низких скорах возвращается not_found с ближайшими аналогами.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/matcher -v</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Ветвление gateway и деградация: неуверенно → VLM → matcher, VLM offline → Tier-1</Title>
+        <DependsOn>T-002, T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>path равен vlm_fallback только при неуверенном результате.</Criterion>
+          <Criterion>При недоступном VLM ответ 200 с результатом Tier-1.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/gateway -v -k fallback</Command>
+        </Verification>
+      </T-004>
+
+      <T-005>
+        <Title>Замер доли VLM-вызовов и прироста F1, создание V-M-VLM и V-M-MATCHER</Title>
+        <DependsOn>T-004</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Отчёт содержит распределение путей retrieval и vlm_fallback.</Criterion>
+          <Criterion>accuracy@1 на near-duplicate кейсах выше, чем после C-003.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>python3 scripts/eval/evaluate.py --images data/samples/field --endpoint http://127.0.0.1:8080/v1/scan --output predictions.c004.jsonl</Command>
+          <Command>.venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-005>
+    </ImplementationPlan>
+  </C-004>
+</GraceChangePlan>

@@ -1,0 +1,49 @@
+<GracePrinciples graceVersion="4.0">
+  <Annotation>Инженерные принципы проекта «Своё Вино — сканер этикеток». Детальный реестр ограничений —
+    в соседнем constraints.xml (дополнительный артефакт, вне канонического набора CLI).</Annotation>
+
+  <Principle name="Contract-First">
+    Ни один модуль не пишется без MODULE_CONTRACT (PURPOSE / SCOPE / DEPENDS / LINKS).
+    Контракт фиксируется до кода; код следует контракту, а не наоборот.
+  </Principle>
+
+  <Principle name="No edits without a change">
+    Любое изменение кода или артефактов выполняется в рамках GraceChangeSpec + GraceChangePlan.
+    Выход за DurableScope/ObservedWriteScope своего change запрещён.
+  </Principle>
+
+  <Principle name="Evidence-first">
+    Заявление «готово / работает / тесты зелёные» допустимо только с реальным выводом инструмента
+    в той же сессии. Нет вывода — нет заявления об успехе.
+  </Principle>
+
+  <Principle name="Permissive licensing only">
+    Обязательные компоненты — только Apache-2.0 / MIT. AGPL запрещён
+    (в частности YOLOv8 / YOLOv11 Ultralytics). Проверяется по графу и зависимостям.
+  </Principle>
+
+  <Principle name="Clean-room from legacy">
+    Код из old/ не переиспользуется. Директории my/, old/, «материалы для конкурса/» не изменяются
+    и не попадают в git продукта. Идея берётся, код пишется заново.
+  </Principle>
+
+  <Principle name="Gateway-only boundary">
+    gateway — единственная публичная точка входа. Сервисы не импортируют код друг друга (только HTTP/JSON).
+    UI общается только с gateway и удаляется без влияния на ML.
+  </Principle>
+
+  <Principle name="Accuracy over features">
+    Точность — 50 из 100 баллов и базовый критерий внедрения. Retention-фичи (20) и дизайн (10)
+    не выполняются в ущерб точности; порядок этапов M1→M2→M3 обязателен.
+  </Principle>
+
+  <Principle name="Graceful degradation">
+    Недоступный VLM → деградация к Tier-1. Отсутствие детектора этикетки → работа по полному изображению.
+    Ошибки внешних моделей не превращаются в 5xx для скрипта организатора.
+  </Principle>
+
+  <Principle name="Anchors are tags, never attributes">
+    Семантические анкоры (GD-, M-, V-M-, VD-, DF-, C-, T-) используются только как XML-теги без атрибутов.
+    В значениях атрибутов анкоры недопустимы — это нарушение грамматики GRACE 4.
+  </Principle>
+</GracePrinciples>

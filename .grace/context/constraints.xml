@@ -1,0 +1,52 @@
+<Constraints graceVersion="4.0">
+  <annotation>Жёсткие ограничения проекта. Нарушение любого — блокирующее (critical) замечание ревьюера.</annotation>
+
+  <Licensing>
+    <Rule id="LC-1" severity="critical">Только permissive лицензии: Apache-2.0 / MIT для обязательных компонентов.</Rule>
+    <Rule id="LC-2" severity="critical">Запрещены AGPL и лицензии с обязательной коммерцией. Конкретно —
+      ⛔ YOLOv8 / YOLOv11 (Ultralytics, AGPL-3.0).</Rule>
+    <Rule id="LC-3" severity="high">Gemma Terms допустимы локально, но у Qwen3-VL (Apache-2.0) нет лицензионных оговорок —
+      предпочтительна для внедрения.</Rule>
+    <Rule id="LC-4" severity="medium">Материалы каталога конкурса — для целей конкурса; вне конкурса не использовать.</Rule>
+  </Licensing>
+
+  <CodeProvenance>
+    <Rule id="CP-1" severity="critical">Код из old/ НЕ переиспользуется (ADR-009, clean-room). Идея
+      «мультимодальная LLM → JSON» берётся, код пишется с нуля.</Rule>
+    <Rule id="CP-2" severity="critical">Директории my/, old/, «материалы для конкурса/» не изменяются и не переносятся в продукт.</Rule>
+    <Rule id="CP-3" severity="high">Материалы конкурса, old/, my/ не попадают в git (корневой .gitignore + продукт в отдельном репо).</Rule>
+  </CodeProvenance>
+
+  <Architecture>
+    <Rule id="AR-1" severity="critical">gateway — единственная публичная точка входа. Внутренние сервисы
+      (normalize/retrieval/vlm/matcher/active-learning) наружу не публикуются.</Rule>
+    <Rule id="AR-2" severity="critical">Сервисы не импортируют код друг друга — только HTTP/JSON. Каждый
+      сервис собирается в отдельный контейнер (готовность к Yandex Cloud Functions/Workflow).</Rule>
+    <Rule id="AR-3" severity="high">apps/web общается только с gateway по HTTP. UI удаляем без влияния на ML.</Rule>
+    <Rule id="AR-4" severity="high">Граф зависимостей ациклический.</Rule>
+    <Rule id="AR-5" severity="medium">UI — отделяемый модуль; замена/удаление UI не влияет на ML-часть.</Rule>
+  </Architecture>
+
+  <Runtime>
+    <Rule id="RT-1" severity="critical">Локальный запуск обязателен (docker-compose up). Деплой на внешние ресурсы не требуется.</Rule>
+    <Rule id="RT-2" severity="high">VLM/LLM локально запускаются на хосте (Ollama :11434, LM Studio :1234) — не в compose по умолчанию.</Rule>
+    <Rule id="RT-3" severity="high">Работа на доступном железе (Mac M4/32GB): основная VLM gemma4:12b, быстрая gemma4:e4b.</Rule>
+    <Rule id="RT-4" severity="medium">Смена LLM-провайдера — только через env, без изменения кода (ADR-003).</Rule>
+  </Runtime>
+
+  <Quality>
+    <Rule id="Q-1" severity="critical">Скрипт организатора должен получать верхнеуровневое поле slug: {"slug":"..."}.
+      Ответ обязателен &lt; 10 c; цель &lt; 3 c.</Rule>
+    <Rule id="Q-2" severity="high">При недоступности VLM — деградация к результату Tier-1, не ошибка 5xx.</Rule>
+    <Rule id="Q-3" severity="high">При недоступности детектора этикетки — работа по полному изображению (TTA-кропы).</Rule>
+    <Rule id="Q-4" severity="high">Воспроизводимость: pin версий зависимостей, .env.example, docker-compose, README, ARCHITECTURE.</Rule>
+    <Rule id="Q-5" severity="medium">ground truth неоднозначен (AN-1) — не переобучаться на дублирующихся эталонных фото без пометки.</Rule>
+  </Quality>
+
+  <Data>
+    <Rule id="D-1" severity="high">data/ и models/* — gitignored (датасеты, веса). Не коммитить.</Rule>
+    <Rule id="D-2" severity="critical">.env и .env.* — gitignored; секреты только в env/Lockbox.</Rule>
+    <Rule id="D-3" severity="medium">Полевые фото из old/test_obj копируются ТОЛЬКО как изображения (включая негативы
+      «не-вино») в data/samples/field/; old/ не модифицируется.</Rule>
+  </Data>
+</Constraints>

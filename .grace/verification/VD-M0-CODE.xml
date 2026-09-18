@@ -1,0 +1,61 @@
+<GraceVerificationDocument graceVersion="4.0">
+  <VD-M0-CODE>
+    <Purpose>Верификация реально существующего кода M0: ETL каталога, эвалюатор, gateway-скелет.</Purpose>
+
+    <V-M-CATALOG>
+      <Priority>critical</Priority>
+      <Status>built</Status>
+      <Description>ETL каталога: запуск без ошибок, catalog.jsonl = 2103 строки, 2037 с эталонным фото,
+        66 без; shared_reference_images = 4.</Description>
+      <TestFiles>
+        <File>tests/test_catalog_etl.py</File>
+      </TestFiles>
+      <Command>python3 scripts/catalog/etl_catalog.py</Command>
+      <Command>.venv/bin/python -m pytest tests/test_catalog_etl.py -v</Command>
+      <Scenario id="S-CATALOG-1">ETL запускается из чистой среды, печатает ETL REPORT и пишет три артефакта.</Scenario>
+      <Scenario id="S-CATALOG-2">catalog.jsonl содержит 2103 записи и 2103 уникальных slug.</Scenario>
+      <Scenario id="S-CATALOG-3">Статистика сходится: with_image 2037, without_image 66, shared 4, sitemap 2037.</Scenario>
+      <Marker>[M-CATALOG][ETL][START]</Marker>
+      <Marker>[M-CATALOG][PARSE_SITEMAP][DONE]</Marker>
+      <Marker>[M-CATALOG][ETL][DONE]</Marker>
+      <TraceAssertion>[M-CATALOG][ETL][DONE] slugs=2103 with_image=2037 without_image=66</TraceAssertion>
+    </V-M-CATALOG>
+
+    <V-M-EVAL>
+      <Priority>high</Priority>
+      <Status>built</Status>
+      <Description>Офлайн-эвалюатор повторяет контракт организатора: реальный multipart-POST, парсинг slug
+        и top5, latency p50/p95, accuracy@1/@5, macro-F1; stdlib-only.</Description>
+      <TestFiles>
+        <File>tests/test_eval_harness.py</File>
+      </TestFiles>
+      <Command>.venv/bin/python -m pytest tests/test_eval_harness.py -v</Command>
+      <Command>python3 -m py_compile scripts/eval/evaluate.py</Command>
+      <Scenario id="S-EVAL-1">Модуль импортируется только из stdlib: argparse, json, mimetypes, os, sys,
+        time, urllib, uuid, collections, pathlib.</Scenario>
+      <Scenario id="S-EVAL-2">Реальный multipart-POST против stub-сервера: поле image, Content-Type
+        multipart/form-data, predicted_slug и top5 записаны в predictions.jsonl.</Scenario>
+      <Scenario id="S-EVAL-3">Метрики: идеальные предсказания дают accuracy@1 = 1.0 и accuracy@5 = 1.0;
+        частичные — 0.5 при попадании gold в top5; percentile монотонен.</Scenario>
+      <Marker>[M-EVAL][POST_IMAGE][MULTIPART]</Marker>
+      <Marker>[M-EVAL][METRICS][F1]</Marker>
+      <Marker>[M-EVAL][MAIN][REPORT]</Marker>
+    </V-M-EVAL>
+
+    <V-M-GATEWAY>
+      <Priority>critical</Priority>
+      <Status>built</Status>
+      <Description>Gateway: /v1/health отвечает 200 и отдаёт status/service/models; pipeline-эндпоинты
+        в M0 осознанно возвращают 501 (подключаются в C-002).</Description>
+      <TestFiles>
+        <File>tests/test_gateway_health.py</File>
+        <File>services/gateway/app/main.py</File>
+      </TestFiles>
+      <Command>.venv/bin/python -m pytest tests/test_gateway_health.py -v</Command>
+      <Scenario id="S-GATEWAY-1">GET /v1/health → 200, status ok, service gateway, ключи retrieval и vlm.</Scenario>
+      <Scenario id="S-GATEWAY-2">POST /v1/eval/predict и POST /v1/scan → 501 с контрактом ошибки detail.</Scenario>
+      <Marker>[M-GATEWAY][HEALTH][OK]</Marker>
+      <Marker>[M-GATEWAY][PIPELINE][NOT_IMPLEMENTED]</Marker>
+    </V-M-GATEWAY>
+  </VD-M0-CODE>
+</GraceVerificationDocument>

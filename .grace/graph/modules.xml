@@ -1,0 +1,206 @@
+<GraceGraphDocument graceVersion="4.0">
+  <GD-001>
+    <Purpose>Контракты модулей продукта: PURPOSE, SCOPE, TYPE, STATUS, SOURCE, DEPENDS и межмодульные
+      связи (вложенные анкоры = рёбра графа зависимостей).</Purpose>
+
+    <M-GATEWAY>
+      <Name>Gateway API</Name>
+      <Type>ENTRY_POINT</Type>
+      <Status>skeleton</Status>
+      <Purpose>Единственная публичная точка входа: FastAPI, оркестрация пайплайна, SLA-контроль.</Purpose>
+      <Scope>POST /v1/eval/predict (плоский slug), POST /v1/scan (rich), GET /v1/similar, POST /v1/sommelier,
+        GET /v1/health. Внутренние сервисы наружу не публикуются.</Scope>
+      <Source>services/gateway/app/</Source>
+      <Test>tests/gateway/</Test>
+      <Exports>health, eval_predict, scan, similar, sommelier</Exports>
+      <Invokes>
+        <M-NORMALIZE/>
+        <M-RETRIEVAL/>
+        <M-VLM/>
+        <M-MATCHER/>
+      </Invokes>
+      <Feeds>
+        <M-ACTIVE-LEARNING/>
+      </Feeds>
+      <Depends>
+        <M-CONTRACTS/>
+      </Depends>
+      <Verification>V-M-GATEWAY</Verification>
+      <Note>M0: /v1/health реализован; /v1/eval/predict и /v1/scan возвращают 501 — подключаются в change C-002.</Note>
+    </M-GATEWAY>
+
+    <M-NORMALIZE>
+      <Name>Normalization</Name>
+      <Type>CORE_LOGIC</Type>
+      <Status>skeleton</Status>
+      <Purpose>Подготовка полевого фото к retrieval; ТЗ прямо указывает, что нормализация заметно улучшает F1.</Purpose>
+      <Scope>EXIF-ориентация, ресайз, денойз, баланс белого; детекция этикетки/бутылки (D-FINE, RT-DETRv4, RF-DETR —
+        Apache-2.0); выпрямление перспективы; TTA-кропы; fallback OpenCV-эвристики.</Scope>
+      <Source>services/normalize/</Source>
+      <Test>tests/normalize/</Test>
+      <Interface>POST /normalize (image) → список нормализованных изображений</Interface>
+      <Depends>
+        <M-COMMON/>
+      </Depends>
+      <Verification>V-M-NORMALIZE</Verification>
+      <Note>Реализация — change C-002.</Note>
+    </M-NORMALIZE>
+
+    <M-RETRIEVAL>
+      <Name>Tier-1 Retrieval</Name>
+      <Type>CORE_LOGIC</Type>
+      <Status>skeleton</Status>
+      <Purpose>Дешёвый и быстрый Tier-1 — закрывает большинство лёгких запросов (вклад в 50 баллов за точность).</Purpose>
+      <Scope>Энкодер-плагин siglip2 | dinov2 | clip (MPS/ONNX); индекс pgvector (prod) / FAISS (dev);
+        Top-K по косинусу; геоверификация SuperPoint + LightGlue + RANSAC → скор и margin.</Scope>
+      <Source>services/retrieval/</Source>
+      <Test>tests/retrieval/</Test>
+      <Interface>POST /search (image | embeddings) → Top-K + скоры</Interface>
+      <Depends>
+        <M-COMMON/>
+      </Depends>
+      <Reads>
+        <M-CATALOG/>
+      </Reads>
+      <Boundary>Энкодер и kNN — change C-002; геоверификация и margin — change C-003.</Boundary>
+      <Verification>V-M-RETRIEVAL</Verification>
+    </M-RETRIEVAL>
+
+    <M-VLM>
+      <Name>VLM Fallback</Name>
+      <Type>INTEGRATION</Type>
+      <Status>skeleton</Status>
+      <Purpose>Умный арбитр только при неуверенном Tier-1: не платим за VLM на каждом запросе.</Purpose>
+      <Scope>Единый OpenAI-совместимый коннектор (ollama | lmstudio | openrouter | yandex | custom),
+        temperature=0, строгая JSON-схема, constrained decoding + repair-парсер.</Scope>
+      <Source>services/vlm/</Source>
+      <Test>tests/vlm/</Test>
+      <Interface>POST /extract (image + top-K) → JSON полей этикетки</Interface>
+      <Depends>
+        <M-COMMON/>
+      </Depends>
+      <Boundary>Провайдеры и fallback — change C-008 в M-COMMON; промпт и схема полей — change C-004.</Boundary>
+      <Verification>V-M-VLM</Verification>
+    </M-VLM>
+
+    <M-MATCHER>
+      <Name>Matcher / Fusion</Name>
+      <Type>CORE_LOGIC</Type>
+      <Status>skeleton</Status>
+      <Purpose>Превращает поля VLM в решение по каталогу и определяет margin — основу правила ветвления.</Purpose>
+      <Scope>Текстовый матч полей с каталогом (rapidfuzz + ru-эмбеддинги); фьюжн retrieval + geo + text
+        → итоговый скор, margin, top-1/top-5/not_found.</Scope>
+      <Source>services/matcher/</Source>
+      <Test>tests/matcher/</Test>
+      <Depends>
+        <M-COMMON/>
+      </Depends>
+      <Queries>
+        <M-CATALOG/>
+      </Queries>
+      <Verification>V-M-MATCHER</Verification>
+      <Note>Реализация — change C-004.</Note>
+    </M-MATCHER>
+
+    <M-CATALOG>
+      <Name>Catalog and ETL</Name>
+      <Type>DATA_LAYER</Type>
+      <Status>built</Status>
+      <Purpose>Источник истины по метаданным каталога и владелец векторного индекса: 2103 slug, 2037 с фото.</Purpose>
+      <Scope>ETL CSV + wines_sitemap → catalog.jsonl / slug_to_image.json / stats.json (готово);
+        загрузка в PostgreSQL + pgvector; построение и обновление векторного индекса.</Scope>
+      <Source>services/catalog/</Source>
+      <Test>tests/catalog/</Test>
+      <Exports>etl_catalog, parse_sitemap, detect_year, detect_sweetness, load_to_postgres, build_index</Exports>
+      <Depends>
+        <M-COMMON/>
+      </Depends>
+      <KnownGap>66 slug без эталонного фото; 4 общих эталонных фото на 2 slug (неоднозначный ground truth).</KnownGap>
+      <Verification>V-M-CATALOG</Verification>
+    </M-CATALOG>
+
+    <M-ACTIVE-LEARNING>
+      <Name>Active Learning Flywheel</Name>
+      <Type>CORE_LOGIC</Type>
+      <Status>skeleton</Status>
+      <Purpose>Самоулучшение: VLM-разметка после ревью пополняет датасет и дообучает Tier-1 (VLM как учитель).</Purpose>
+      <Scope>Лог запросов, очередь ревью, синтетическая аугментация (Albumentations), дообучение Tier-1,
+        оценка F1@1/@5, реестр версий (MLflow/DVC), деплой новой версии.</Scope>
+      <Source>services/active-learning/</Source>
+      <Test>tests/active-learning/</Test>
+      <Writes>
+        <M-CATALOG/>
+      </Writes>
+      <Triggers>
+        <M-RETRIEVAL/>
+      </Triggers>
+      <Verification>V-M-ACTIVE-LEARNING</Verification>
+      <Note>Реализация — change C-006.</Note>
+    </M-ACTIVE-LEARNING>
+
+    <M-WEB>
+      <Name>Nuxt Web UI</Name>
+      <Type>UI_COMPONENT</Type>
+      <Status>skeleton</Status>
+      <Purpose>Mobile-first карточка вина в стилистике портала + retention-фичи.</Purpose>
+      <Scope>Загрузка фото (камера/галерея), карточка вина, цифровой сомелье, аналоги, энотуризм.
+        Общается только с gateway.</Scope>
+      <Source>apps/web/</Source>
+      <Test>apps/web/tests/</Test>
+      <Consumes>
+        <M-GATEWAY/>
+      </Consumes>
+      <Depends>
+        <M-CONTRACTS/>
+      </Depends>
+      <Verification>V-M-WEB</Verification>
+      <Note>Реализация — change C-005. UI удаляем без влияния на ML.</Note>
+    </M-WEB>
+
+    <M-COMMON>
+      <Name>Shared Common</Name>
+      <Type>UTILITY</Type>
+      <Status>skeleton</Status>
+      <Purpose>Общая инфраструктура сервисов и хост LLM Router (fallback chain, circuit breaker, cost breaker).</Purpose>
+      <Scope>Конфиг из env, логирование, HTTP-клиенты, image-хелперы; LLM Router с цепочкой
+        Ollama gemma4:12b → gemma4:e4b → OpenRouter → YandexGPT и локальным авто-fallback.</Scope>
+      <Source>packages/common/</Source>
+      <Test>tests/common/</Test>
+      <Exports>LLMRouter, CircuitBreaker, CostVelocityBreaker</Exports>
+      <Depends>
+        <M-CONTRACTS/>
+      </Depends>
+      <Verification>V-M-COMMON</Verification>
+      <Note>LLM Router — change C-008, до C-004.</Note>
+    </M-COMMON>
+
+    <M-CONTRACTS>
+      <Name>Shared Contracts</Name>
+      <Type>LIBRARY</Type>
+      <Status>skeleton</Status>
+      <Purpose>Единый источник истины для контрактов API — чтобы gateway, UI и ML-сервисы не расходились.</Purpose>
+      <Scope>JSON-схемы API, тип slug, структуры scan/card/similar/sommelier, модель ошибки.</Scope>
+      <Source>packages/contracts/</Source>
+      <Test>tests/contracts/</Test>
+      <Depends>none (листовой модуль)</Depends>
+      <Verification>V-M-CONTRACTS</Verification>
+      <Note>Реализация схем — change C-002.</Note>
+    </M-CONTRACTS>
+
+    <M-EVAL>
+      <Name>Eval Harness</Name>
+      <Type>TOOLING</Type>
+      <Status>built</Status>
+      <Purpose>Измерение качества: повторяет контракт организатора и снимает latency/top5/F1.</Purpose>
+      <Scope>multipart-POST по одному изображению; парсинг slug и top5; latency p50/p95;
+        accuracy@1/@5 и macro-F1 при наличии ground truth.</Scope>
+      <Source>scripts/eval/</Source>
+      <Test>tests/eval/</Test>
+      <Exports>post_image, extract_slug, extract_top5, load_ground_truth, compute_metrics, percentile</Exports>
+      <Probes>
+        <M-GATEWAY/>
+      </Probes>
+      <Verification>V-M-EVAL</Verification>
+    </M-EVAL>
+  </GD-001>
+</GraceGraphDocument>

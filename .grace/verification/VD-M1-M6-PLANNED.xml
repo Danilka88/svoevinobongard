@@ -1,0 +1,67 @@
+<GraceVerificationDocument graceVersion="4.0">
+  <VD-M1-M6-PLANNED>
+    <Purpose>Целевые условия приёмки для модулей, реализуемых в changes C-002…C-006. Заполняются
+      доказательствами (TestFiles, Command) по мере реализации соответствующего change.</Purpose>
+
+    <V-M-NORMALIZE>
+      <Priority>high</Priority>
+      <Status>planned</Status>
+      <PlannedIn>C-002</PlannedIn>
+      <Description>POST /normalize → непустой список кропов; EXIF-ориентация применена; при отсутствии
+        детектора срабатывает OpenCV-эвристика; TTA даёт больше одного кропа.</Description>
+      <Scenario id="S-NORMALIZE-1">Портретное фото не поворачивается на бок (EXIF применён).</Scenario>
+      <Scenario id="S-NORMALIZE-2">Без детектора сервис возвращает минимум один кроп, а не ошибку.</Scenario>
+    </V-M-NORMALIZE>
+
+    <V-M-RETRIEVAL>
+      <Priority>critical</Priority>
+      <Status>planned</Status>
+      <PlannedIn>C-002</PlannedIn>
+      <Description>POST /search → Top-K по косинусу; энкодер переключается через env; геоверификация
+        даёт margin; SLA Tier-1 укладывается в 3 секунды.</Description>
+      <Scenario id="S-RETRIEVAL-1">siglip2 и dinov2 переключаются только через ENCODER.</Scenario>
+      <Scenario id="S-RETRIEVAL-2">Top-K отсортирован по убыванию скора; margin = top1 минус top2.</Scenario>
+      <Scenario id="S-RETRIEVAL-3">На near-duplicate подмножестве margin верного ответа не ниже порога.</Scenario>
+    </V-M-RETRIEVAL>
+
+    <V-M-VLM>
+      <Priority>high</Priority>
+      <Status>planned</Status>
+      <PlannedIn>C-004</PlannedIn>
+      <Description>POST /extract → строгий JSON полей этикетки при temperature=0; битый JSON ремонтируется;
+        при недоступном VLM gateway деградирует к Tier-1, а не отдаёт 5xx.</Description>
+      <Scenario id="S-VLM-1">Ответ валиден по схеме VlmFields.</Scenario>
+      <Scenario id="S-VLM-2">VLM offline → HTTP 200 с результатом Tier-1.</Scenario>
+    </V-M-VLM>
+
+    <V-M-MATCHER>
+      <Priority>high</Priority>
+      <Status>planned</Status>
+      <PlannedIn>C-004</PlannedIn>
+      <Description>fuse(retrieval, geo, text) → итоговый скор, margin, top5; not_found с ближайшими
+        аналогами при низких скорах.</Description>
+      <Scenario id="S-MATCHER-1">Текстовый матч поднимает верный slug на near-duplicate кейсах.</Scenario>
+      <Scenario id="S-MATCHER-2">При низких скорах возвращается not_found с аналогами.</Scenario>
+    </V-M-MATCHER>
+
+    <V-M-ACTIVE-LEARNING>
+      <Priority>medium</Priority>
+      <Status>planned</Status>
+      <PlannedIn>C-006</PlannedIn>
+      <Description>Каждый запрос логируется; псевдоразметка не попадает в обучение без ревью;
+        F1 после дообучения не ниже F1 до; версия модели зарегистрирована.</Description>
+      <Scenario id="S-ACTIVE-LEARNING-1">Лог содержит image_hash, скоры, path, latency.</Scenario>
+      <Scenario id="S-ACTIVE-LEARNING-2">F1 после дообучения не ниже дообучения на отложенной выборке.</Scenario>
+    </V-M-ACTIVE-LEARNING>
+
+    <V-M-WEB>
+      <Priority>high</Priority>
+      <Status>planned</Status>
+      <PlannedIn>C-005</PlannedIn>
+      <Description>Мобильная карточка вина, сомелье, аналоги, энотуризм; UI обращается только к gateway;
+        удаление UI не влияет на ML.</Description>
+      <Scenario id="S-WEB-1">Сценарий фото → карточка проходит в браузерном smoke-тесте.</Scenario>
+      <Scenario id="S-WEB-2">В apps/web нет обращений к retrieval, vlm или matcher напрямую.</Scenario>
+    </V-M-WEB>
+  </VD-M1-M6-PLANNED>
+</GraceVerificationDocument>

@@ -1,0 +1,24 @@
+<GraceChangeSpec graceVersion="4.0" status="approved">
+  <C-003>
+    <Summary>M2 — геометрическая верификация Top-K (SuperPoint + LightGlue + RANSAC), правило решения
+      по score и margin, публикация confidence и f1 в ответе, контроль SLA.</Summary>
+    <Goals>Различать near-duplicates за счёт геометрии этикетки; дать ощутимый отрыв top-1 от top-2,
+      требуемый ТЗ; удержать latency p95 ниже трёх секунд.</Goals>
+    <Constraints>Геоверификация применяется только к Top-K, не ко всему каталогу. Fallback SIFT и ORB
+      из OpenCV обязателен. Пороги читаются только из env.</Constraints>
+    <NonGoals>VLM-арбитр и matcher — change C-004. Переобучение энкодера — change C-006.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>margin = top1 минус top2 вычисляется и попадает в ScanResponse.</Criterion>
+      <Criterion>Порог SCORE_TAU и MARGIN_DELTA управляют ветвлением решения.</Criterion>
+      <Criterion>accuracy@1 на near-duplicate подмножестве не ниже baseline C-002.</Criterion>
+      <Criterion>latency p95 полного пути ниже 3000 ms.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-RETRIEVAL/>
+      <M-GATEWAY/>
+      <M-COMMON/>
+    </AffectedAreas>
+    <VerificationIntent>Расширить V-M-RETRIEVAL сценариями margin и геоверификации; прогон эвалюатора
+      на near-duplicate подмножестве; сравнение с baseline C-002.</VerificationIntent>
+  </C-003>
+</GraceChangeSpec>

@@ -1,0 +1,26 @@
+<GraceChangeSpec graceVersion="4.0" status="approved">
+  <C-004>
+    <Summary>M3 — VLM-fallback для неуверенных запросов (строгий JSON полей этикетки) и matcher,
+      переранжирующий Top-K по метаданным каталога.</Summary>
+    <Goals>Поднять точность на near-duplicates, читая год, тип и сладость с этикетки; вызывать VLM только
+      там, где Tier-1 не уверен; при недоступном VLM деградировать к Tier-1.</Goals>
+    <Constraints>Вызов только через LLM Router из C-008, без прямого httpx. temperature равен нулю,
+      строгая JSON-схема, repair-парсер при битом JSON. Общий ответ быстрее 10 секунд.</Constraints>
+    <NonGoals>Выбор провайдера и fallback chain — change C-008. Геоверификация — change C-003.
+      Синтетическая аугментация — change C-006.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>POST /extract возвращает валидный JSON по схеме полей этикетки.</Criterion>
+      <Criterion>accuracy@1 на near-duplicate подмножестве выше значения после C-003.</Criterion>
+      <Criterion>Доля запросов с path vlm_fallback ограничена и отражена в отчёте.</Criterion>
+      <Criterion>При выключенном VLM gateway отвечает 200 с результатом Tier-1.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-VLM/>
+      <M-MATCHER/>
+      <M-GATEWAY/>
+      <M-CONTRACTS/>
+    </AffectedAreas>
+    <VerificationIntent>Создать V-M-VLM и V-M-MATCHER; прогон на near-duplicate подмножестве; отчёт по
+      путям retrieval и vlm_fallback; проверка деградации при VLM offline.</VerificationIntent>
+  </C-004>
+</GraceChangeSpec>

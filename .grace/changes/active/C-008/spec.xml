@@ -1,0 +1,25 @@
+<GraceChangeSpec graceVersion="4.0" status="approved">
+  <C-008>
+    <Summary>LLM Router: единый интерфейс chat и embed с цепочкой провайдеров
+      Ollama gemma4:12b → gemma4:e4b → OpenRouter → YandexGPT, per-provider circuit breaker,
+      cost-velocity breaker и локальным режимом с авто-fallback.</Summary>
+    <Goals>Убрать риск «отказ primary равен отказу всего AI-контура», получить cost-контроль
+      и гарантированный локальный режим. Подмена провайдера — только через env и providers.yaml.</Goals>
+    <Constraints>Секреты только через env. Нет захардкоженных имён провайдеров. Вызовы LLM идут только
+      через router, без прямого httpx в сервисах. Реализуется до C-004 (блокирующая предпосылка).</Constraints>
+    <NonGoals>Промпты и схемы извлечения полей этикетки — change C-004. Сервинг VLM через vLLM.
+      Обучение моделей.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>При отказе первого провайдера вызов уходит на следующий без правки кода.</Criterion>
+      <Criterion>После порога отказов провайдер пропускается и восстанавливается в half-open.</Criterion>
+      <Criterion>Превышение расхода токенов открывает cost-velocity breaker на 30 секунд.</Criterion>
+      <Criterion>При отсутствии сети работает локальная цепочка Ollama и вызов не падает.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-COMMON/>
+      <M-VLM/>
+    </AffectedAreas>
+    <VerificationIntent>Создать V-M-COMMON; тесты fallback chain, circuit breaker и cost breaker
+      на stub-адаптерах без сети; проверка локального режима.</VerificationIntent>
+  </C-008>
+</GraceChangeSpec>

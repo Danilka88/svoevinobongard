@@ -1,0 +1,44 @@
+<GraceUXGuidelines graceVersion="4.0">
+  <Applicability>applicable</Applicability>
+
+  <Annotation>Мобильный веб-интерфейс карточки вина в стилистике портала «Своё Вино» (mobile-first).
+    Дизайн — 10 из 100 баллов; UI-kit организатором не предоставлен, ориентир — общий стиль портала.</Annotation>
+
+  <Audience>
+    <Primary>Покупатель у винной полки с телефоном: цель — мгновенно получить карточку своего вина.</Primary>
+    <Secondary>Участники демо и эксперты конкурса: прогон скрипта оценки и живая демонстрация.</Secondary>
+    <Tertiary>Разработчик/оператор: читает README, запускает docker-compose, смотрит метрики в API.</Tertiary>
+  </Audience>
+
+  <Principles>
+    <Principle>Одна карточка без экрана выбора вариантов — это UX-требование ТЗ, а не только про точность.</Principle>
+    <Principle>Mobile-first: основной сценарий — камера/галерея телефона, вертикальная вёрстка.</Principle>
+    <Principle>Мгновенность: скелетон/прогресс при ожидании; цель — ответ &lt; 3 секунд.</Principle>
+    <Principle>Честность: если вино не найдено — показать ближайшие аналоги, а не пустой экран.</Principle>
+    <Principle>Метрики уверенности (F1 top-1/top-5) в UI не выводятся — только в API (требование ТЗ).</Principle>
+    <Principle>Стилистика портала: переиспользование визуальных материалов каталога в демо разрешено организатором.</Principle>
+  </Principles>
+
+  <CriticalFlows>
+    <Flow name="scan">
+      <Step order="1">Загрузка фото этикетки (камера или галерея).</Step>
+      <Step order="2">Отправка на POST /v1/scan (multipart image).</Step>
+      <Step order="3">Показ карточки вина: название, фото, винодельня, регион, сорт, описание.</Step>
+    </Flow>
+    <Flow name="retention">
+      <Step order="1">После карточки — «Цифровой сомелье»: подача к блюду и pairing.</Step>
+      <Step order="2">Аналоги из других виноделен (GET /v1/similar).</Step>
+      <Step order="3">Энотуризм: регионы и винодельни (geojson).</Step>
+    </Flow>
+    <Flow name="not-found">
+      <Step order="1">Вино не найдено → показать наиболее похожие вина (оценивается особенно высоко).</Step>
+      <Step order="2">Не показывать техническую ошибку пользователю.</Step>
+    </Flow>
+  </CriticalFlows>
+
+  <Boundaries>
+    <Boundary>apps/web общается ТОЛЬКО с gateway по HTTP. Прямых обращений к retrieval/vlm/matcher нет.</Boundary>
+    <Boundary>UI — отделяемый модуль: удаление apps/web не ломает ML-часть.</Boundary>
+    <Boundary>Корзина не требуется; продолжение сценария после карточки — необязательный бонус.</Boundary>
+  </Boundaries>
+</GraceUXGuidelines>

@@ -1,0 +1,52 @@
+# ---- secrets ----
+.env
+.env.*
+!.env.example
+
+# ---- data & model weights (never commit) ----
+data/
+models/*
+!models/.gitkeep
+*.pt
+*.pth
+*.onnx
+*.safetensors
+*.bin
+*.gguf
+*.pkl
+*.npy
+*.npz
+
+# ---- python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+uv.lock
+
+# ---- node / nuxt ----
+node_modules/
+.nuxt/
+.output/
+dist/
+build/
+.cache/
+
+# ---- artifacts & logs ----
+*.log
+predictions*.jsonl
+results/
+reports/
+.benchmarks/
+.coverage
+htmlcov/
+
+# ---- os / editors ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

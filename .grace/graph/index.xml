@@ -1,0 +1,35 @@
+<GraceGraphIndex graceVersion="4.0">
+  <Description>Knowledge graph проекта «Своё Вино — сканер этикеток»: 11 модулей (8 core + 3 supporting),
+    ациклический HTTP/JSON граф, 7 data flows. Детали контрактов — GD-001, рёбра и потоки — GD-002.</Description>
+
+  <GraphDocuments>
+    <GD-001>
+      <Path>graph/modules.xml</Path>
+      <Owns>
+        <M-GATEWAY/>
+        <M-NORMALIZE/>
+        <M-RETRIEVAL/>
+        <M-VLM/>
+        <M-MATCHER/>
+        <M-CATALOG/>
+        <M-ACTIVE-LEARNING/>
+        <M-WEB/>
+        <M-COMMON/>
+        <M-CONTRACTS/>
+        <M-EVAL/>
+      </Owns>
+    </GD-001>
+    <GD-002>
+      <Path>graph/edges.xml</Path>
+      <Owns>
+        <DF-001/>
+        <DF-002/>
+        <DF-003/>
+        <DF-004/>
+        <DF-005/>
+        <DF-006/>
+        <DF-007/>
+      </Owns>
+    </GD-002>
+  </GraphDocuments>
+</GraceGraphIndex>

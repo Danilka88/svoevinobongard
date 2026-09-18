@@ -1,0 +1,25 @@
+<GraceChangeSpec graceVersion="4.0" status="approved">
+  <C-006>
+    <Summary>M5 — active learning flywheel: логи запросов, очередь ревью, синтетическая аугментация,
+      дообучение Tier-1, оценка F1 и реестр версий модели.</Summary>
+    <Goals>Сделать сервис самоулучшающимся: VLM как учитель постепенно переносит знание в дешёвый Tier-1.
+      Достичь F1 после дообучения не ниже F1 до, без роста стоимости и латентности онлайн-пути.</Goals>
+    <Constraints>Human-in-the-loop обязателен: псевдоразметка не попадает в обучение без подтверждения.
+      Дубли эталонных фото из разных slug исключаются из train/val сплита. Исходный код old/ не используется.</Constraints>
+    <NonGoals>Изменение онлайн-пайплайна; замена энкодера; сбор новых полевых фото от организаторов.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>Каждый запрос логируется с image_hash, скорами, путём и latency.</Criterion>
+      <Criterion>F1 после дообучения не ниже F1 до на отложенной выборке.</Criterion>
+      <Criterion>Версия модели зарегистрирована с метриками; откат версии возможен.</Criterion>
+      <Criterion>Переключение версии индекса не требует правки кода.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-ACTIVE-LEARNING/>
+      <M-RETRIEVAL/>
+      <M-CATALOG/>
+      <M-GATEWAY/>
+    </AffectedAreas>
+    <VerificationIntent>Создать V-M-ACTIVE-LEARNING; проверить логирование, ревью-гейт и прирост F1
+      на отложенной выборке; подтвердить регистрацию версии.</VerificationIntent>
+  </C-006>
+</GraceChangeSpec>

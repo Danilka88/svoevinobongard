@@ -1,0 +1,125 @@
+<GraceRequirements graceVersion="4.0">
+  <annotation>Сервис распознавания российских вин по фотографии этикетки: находит карточку вина в каталоге
+    платформы «Своё Вино» (~2103 slug) и отдаёт {"slug": "..."} + уверенность + top-5 кандидатов.
+    Конкурс РСХБ / Лидеры цифровой трансформации.</annotation>
+  <domain keywords="wine label recognition, image retrieval, SigLIP 2, DINOv2, pgvector, FAISS,
+    geo-verification, SuperPoint, LightGlue, RANSAC, VLM fallback, gemma4, OpenAI-compatible connector,
+    FastAPI gateway, Nuxt 3 mobile-first, F1@1, F1@5, active learning flywheel, ETL catalog"/>
+
+  <UseCases>
+    <UseCase id="UC-1" name="Scan wine label" priority="critical">
+      <description>Пользователь фотографирует этикетку в реальных условиях (у полки, под углом, с бликами)
+        → сервис возвращает карточку именно этого вина без списка «похожих».</description>
+      <actor>Покупатель (мобильный веб)</actor>
+      <precondition>Сервис запущен; каталог проиндексирован; изображение передано в multipart-поле image.</precondition>
+      <steps>
+        <step order="1">Нормализация фото: EXIF-ориентация, ресайз, детекция этикетки, выпрямление, TTA-кропы.</step>
+        <step order="2">Tier-1 retrieval: эмбеддинг (SigLIP 2 / DINOv2) → kNN по pgvector → Top-K (K≈30).</step>
+        <step order="3">Геоверификация: SuperPoint + LightGlue + RANSAC → уточнённые скоры и margin.</step>
+        <step order="4">Ветвление: score ≥ τ и margin ≥ δ → решение; иначе VLM-fallback (gemma4:12b) → matcher.</step>
+        <step order="5">Ответ: slug, confidence, f1_top1, f1_top5, margin, path, latency_ms, top5, card.</step>
+      </steps>
+      <postcondition>Клиент получает одну карточку; F1 стабилен; «вино не найдено» → ближайшие аналоги.</postcondition>
+    </UseCase>
+
+    <UseCase id="UC-2" name="Organizer eval script compatibility" priority="critical">
+      <description>Bash-скрипт организатора (participant_test.sh) последовательно шлёт фото и ожидает
+        плоский JSON {"slug":"wine-slug"} на каждом шаге.</description>
+      <actor>Организатор конкурса (eval harness)</actor>
+      <precondition>Endpoint POST /v1/eval/predict принимает multipart-поле image.</precondition>
+      <steps>
+        <step order="1">Скрипт отправляет изображение на endpoint и ждёт полный ответ.</step>
+        <step order="2">Сервис возвращает {"slug": "..."} (или [{"slug":"..."}]).</step>
+        <step order="3">Скрипт измеряет latency и сравнивает slug с закрытой таблицей правильных ответов.</step>
+      </steps>
+      <postcondition>predictions.jsonl содержит валидный slug на каждое изображение; ответ укладывается в жёсткий лимит 10 c.</postcondition>
+    </UseCase>
+
+    <UseCase id="UC-3" name="Post-search retention feature" priority="high">
+      <description>После успешного поиска пользователь получает дополнительную пользу: «Цифровой сомелье»
+        (подача к блюду) и подбор аналогов из других виноделен; энотуризм (гео-регионы).</description>
+      <actor>Покупатель (мобильный веб)</actor>
+      <precondition>Вино найдено (есть slug); каталог содержит метаданные виноделен/регионов и geojson.</precondition>
+      <steps>
+        <step order="1">GET /v1/similar/{slug} — аналоги по сорту/региону из других виноделен.</step>
+        <step order="2">POST /v1/sommelier — персональные рекомендации и pairing.</step>
+        <step order="3">Энотуризм — маршруты/винодельни по региону.</step>
+      </steps>
+      <postcondition>Retention-фича работает; UI в стилистике портала «Своё Вино».</postcondition>
+    </UseCase>
+
+    <UseCase id="UC-4" name="Catalog ETL and reindex" priority="high">
+      <description>Каталог собирается из дампа CSV + sitemap XML (slug → эталонное фото) и загружается
+        в PostgreSQL + pgvector для векторного поиска.</description>
+      <actor>Инженер команды (офлайн)</actor>
+      <precondition>Материалы конкурса доступны (CSV + wines_sitemap_*.xml + uploads/).</precondition>
+      <steps>
+        <step order="1">Парсинг sitemap → авторитетный маппинг slug → filename.</step>
+        <step order="2">Чтение CSV, дедупликация строк, мердж по slug, извлечение year/sweetness.</step>
+        <step order="3">Запись catalog.jsonl / slug_to_image.json / stats.json.</step>
+        <step order="4">Загрузка в Postgres + построение векторного индекса эталонных фото.</step>
+      </steps>
+      <postcondition>2103 slug в каталоге; 2037 с фото; 66 без (fallback-сценарий).</postcondition>
+    </UseCase>
+  </UseCases>
+
+  <FunctionalRequirements>
+    <Requirement id="FR-1">Загрузка фото этикетки (галерея/камера) через веб-интерфейс.</Requirement>
+    <Requirement id="FR-2">CV-поиск по изображению обязателен; OCR — опциональное усиление (влияет на latency).</Requirement>
+    <Requirement id="FR-3">Ответ — JSON: {"slug": "..."} для скрипта; rich-ответ для UI (confidence, top5, card).</Requirement>
+    <Requirement id="FR-4">Метрика уверенности F1 для top-1 и top-5 видна в API (в UI не обязательна).</Requirement>
+    <Requirement id="FR-5">Карточка вина mobile-first в стилистике портала «Своё Вино».</Requirement>
+    <Requirement id="FR-6">Обработка «вина нет в каталоге»: показать аналоги из других виноделен либо честный not_found.</Requirement>
+    <Requirement id="FR-7">Совместимость с participant_test.sh (multipart image → {"slug"}).</Requirement>
+    <Requirement id="FR-8">Функция после поиска (retention): цифровой сомелье / аналоги / энотуризм.</Requirement>
+  </FunctionalRequirements>
+
+  <NonFunctionalRequirements>
+    <Requirement id="NFR-1" category="accuracy">
+      <description>Целевая точность на контрольной выборке 90–100% совпадений (top-1). Ориентир организаторов — 95%.</description>
+    </Requirement>
+    <Requirement id="NFR-2" category="performance">
+      <description>SLA &lt; 3 c (цель); жёсткий лимит скрипта организатора — 10 c. Скорость — 5% оценки, точность важнее.</description>
+    </Requirement>
+    <Requirement id="NFR-3" category="quality">
+      <description>F1-score стабилен; отрыв top-1 от top-2 (margin) ощутим, чтобы убрать экран выбора вариантов.</description>
+    </Requirement>
+    <Requirement id="NFR-4" category="licensing">
+      <description>Только permissive-лицензии (Apache-2.0 / MIT) для обязательных компонентов. AGPL недопустим.</description>
+    </Requirement>
+    <Requirement id="NFR-5" category="architecture">
+      <description>Воспроизводимость: pin версий, .env.example, docker-compose, README, ARCHITECTURE; модули деплоятся независимо.</description>
+    </Requirement>
+    <Requirement id="NFR-6" category="hardware">
+      <description>Работа на доступном железе (CPU/MPS); обучение/инференс обеспечивает команда самостоятельно.</description>
+    </Requirement>
+  </NonFunctionalRequirements>
+
+  <EvaluationCriteria total="100">
+    <Criterion id="CR-1" points="50" name="Достоверность поисковой выдачи">% совпадения, F1-score (top-1/top-5).</Criterion>
+    <Criterion id="CR-2" points="20" name="Функция после поиска">Работающая retention-фича.</Criterion>
+    <Criterion id="CR-3" points="15" name="Архитектура">Разделение функционала, воспроизводимость.</Criterion>
+    <Criterion id="CR-4" points="10" name="Дизайн">Соответствие гайдлайнам и стилистике «Своё Вино».</Criterion>
+    <Criterion id="CR-5" points="5" name="Скорость">Время ответа на оборудовании команды.</Criterion>
+  </EvaluationCriteria>
+
+  <KnownDataAnomalies>
+    <Anomaly id="AN-1">4 эталонных фото используются двумя slug (неоднозначный ground truth):
+      DSC_09173_4a9ff95cc2.webp (aligote-barrel-2024/2025), bottle_02_Cabernet_Franc_ec42fb71c4.webp,
+      Rebo_reserve_2023_2f54a334ff.webp, Vione_2023_13d6c1ebf6.webp.</Anomaly>
+    <Anomaly id="AN-2">66 slug из CSV не имеют записи в sitemap → нет эталонного фото.</Anomaly>
+    <Anomaly id="AN-3">Публичный набор полевых фото неполон (2 фото в eval/queries + 31 в old/test_obj вместо ~100).</Anomaly>
+    <Anomaly id="AN-4">eval/queries.tsv ссылается на 02eef911.webp, физически отсутствующий.</Anomaly>
+    <Anomaly id="AN-5">Много эталонов — вырезы на прозрачном фоне (_no_bg_preview_carve_photos) → домен-разрыв с полевыми фото.</Anomaly>
+    <Anomaly id="AN-6">Год в названии только у 228/4147 строк; цвет в CSV «грязный» (много вариантов) → нужна нормализация.</Anomaly>
+  </KnownDataAnomalies>
+
+  <OpenQuestions>
+    <Question id="OQ-1">Где остальные публичные полевые фото (~100)?</Question>
+    <Question id="OQ-2">Как определяется верный slug в парах с общим эталонным фото?</Question>
+    <Question id="OQ-3">Будут ли 66 slug без фото в приватном тесте?</Question>
+    <Question id="OQ-4">Как именно считается совпадение при разном винтаже?</Question>
+    <Question id="OQ-5">Ожидаемый ответ при «вино не найдено» (null / ближайший slug / пустой массив)?</Question>
+    <Question id="OQ-6">Как именно вычисляется F1 (top-1? микро/макро по slug)?</Question>
+  </OpenQuestions>
+</GraceRequirements>

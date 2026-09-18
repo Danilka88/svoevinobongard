@@ -1,0 +1,78 @@
+<GraceChangePlan graceVersion="4.0" status="draft">
+  <C-007>
+    <IntentSummary>Упаковать сервисы в независимые контейнеры, дать воспроизводимые команды запуска,
+      подготовить манифесты Yandex Cloud и финализировать документацию с демо-сценарием.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/gateway/Dockerfile</Value></MustExist>
+      <MustExist><Value>docker-compose.yml</Value></MustExist>
+      <MustNotExist><Value>Makefile</Value></MustNotExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>Makefile</Value></MustExist>
+      <MustExist><Value>deploy/yandex/</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustContain><File>docker-compose.yml</File><Text>postgres</Text></MustContain>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/>
+      <M-NORMALIZE/>
+      <M-RETRIEVAL/>
+      <M-VLM/>
+      <M-MATCHER/>
+      <M-ACTIVE-LEARNING/>
+      <ContextArtifacts/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>deploy/</Path>
+      <Path>services/</Path>
+      <File>Makefile</File>
+      <File>docker-compose.yml</File>
+      <File>README.md</File>
+      <File>ARCHITECTURE.md</File>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Контейнеризация ML-сервисов и prod-профиль compose</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Dockerfile существует для каждого сервиса и собирает образ.</Criterion>
+          <Criterion>Веса и data/ монтируются, а не копируются в образ.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>docker build -f services/gateway/Dockerfile .</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Манифесты Yandex Cloud: Serverless Containers, Workflow переобучения, Lockbox</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>container.yaml присутствует на каждый сервис.</Criterion>
+          <Criterion>Секреты описаны через Lockbox или env, не в манифесте.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>ls deploy/yandex</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Единые команды и документация, сценарий демо до семи минут</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>make setup, up, etl, eval выполняются по README.</Criterion>
+          <Criterion>README содержит сетап, запуск, env и ограничения; ARCHITECTURE — границы слоёв.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>make etl</Command>
+          <Command>.venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-007>
+</GraceChangePlan>

@@ -1,0 +1,56 @@
+<GraceVerificationIndex graceVersion="4.0">
+  <Policy>
+    <LogFormat>plain-text (сейчас); маркеры [M-&lt;ID&gt;][fn][BLOCK]; цель — JSON-логи</LogFormat>
+    <Redaction>Логи не содержат сырых изображений и API-ключей; только slug, скоры, latency</Redaction>
+    <DeterministicFirst>true</DeterministicFirst>
+    <Setup>Локальное окружение для гейтов: python3 -m venv --system-site-packages .venv
+      &amp;&amp; .venv/bin/pip install python-multipart pytest
+      (python-multipart объявлен в services/gateway/requirements.txt).</Setup>
+  </Policy>
+
+  <VerificationDocuments>
+    <VD-M0-CODE>
+      <Path>verification/VD-M0-CODE.xml</Path>
+      <Owns>
+        <V-M-CATALOG/>
+        <V-M-EVAL/>
+        <V-M-GATEWAY/>
+      </Owns>
+    </VD-M0-CODE>
+    <VD-M1-M6-PLANNED>
+      <Path>verification/VD-M1-M6-PLANNED.xml</Path>
+      <Owns>
+        <V-M-NORMALIZE/>
+        <V-M-RETRIEVAL/>
+        <V-M-VLM/>
+        <V-M-MATCHER/>
+        <V-M-ACTIVE-LEARNING/>
+        <V-M-WEB/>
+      </Owns>
+    </VD-M1-M6-PLANNED>
+    <VD-SHARED>
+      <Path>verification/VD-SHARED.xml</Path>
+      <Owns>
+        <V-M-COMMON/>
+        <V-M-CONTRACTS/>
+      </Owns>
+    </VD-SHARED>
+  </VerificationDocuments>
+
+  <Gates>
+    <Gate level="module">
+      <Check>markup: MODULE_CONTRACT + MODULE_MAP в каждом governed .py</Check>
+      <Check>.venv/bin/python -m pytest tests/ -q</Check>
+    </Gate>
+    <Gate level="phase">
+      <Check>python3 scripts/catalog/etl_catalog.py</Check>
+      <Check>.venv/bin/python -m pytest tests/test_eval_harness.py -v</Check>
+    </Gate>
+    <Gate level="final">
+      <Check>accuracy: F1@1 не ниже 0.90 на доступных полевых фото (цель 0.90–1.00)</Check>
+      <Check>sla: latency p95 ниже 3000 ms</Check>
+      <Check>contract: верхнеуровневый slug в ответе; ответ быстрее 10 c</Check>
+      <Check>privacy: git status без data/, .env, old/, my/, материалов конкурса</Check>
+    </Gate>
+  </Gates>
+</GraceVerificationIndex>
