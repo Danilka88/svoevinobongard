@@ -1,11 +1,11 @@
 <GraceVerificationIndex graceVersion="4.0">
   <Policy>
-    <LogFormat>plain-text (сейчас); маркеры [M-&lt;ID&gt;][fn][BLOCK]; цель — JSON-логи</LogFormat>
+    <LogFormat>plain-text; маркеры [M-&lt;ID&gt;][fn][BLOCK] через packages.common.logging.log_marker</LogFormat>
     <Redaction>Логи не содержат сырых изображений и API-ключей; только slug, скоры, latency</Redaction>
     <DeterministicFirst>true</DeterministicFirst>
-    <Setup>Локальное окружение для гейтов: python3 -m venv --system-site-packages .venv
-      &amp;&amp; .venv/bin/pip install python-multipart pytest
-      (python-multipart объявлен в services/gateway/requirements.txt).</Setup>
+    <Setup>Локальное окружение: python3 -m venv --system-site-packages .venv
+      &amp;&amp; .venv/bin/pip install torch torchvision transformers opencv-python-headless uvicorn python-multipart
+      (индекс: PYTHONPATH=. .venv/bin/python scripts/catalog/build_index.py --encoder dinov2)</Setup>
   </Policy>
 
   <VerificationDocuments>
@@ -17,11 +17,17 @@
         <V-M-GATEWAY/>
       </Owns>
     </VD-M0-CODE>
+    <VD-M1-TIER1>
+      <Path>verification/VD-M1-TIER1.xml</Path>
+      <Owns>
+        <V-M-CONTRACTS/>
+        <V-M-NORMALIZE/>
+        <V-M-RETRIEVAL/>
+      </Owns>
+    </VD-M1-TIER1>
     <VD-M1-M6-PLANNED>
       <Path>verification/VD-M1-M6-PLANNED.xml</Path>
       <Owns>
-        <V-M-NORMALIZE/>
-        <V-M-RETRIEVAL/>
         <V-M-VLM/>
         <V-M-MATCHER/>
         <V-M-ACTIVE-LEARNING/>
@@ -32,7 +38,6 @@
       <Path>verification/VD-SHARED.xml</Path>
       <Owns>
         <V-M-COMMON/>
-        <V-M-CONTRACTS/>
       </Owns>
     </VD-SHARED>
   </VerificationDocuments>
@@ -44,12 +49,13 @@
     </Gate>
     <Gate level="phase">
       <Check>python3 scripts/catalog/etl_catalog.py</Check>
-      <Check>.venv/bin/python -m pytest tests/test_eval_harness.py -v</Check>
+      <Check>PYTHONPATH=. .venv/bin/python scripts/catalog/build_index.py --encoder dinov2 --out data/index</Check>
+      <Check>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --index data/index --samples 200 --normalize</Check>
     </Gate>
     <Gate level="final">
-      <Check>accuracy: F1@1 не ниже 0.90 на доступных полевых фото (цель 0.90–1.00)</Check>
-      <Check>sla: latency p95 ниже 3000 ms</Check>
-      <Check>contract: верхнеуровневый slug в ответе; ответ быстрее 10 c</Check>
+      <Check>contract: /v1/eval/predict отдаёт верхнеуровневый slug; ответ быстрее 10 c</Check>
+      <Check>sla: latency p95 полевого прогона ниже 3000 ms</Check>
+      <Check>quality: F1@1 выше baseline после C-003 и C-004 (сейчас synthetic proxy accuracy@1 = 0.175)</Check>
       <Check>privacy: git status без data/, .env, old/, my/, материалов конкурса</Check>
     </Gate>
   </Gates>

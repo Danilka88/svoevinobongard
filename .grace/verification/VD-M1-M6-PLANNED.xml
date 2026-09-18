@@ -1,28 +1,8 @@
 <GraceVerificationDocument graceVersion="4.0">
   <VD-M1-M6-PLANNED>
-    <Purpose>Целевые условия приёмки для модулей, реализуемых в changes C-002…C-006. Заполняются
-      доказательствами (TestFiles, Command) по мере реализации соответствующего change.</Purpose>
-
-    <V-M-NORMALIZE>
-      <Priority>high</Priority>
-      <Status>planned</Status>
-      <PlannedIn>C-002</PlannedIn>
-      <Description>POST /normalize → непустой список кропов; EXIF-ориентация применена; при отсутствии
-        детектора срабатывает OpenCV-эвристика; TTA даёт больше одного кропа.</Description>
-      <Scenario id="S-NORMALIZE-1">Портретное фото не поворачивается на бок (EXIF применён).</Scenario>
-      <Scenario id="S-NORMALIZE-2">Без детектора сервис возвращает минимум один кроп, а не ошибку.</Scenario>
-    </V-M-NORMALIZE>
-
-    <V-M-RETRIEVAL>
-      <Priority>critical</Priority>
-      <Status>planned</Status>
-      <PlannedIn>C-002</PlannedIn>
-      <Description>POST /search → Top-K по косинусу; энкодер переключается через env; геоверификация
-        даёт margin; SLA Tier-1 укладывается в 3 секунды.</Description>
-      <Scenario id="S-RETRIEVAL-1">siglip2 и dinov2 переключаются только через ENCODER.</Scenario>
-      <Scenario id="S-RETRIEVAL-2">Top-K отсортирован по убыванию скора; margin = top1 минус top2.</Scenario>
-      <Scenario id="S-RETRIEVAL-3">На near-duplicate подмножестве margin верного ответа не ниже порога.</Scenario>
-    </V-M-RETRIEVAL>
+    <Purpose>Целевые условия приёмки для модулей, реализуемых в changes C-003…C-006. Заполняются
+      доказательствами (TestFiles, Command) по мере реализации соответствующего change.
+      V-M-NORMALIZE, V-M-RETRIEVAL и V-M-CONTRACTS перенесены в VD-M1-TIER1 после реализации в C-002.</Purpose>
 
     <V-M-VLM>
       <Priority>high</Priority>

@@ -29,6 +29,17 @@ from pathlib import Path
 
 import pytest
 
+__all__ = [
+    "ROOT",
+    "CATALOG",
+    "STATS",
+    "pytestmark",
+    "test_artifacts_exist",
+    "test_catalog_lines_and_unique_slugs",
+    "test_stats_invariants",
+    "test_every_record_has_required_fields",
+]
+
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / "data" / "catalog" / "catalog.jsonl"
 STATS = ROOT / "data" / "catalog" / "stats.json"

@@ -41,6 +41,18 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
+__all__ = [
+    "YEAR_RE",
+    "SWEETNESS",
+    "norm",
+    "parse_sitemap",
+    "detect_sweetness",
+    "detect_year",
+    "load_csv",
+    "merge_slug",
+    "main",
+]
+
 # START_BLOCK_ETL_CONSTANTS
 YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
 

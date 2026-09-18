@@ -1,61 +1,76 @@
 <GraceVerificationDocument graceVersion="4.0">
   <VD-M0-CODE>
-    <Purpose>Верификация реально существующего кода M0: ETL каталога, эвалюатор, gateway-скелет.</Purpose>
+    <Purpose>Верификация кода M0 (C-001) и обновлённого в C-002 gateway: ETL каталога, эвалюатор,
+      публичный API с подключённым Tier-1 пайплайном.</Purpose>
 
     <V-M-CATALOG>
       <Priority>critical</Priority>
       <Status>built</Status>
       <Description>ETL каталога: запуск без ошибок, catalog.jsonl = 2103 строки, 2037 с эталонным фото,
-        66 без; shared_reference_images = 4.</Description>
+        66 без; shared_reference_images = 4. Дополнительно C-002: сборка векторного индекса из 2037 фото.</Description>
       <TestFiles>
         <File>tests/test_catalog_etl.py</File>
+        <File>scripts/catalog/build_index.py</File>
       </TestFiles>
       <Command>python3 scripts/catalog/etl_catalog.py</Command>
       <Command>.venv/bin/python -m pytest tests/test_catalog_etl.py -v</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/catalog/build_index.py --encoder dinov2 --device auto --out data/index</Command>
       <Scenario id="S-CATALOG-1">ETL запускается из чистой среды, печатает ETL REPORT и пишет три артефакта.</Scenario>
       <Scenario id="S-CATALOG-2">catalog.jsonl содержит 2103 записи и 2103 уникальных slug.</Scenario>
       <Scenario id="S-CATALOG-3">Статистика сходится: with_image 2037, without_image 66, shared 4, sitemap 2037.</Scenario>
+      <Scenario id="S-CATALOG-4">build_index индексирует 2037 эталонных фото без пропусков и пишет meta.json.</Scenario>
       <Marker>[M-CATALOG][ETL][START]</Marker>
       <Marker>[M-CATALOG][PARSE_SITEMAP][DONE]</Marker>
       <Marker>[M-CATALOG][ETL][DONE]</Marker>
-      <TraceAssertion>[M-CATALOG][ETL][DONE] slugs=2103 with_image=2037 without_image=66</TraceAssertion>
+      <Marker>[M-CATALOG][build_index][START]</Marker>
+      <Evidence note="index">Индекс: 2037 векторов, dim 384, backend numpy, 0 пропущенных изображений, 82 s на MPS.</Evidence>
     </V-M-CATALOG>
 
     <V-M-EVAL>
       <Priority>high</Priority>
       <Status>built</Status>
       <Description>Офлайн-эвалюатор повторяет контракт организатора: реальный multipart-POST, парсинг slug
-        и top5, latency p50/p95, accuracy@1/@5, macro-F1; stdlib-only.</Description>
+        и top5, latency p50/p95, accuracy@1/@5, macro-F1; stdlib-only. Дополнительно C-002: baseline-отчёт
+        с self-retrieval и synthetic proxy.</Description>
       <TestFiles>
         <File>tests/test_eval_harness.py</File>
+        <File>scripts/eval/baseline_report.py</File>
       </TestFiles>
       <Command>.venv/bin/python -m pytest tests/test_eval_harness.py -v</Command>
       <Command>python3 -m py_compile scripts/eval/evaluate.py</Command>
-      <Scenario id="S-EVAL-1">Модуль импортируется только из stdlib: argparse, json, mimetypes, os, sys,
-        time, urllib, uuid, collections, pathlib.</Scenario>
-      <Scenario id="S-EVAL-2">Реальный multipart-POST против stub-сервера: поле image, Content-Type
-        multipart/form-data, predicted_slug и top5 записаны в predictions.jsonl.</Scenario>
-      <Scenario id="S-EVAL-3">Метрики: идеальные предсказания дают accuracy@1 = 1.0 и accuracy@5 = 1.0;
-        частичные — 0.5 при попадании gold в top5; percentile монотонен.</Scenario>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --index data/index --samples 200 --seed 42 --normalize --out reports/baseline-dinov2-normalized.json</Command>
+      <Scenario id="S-EVAL-1">Модуль импортируется только из stdlib.</Scenario>
+      <Scenario id="S-EVAL-2">Реальный multipart-POST против stub-сервера: predicted_slug и top5 записаны.</Scenario>
+      <Scenario id="S-EVAL-3">Метрики accuracy@1/@5 и percentile монотонны.</Scenario>
+      <Scenario id="S-EVAL-4">Полевой прогон 31 изображение: processed 31, errors 0, null_slug 0, p95 152.1 ms.</Scenario>
       <Marker>[M-EVAL][POST_IMAGE][MULTIPART]</Marker>
       <Marker>[M-EVAL][METRICS][F1]</Marker>
       <Marker>[M-EVAL][MAIN][REPORT]</Marker>
+      <Marker>[M-EVAL][baseline][START]</Marker>
+      <Marker>[M-EVAL][baseline][DONE]</Marker>
     </V-M-EVAL>
 
     <V-M-GATEWAY>
       <Priority>critical</Priority>
       <Status>built</Status>
-      <Description>Gateway: /v1/health отвечает 200 и отдаёт status/service/models; pipeline-эндпоинты
-        в M0 осознанно возвращают 501 (подключаются в C-002).</Description>
+      <Description>Gateway: /v1/health отвечает 200 и перечисляет эндпоинты; /v1/eval/predict отдаёт плоский
+        {"slug": ...}; /v1/scan отдаёт rich-ответ; недоступный retrieval даёт 503 с контрактом ошибки.
+        Pipeline реализован в C-002 (в M0 эндпоинты возвращали 501).</Description>
       <TestFiles>
         <File>tests/test_gateway_health.py</File>
-        <File>services/gateway/app/main.py</File>
+        <File>tests/test_gateway_pipeline.py</File>
       </TestFiles>
-      <Command>.venv/bin/python -m pytest tests/test_gateway_health.py -v</Command>
-      <Scenario id="S-GATEWAY-1">GET /v1/health → 200, status ok, service gateway, ключи retrieval и vlm.</Scenario>
-      <Scenario id="S-GATEWAY-2">POST /v1/eval/predict и POST /v1/scan → 501 с контрактом ошибки detail.</Scenario>
-      <Marker>[M-GATEWAY][HEALTH][OK]</Marker>
-      <Marker>[M-GATEWAY][PIPELINE][NOT_IMPLEMENTED]</Marker>
+      <Command>.venv/bin/python -m pytest tests/test_gateway_health.py tests/test_gateway_pipeline.py -v</Command>
+      <Scenario id="S-GATEWAY-1">GET /v1/health → 200, status ok, service gateway, ключи retrieval и vlm, список эндпоинтов.</Scenario>
+      <Scenario id="S-GATEWAY-2">POST /v1/eval/predict → 200 и ровно {"slug": "..."} (плоский контракт).</Scenario>
+      <Scenario id="S-GATEWAY-3">POST /v1/scan → 200, path retrieval, top5 и card из каталога.</Scenario>
+      <Scenario id="S-GATEWAY-4">POST без файла → 422; недоступный retrieval → 503 с detail.</Scenario>
+      <Scenario id="S-GATEWAY-5">При недоступном normalize пайплайн деградирует к исходному изображению.</Scenario>
+      <Marker>[M-GATEWAY][health][OK]</Marker>
+      <Marker>[M-GATEWAY][run_scan][DECISION]</Marker>
+      <Marker>[M-GATEWAY][post_image][CONN_ERROR]</Marker>
+      <Evidence note="e2e">Живой прогон: /v1/eval/predict вернул {"slug":"vinodelnya-begildeeva-kaberne-sovinon-merlo-krasnoe-suhoe-14"};
+        /v1/scan вернул slug, confidence 0.665, margin 0.0086, latency_ms 655.8, карточку (Покровская, Нижняя Волга).</Evidence>
     </V-M-GATEWAY>
   </VD-M0-CODE>
 </GraceVerificationDocument>

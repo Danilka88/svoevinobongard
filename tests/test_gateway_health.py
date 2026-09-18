@@ -1,6 +1,6 @@
 # START_MODULE_CONTRACT
-# PURPOSE: Верификация gateway — /v1/health отвечает 200, pipeline-эндпоинты осознанно 501 в M0
-# SCOPE: test_health_ok, test_pipeline_not_implemented_in_m0
+# PURPOSE: Верификация gateway: /v1/health отвечает 200, эндпоинты требуют изображение
+# SCOPE: test_health_ok, test_scan_requires_image, test_health_lists_endpoints
 # DEPENDS: M-GATEWAY (services/gateway/app/main.py), M-CONTRACTS
 # LINKS: M-GATEWAY
 # ROLE: TEST
@@ -11,14 +11,11 @@
 # MAIN_PY - путь к FastAPI-приложению gateway
 # app_module - загруженный модуль gateway
 # client - TestClient поверх приложения
-# test_health_ok - GET /v1/health отвечает 200
-# test_pipeline_not_implemented_in_m0 - pipeline-эндпоинты отдают 501
+# test_health_ok - GET /v1/health отвечает 200 и отдает модели
+# test_health_lists_endpoints - health перечисляет публичные эндпоинты
+# test_scan_requires_image - POST /v1/scan без файла дает 422
 # END_MODULE_MAP
-"""V-M-003: gateway-контракт.
-
-Загружает FastAPI-приложение напрямую из файла и проверяет реальные HTTP-ответы
-через TestClient (без запуска uvicorn).
-"""
+"""V-M-GATEWAY: health и валидация входа."""
 from __future__ import annotations
 
 import importlib.util
@@ -27,8 +24,16 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-# FastAPI требует python-multipart для File(...) (Form data). Он заявлен в
-# services/gateway/requirements.txt; в голом окружении — корректный skip, не падение.
+__all__ = [
+    "ROOT",
+    "MAIN_PY",
+    "app_module",
+    "client",
+    "test_health_ok",
+    "test_health_lists_endpoints",
+    "test_scan_requires_image",
+]
+
 pytest.importorskip("multipart", reason="python-multipart не установлен (см. services/gateway/requirements.txt)")
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,8 +61,11 @@ def test_health_ok() -> None:
     assert set(body["models"]) == {"retrieval", "vlm"}
 
 
-def test_pipeline_not_implemented_in_m0() -> None:
-    for endpoint in ("/v1/eval/predict", "/v1/scan"):
-        resp = client.post(endpoint, files={"image": ("q.png", b"\x89PNG\r\n", "image/png")})
-        assert resp.status_code == 501, f"{endpoint} должен возвращать 501 в M0"
-        assert "detail" in resp.json(), f"{endpoint} должен отдавать контракт ошибки {{detail}}"
+def test_health_lists_endpoints() -> None:
+    body = client.get("/v1/health").json()
+    assert body["endpoints"] == ["/v1/health", "/v1/eval/predict", "/v1/scan"]
+
+
+def test_scan_requires_image() -> None:
+    assert client.post("/v1/scan").status_code == 422
+    assert client.post("/v1/eval/predict").status_code == 422

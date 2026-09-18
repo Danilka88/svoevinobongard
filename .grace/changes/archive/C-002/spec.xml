@@ -1,4 +1,4 @@
-<GraceChangeSpec graceVersion="4.0" status="approved">
+<GraceChangeSpec graceVersion="4.0" status="applied">
   <C-002>
     <Summary>M1 — первый работающий end-to-end путь: фото → нормализация → эмбеддинг → kNN по каталогу
       → Top-K и скоры → gateway отдаёт плоский slug и rich-ответ. Без VLM и без геоверификации.</Summary>

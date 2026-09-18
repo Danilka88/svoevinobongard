@@ -1,0 +1,150 @@
+# START_MODULE_CONTRACT
+# PURPOSE: Оркестрация пайплайна normalize → retrieval и сборка ScanResponse для /v1/scan и /v1/eval/predict
+# SCOPE: run_scan, build_card
+# DEPENDS: httpx, packages.common.catalog, packages.contracts.schemas, services.gateway.app.clients
+# LINKS: M-GATEWAY
+# ROLE: RUNTIME
+# MAP_MODE: EXPORTS
+# END_MODULE_CONTRACT
+# START_MODULE_MAP
+# run_scan - полный проход пайплайна и сборка ScanResponse
+# build_card - карточка вина из метаданных каталога
+# END_MODULE_MAP
+"""Оркестрация пайплайна.
+
+M1-путь: normalize → retrieval → решение по Top-1. Ветвление на VLM (C-004)
+и геоверификация (C-003) добавляются отдельными changes.
+Деградация: если normalize недоступен, изображение уходит в retrieval как есть.
+"""
+from __future__ import annotations
+
+import base64
+import time
+from dataclasses import dataclass, field
+
+from packages.common.catalog import CatalogStore
+from packages.common.config import settings
+from packages.common.logging import log_marker
+from packages.contracts.schemas import Card, ScanResponse, TopKItem
+from services.gateway.app.clients import ServiceClients
+
+__all__ = ["run_scan", "build_card"]
+
+
+@dataclass
+class PipelineTrace:
+    """Диагностика прохождения пайплайна (для тестов и логов)."""
+
+    normalize_method: str = "skipped"
+    normalize_ok: bool = False
+    retrieval_latency_ms: float = 0.0
+    top1_score: float = 0.0
+    second_score: float = 0.0
+    notes: list[str] = field(default_factory=list)
+
+
+def build_card(store: CatalogStore, slug: str) -> Card:
+    """Собирает карточку вина из метаданных каталога."""
+    data = store.card(slug)
+    if not data:
+        return Card()
+    return Card(
+        name=data.get("name") or "",
+        winery=data.get("winery") or "",
+        region=data.get("region") or "",
+        category=data.get("category") or "",
+        color=data.get("color") or "",
+        grape=data.get("grape") or "",
+        description=data.get("description") or "",
+        year=data.get("year"),
+        sweetness=data.get("sweetness"),
+        image=data.get("image"),
+        image_url=None,
+    )
+
+
+async def run_scan(
+    image_bytes: bytes,
+    store: CatalogStore,
+    clients: ServiceClients | None = None,
+    filename: str = "query.jpg",
+    trace: PipelineTrace | None = None,
+) -> ScanResponse:
+    """Прогоняет изображение по пайплайну Tier-1.
+
+    Args:
+        image_bytes: сырые байты изображения.
+        store: read-only каталог для карточки.
+        clients: клиенты сервисов (по умолчанию создаются из env).
+        filename: имя файла для multipart.
+        trace: необязательный объект диагностики.
+
+    Returns:
+        ScanResponse: Top-1 slug, confidence, margin, top5, card.
+
+    Raises:
+        RuntimeError: если retrieval недоступен (без него ответ невозможен).
+    """
+    started = time.perf_counter()
+    diagnostics = trace if trace is not None else PipelineTrace()
+    active_clients = clients or ServiceClients()
+
+    normalized = await active_clients.normalize(image_bytes, filename)
+    payload = image_bytes
+    if normalized and normalized.get("crops"):
+        diagnostics.normalize_ok = True
+        diagnostics.normalize_method = str(normalized.get("method", "unknown"))
+        first = normalized["crops"][0]
+        try:
+            payload = base64.b64decode(first["png_base64"])
+        except Exception:  # noqa: BLE001 - поврежденный ответ нормализации не критичен
+            diagnostics.notes.append("normalize payload decode failed; using original")
+    else:
+        diagnostics.notes.append("normalize unavailable; using original image")
+
+    retrieval_started = time.perf_counter()
+    found = await active_clients.search(payload, "query.png")
+    diagnostics.retrieval_latency_ms = (time.perf_counter() - retrieval_started) * 1000.0
+    if found is None:
+        log_marker("M-GATEWAY", "run_scan", "RETRIEVAL_UNAVAILABLE")
+        raise RuntimeError("retrieval service unavailable")
+
+    items = found.get("top_k") or []
+    top5 = [
+        TopKItem(
+            slug=item.get("slug", ""),
+            score=float(item.get("score", 0.0)),
+            name=item.get("name"),
+            winery=item.get("winery"),
+        )
+        for item in items[:5]
+        if item.get("slug")
+    ]
+
+    latency_ms = (time.perf_counter() - started) * 1000.0
+    if not top5:
+        log_marker("M-GATEWAY", "run_scan", "NO_CANDIDATES", latency_ms=round(latency_ms, 1))
+        return ScanResponse(slug=None, not_found=True, path="retrieval",
+                            latency_ms=round(latency_ms, 1), top5=[], card=None)
+
+    best = top5[0]
+    diagnostics.top1_score = best.score
+    diagnostics.second_score = top5[1].score if len(top5) > 1 else 0.0
+    margin = round(best.score - diagnostics.second_score, 6)
+    not_found = best.score < settings.score_tau
+
+    log_marker("M-GATEWAY", "run_scan", "DECISION", slug=best.slug if not not_found else "none",
+               score=round(best.score, 4), margin=margin, latency_ms=round(latency_ms, 1),
+               normalize=diagnostics.normalize_method)
+    return ScanResponse(
+        slug=best.slug,
+        confidence=round(best.score, 6),
+        f1_top1=round(best.score, 6),
+        f1_top5=round(best.score, 6),
+        margin=margin,
+        path="retrieval",
+        latency_ms=round(latency_ms, 1),
+        top5=top5,
+        not_found=not_found,
+        card=build_card(store, best.slug),
+    )

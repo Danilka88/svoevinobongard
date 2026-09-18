@@ -1,0 +1,67 @@
+<GraceVerificationDocument graceVersion="4.0">
+  <VD-M1-TIER1>
+    <Purpose>Верификация реализованного Tier-1 (change C-002): контракты, нормализация, индекс и поиск.</Purpose>
+
+    <V-M-CONTRACTS>
+      <Priority>critical</Priority>
+      <Status>built</Status>
+      <Description>Единые схемы API: ScanResponse содержит slug, confidence, f1_top1, f1_top5, margin, path,
+        latency_ms, top5, not_found, card; EvalPredictResponse сериализуется ровно в {"slug": ...}.</Description>
+      <TestFiles>
+        <File>tests/test_contracts_schemas.py</File>
+        <File>packages/contracts/schemas.py</File>
+      </TestFiles>
+      <Command>.venv/bin/python -m pytest tests/test_contracts_schemas.py -v</Command>
+      <Scenario id="S-CONTRACTS-1">ScanResponse по умолчанию имеет path retrieval и все поля контракта.</Scenario>
+      <Scenario id="S-CONTRACTS-2">EvalPredictResponse.model_dump() равен ровно {"slug": ...} (плоский контракт организатора).</Scenario>
+      <Scenario id="S-CONTRACTS-3">ErrorResponse требует error и detail.</Scenario>
+    </V-M-CONTRACTS>
+
+    <V-M-NORMALIZE>
+      <Priority>high</Priority>
+      <Status>built</Status>
+      <Description>POST /normalize: EXIF-ориентация, детекция этикетки OpenCV-эвристикой (contour_quad или
+        largest_bbox), TTA-варианты. Контракт: минимум один вариант всегда, при отсутствии детекции — полный кадр.</Description>
+      <TestFiles>
+        <File>tests/test_normalize_service.py</File>
+        <File>services/normalize/app/main.py</File>
+      </TestFiles>
+      <Command>.venv/bin/python -m pytest tests/test_normalize_service.py -v</Command>
+      <Scenario id="S-NORMALIZE-1">build_variants всегда возвращает минимум один вариант, включая случай без детекции.</Scenario>
+      <Scenario id="S-NORMALIZE-2">detect_label находит четырехугольник или bbox на синтетической этикетке (area_ratio больше нуля).</Scenario>
+      <Scenario id="S-NORMALIZE-3">normalize_bytes возвращает варианты, метод детекции и метрики, согласованные между собой.</Scenario>
+      <Scenario id="S-NORMALIZE-4">load_bgr применяет декодирование и сохраняет порядок каналов BGR.</Scenario>
+      <Marker>[M-NORMALIZE][health][OK]</Marker>
+      <Marker>[M-NORMALIZE][normalize][CROPS]</Marker>
+      <Marker>[M-NORMALIZE][normalize][DECODE_FAILED]</Marker>
+      <Evidence note="field-detection">На 31 полевом фото детектор дал largest_bbox 16, contour_quad 3, none 12
+        (mean area_ratio 0.125). Качество эвристики ограничено: нейросетевой детектор D-FINE вынесен за пределы C-002.</Evidence>
+    </V-M-NORMALIZE>
+
+    <V-M-RETRIEVAL>
+      <Priority>critical</Priority>
+      <Status>built</Status>
+      <Description>Tier-1 retrieval: индекс эталонных фото (2037 slug, dim 384, numpy exact backend),
+        косинусный Top-K, энкодер берётся из meta.json индекса, а не из окружения.</Description>
+      <TestFiles>
+        <File>tests/test_retrieval_index.py</File>
+        <File>services/retrieval/app/main.py</File>
+      </TestFiles>
+      <Command>.venv/bin/python -m pytest tests/test_retrieval_index.py -v</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --index data/index --samples 200 --seed 42 --normalize --out reports/baseline-dinov2-normalized.json</Command>
+      <Scenario id="S-RETRIEVAL-1">Top-K отсортирован по убыванию косинусного скора; точный запрос дает скор 1.0.</Scenario>
+      <Scenario id="S-RETRIEVAL-2">k ограничивает длину выдачи и не превышает размер индекса.</Scenario>
+      <Scenario id="S-RETRIEVAL-3">save_index и load_index дают эквивалентный индекс (round-trip).</Scenario>
+      <Scenario id="S-RETRIEVAL-4">numpy-бэкенд не поднимает faiss (на macOS arm64 libomp от faiss конфликтует с torch).</Scenario>
+      <Marker>[M-RETRIEVAL][build_index][NUMPY]</Marker>
+      <Marker>[M-RETRIEVAL][load_encoder][LOAD]</Marker>
+      <Marker>[M-RETRIEVAL][get_runtime][READY]</Marker>
+      <Marker>[M-RETRIEVAL][search][TOPK]</Marker>
+      <Evidence note="baseline">self-retrieval accuracy@1 = 0.97 (mean top1 score 1.0);
+        synthetic field proxy accuracy@1 = 0.175, accuracy@5 = 0.30, f1_macro@1 = 0.1068, latency p50 21.2 ms / p95 29.3 ms
+        (dinov2-small, 200 сэмплов, seed 42, с нормализацией). Без нормализации accuracy@1 = 0.085 — вклад нормализации измерим.</Evidence>
+      <Evidence note="e2e">Полевой прогон через gateway: 31/31 обработано, 0 ошибок, 0 пустых slug,
+        latency p50 86.9 ms / p95 152.1 ms (SLA ниже 3000 ms).</Evidence>
+    </V-M-RETRIEVAL>
+  </VD-M1-TIER1>
+</GraceVerificationDocument>

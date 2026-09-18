@@ -36,6 +36,19 @@ from pathlib import Path
 
 import pytest
 
+__all__ = [
+    "ROOT",
+    "EVAL_PY",
+    "ev",
+    "stub_endpoint",
+    "test_module_is_stdlib_only",
+    "test_slug_parsing_both_formats",
+    "test_top5_parsing",
+    "test_metrics_perfect_and_partial",
+    "test_percentile_monotonic",
+    "test_real_multipart_post_and_report",
+]
+
 ROOT = Path(__file__).resolve().parents[1]
 EVAL_PY = ROOT / "scripts" / "eval" / "evaluate.py"
 

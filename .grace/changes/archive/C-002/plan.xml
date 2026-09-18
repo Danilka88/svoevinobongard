@@ -1,4 +1,4 @@
-<GraceChangePlan graceVersion="4.0" status="approved">
+<GraceChangePlan graceVersion="4.0" status="applied">
   <C-002>
     <IntentSummary>Собрать Tier-1 baseline: контракты и конфиг, нормализация, каталог в PostgreSQL с pgvector,
       энкодер и kNN, подключение gateway, замер F1 и latency. Это фундамент для всех дальнейших улучшений

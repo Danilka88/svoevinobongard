@@ -6,7 +6,7 @@
     <M-GATEWAY>
       <Name>Gateway API</Name>
       <Type>ENTRY_POINT</Type>
-      <Status>skeleton</Status>
+      <Status>built</Status>
       <Purpose>Единственная публичная точка входа: FastAPI, оркестрация пайплайна, SLA-контроль.</Purpose>
       <Scope>POST /v1/eval/predict (плоский slug), POST /v1/scan (rich), GET /v1/similar, POST /v1/sommelier,
         GET /v1/health. Внутренние сервисы наружу не публикуются.</Scope>
@@ -32,7 +32,7 @@
     <M-NORMALIZE>
       <Name>Normalization</Name>
       <Type>CORE_LOGIC</Type>
-      <Status>skeleton</Status>
+      <Status>built</Status>
       <Purpose>Подготовка полевого фото к retrieval; ТЗ прямо указывает, что нормализация заметно улучшает F1.</Purpose>
       <Scope>EXIF-ориентация, ресайз, денойз, баланс белого; детекция этикетки/бутылки (D-FINE, RT-DETRv4, RF-DETR —
         Apache-2.0); выпрямление перспективы; TTA-кропы; fallback OpenCV-эвристики.</Scope>
@@ -49,7 +49,7 @@
     <M-RETRIEVAL>
       <Name>Tier-1 Retrieval</Name>
       <Type>CORE_LOGIC</Type>
-      <Status>skeleton</Status>
+      <Status>built</Status>
       <Purpose>Дешёвый и быстрый Tier-1 — закрывает большинство лёгких запросов (вклад в 50 баллов за точность).</Purpose>
       <Scope>Энкодер-плагин siglip2 | dinov2 | clip (MPS/ONNX); индекс pgvector (prod) / FAISS (dev);
         Top-K по косинусу; геоверификация SuperPoint + LightGlue + RANSAC → скор и margin.</Scope>
@@ -160,7 +160,7 @@
     <M-COMMON>
       <Name>Shared Common</Name>
       <Type>UTILITY</Type>
-      <Status>skeleton</Status>
+      <Status>partial</Status>
       <Purpose>Общая инфраструктура сервисов и хост LLM Router (fallback chain, circuit breaker, cost breaker).</Purpose>
       <Scope>Конфиг из env, логирование, HTTP-клиенты, image-хелперы; LLM Router с цепочкой
         Ollama gemma4:12b → gemma4:e4b → OpenRouter → YandexGPT и локальным авто-fallback.</Scope>
@@ -177,7 +177,7 @@
     <M-CONTRACTS>
       <Name>Shared Contracts</Name>
       <Type>LIBRARY</Type>
-      <Status>skeleton</Status>
+      <Status>built</Status>
       <Purpose>Единый источник истины для контрактов API — чтобы gateway, UI и ML-сервисы не расходились.</Purpose>
       <Scope>JSON-схемы API, тип slug, структуры scan/card/similar/sommelier, модель ошибки.</Scope>
       <Source>packages/contracts/</Source>

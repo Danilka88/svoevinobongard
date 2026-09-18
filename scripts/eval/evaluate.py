@@ -50,6 +50,18 @@ import uuid
 from collections import Counter, defaultdict
 from pathlib import Path
 
+__all__ = [
+    "IMAGE_EXT",
+    "build_multipart",
+    "post_image",
+    "extract_slug",
+    "extract_top5",
+    "load_ground_truth",
+    "percentile",
+    "compute_metrics",
+    "main",
+]
+
 # START_BLOCK_EVAL_MULTIPART
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".heic", ".tif", ".tiff"}
 
