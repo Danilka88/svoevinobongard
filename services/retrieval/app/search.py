@@ -1,7 +1,7 @@
 # START_MODULE_CONTRACT
 # PURPOSE: Поиск Top-K по индексу: агрегация TTA-вариантов по максимуму скора и обогащение метаданными каталога
 # SCOPE: SearchHit, aggregate_variants, search_images
-# DEPENDS: numpy, packages.common.catalog, services.retrieval.app.encoder, services.retrieval.app.index
+# DEPENDS: numpy, packages.common.catalog, packages.common.logging, services.retrieval.app.encoder, services.retrieval.app.index, services.retrieval.app.head
 # LINKS: M-RETRIEVAL
 # ROLE: RUNTIME
 # MAP_MODE: EXPORTS
@@ -25,6 +25,7 @@ import numpy as np
 from packages.common.catalog import CatalogStore
 from packages.common.logging import log_marker
 from services.retrieval.app.encoder import ImageEncoder
+from services.retrieval.app.head import apply_head
 from services.retrieval.app.index import VectorIndex
 
 __all__ = ["SearchHit", "aggregate_variants", "search_images"]
@@ -59,6 +60,7 @@ def search_images(
     store: CatalogStore,
     images: list[np.ndarray],
     k: int = 30,
+    head: object | None = None,
 ) -> list[SearchHit]:
     """Кодирует изображения и возвращает Top-K результатов с метаданными.
 
@@ -68,13 +70,15 @@ def search_images(
         store: read-only каталог для метаданных.
         images: список BGR-изображений (TTA-варианты).
         k: сколько кандидатов вернуть.
+        head: проекционная голова домен-адаптации (должна совпадать с той,
+            которой построен индекс).
 
     Returns:
         Список SearchHit, отсортированный по убыванию скора.
     """
     if not images:
         return []
-    vectors = encoder.encode_arrays(images)
+    vectors = apply_head(head, encoder.encode_arrays(images))
     variant_hits = [index.search(vector, k=k) for vector in vectors]
     merged = aggregate_variants(variant_hits, k)
 

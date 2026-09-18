@@ -2,7 +2,7 @@
 # START_MODULE_CONTRACT
 # PURPOSE: Baseline-отчёт Tier-1: self-retrieval санити-чек и proxy F1@1/@5 на синтетических полевых фото
 # SCOPE: parse_args, main
-# DEPENDS: numpy, cv2, PIL, packages.common.catalog, services.normalize.app.detect, services.normalize.app.tta, services.retrieval.app.encoder, services.retrieval.app.index, scripts.eval.augment
+# DEPENDS: numpy, cv2, PIL, packages.common.catalog, services.normalize.app.detect, services.normalize.app.tta, services.retrieval.app.encoder, services.retrieval.app.head, services.retrieval.app.index, scripts.eval.augment
 # LINKS: M-EVAL, M-RETRIEVAL
 # ROLE: SCRIPT
 # MAP_MODE: LOCALS
@@ -44,6 +44,7 @@ from scripts.eval.augment import field_augment  # noqa: E402
 from services.normalize.app.detect import detect_label  # noqa: E402
 from services.normalize.app.tta import build_variants  # noqa: E402
 from services.retrieval.app.encoder import ImageEncoder  # noqa: E402
+from services.retrieval.app.head import apply_head, load_head, read_head_meta  # noqa: E402
 from services.retrieval.app.index import load_index  # noqa: E402
 
 __all__ = [
@@ -113,6 +114,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--normalize", action="store_true",
                         help="прогнать синтетический запрос через normalize (детекция+кроп) до retrieval")
+    parser.add_argument("--only-indexed", action="store_true",
+                        help="сэмплировать только slug, присутствующие в индексе (честное сравнение энкодеров)")
     parser.add_argument("--out", default=str(_ROOT / "reports" / "baseline.json"))
     return parser.parse_args(argv)
 
@@ -129,15 +132,19 @@ def main(argv: list[str] | None = None) -> int:
 
     index = load_index(index_dir, backend="numpy")
     encoder = ImageEncoder(meta["model"], device=args.device)
+    head_payload = read_head_meta(meta)
+    head = load_head(index_dir / head_payload["file"], device="cpu") if head_payload else None
     log_marker("M-EVAL", "baseline", "START", index=len(index.slugs), model=meta["model"],
-               samples=args.samples)
+               samples=args.samples, head="yes" if head else "no")
 
     catalog = load_catalog(args.catalog)
     uploads = Path(args.uploads)
+    indexed = set(index.slugs)
     available = [
         (slug, uploads / record["image"])
         for slug, record in sorted(catalog.items())
         if record.get("image") and (uploads / record["image"]).is_file()
+        and (not args.only_indexed or slug in indexed)
     ]
     if args.samples and args.samples < len(available):
         picker = np.random.default_rng(args.seed)
@@ -161,7 +168,8 @@ def main(argv: list[str] | None = None) -> int:
             continue
 
         plain = _resize_bgr(flatten_alpha(rgba[:, :, [2, 1, 0, 3]]))
-        hits = index.search(encoder.encode_arrays([plain])[0], k=_TOP_K)
+        plain_vector = apply_head(head, encoder.encode_arrays([plain]))
+        hits = index.search(plain_vector[0], k=_TOP_K)
         self_hits.append(hits[0][0] if hits else "")
         self_scores.append(float(hits[0][1]) if hits else 0.0)
 
@@ -171,7 +179,7 @@ def main(argv: list[str] | None = None) -> int:
             detection = detect_label(augmented)
             query_image = build_variants(augmented, detection.quad)[0]
         started = time.perf_counter()
-        vector = encoder.encode_arrays([query_image])[0]
+        vector = apply_head(head, encoder.encode_arrays([query_image]))[0]
         hits = index.search(vector, k=_TOP_K)
         latencies.append((time.perf_counter() - started) * 1000.0)
 
@@ -196,6 +204,7 @@ def main(argv: list[str] | None = None) -> int:
         "index_size": len(index.slugs),
         "index_dim": meta.get("dim"),
         "vector_backend": meta.get("backend"),
+        "head": meta.get("head") or "none",
         "samples": total,
         "seed": args.seed,
         "normalize_applied": bool(args.normalize),

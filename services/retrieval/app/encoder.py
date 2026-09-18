@@ -29,6 +29,7 @@ from packages.common.logging import log_marker
 __all__ = ["ImageEncoder", "load_encoder", "resolve_device"]
 
 MASK_TOKEN = "<mask>"
+SIGLIP_IMAGE_TOKEN = "<image>"
 
 
 def resolve_device(requested: str = "auto") -> str:
@@ -47,6 +48,24 @@ def resolve_device(requested: str = "auto") -> str:
     if torch.backends.mps.is_available():
         return "mps"
     return "cpu"
+
+
+def _extract_features(result: object) -> torch.Tensor | None:
+    """Достает тензор признаков из разных форм ответа HF-модели.
+
+    В transformers 5.x часть моделей (SigLIP 2) возвращает из
+    ``get_image_features`` не тензор, а ``BaseModelOutputWithPooling``.
+    """
+    if isinstance(result, torch.Tensor):
+        return result
+    for attribute in ("image_embeds", "pooler_output"):
+        value = getattr(result, attribute, None)
+        if isinstance(value, torch.Tensor):
+            return value
+    hidden = getattr(result, "last_hidden_state", None)
+    if isinstance(hidden, torch.Tensor):
+        return _pool_hidden_state(hidden)
+    return None
 
 
 def _pool_hidden_state(hidden_state: torch.Tensor) -> torch.Tensor:
@@ -77,18 +96,26 @@ class ImageEncoder:
         vector = self.encode_images([probe])
         return int(vector.shape[1])
 
-    def _forward(self, pixel_values: torch.Tensor) -> torch.Tensor:
-        """Достает image-эмбеддинги из модели независимо от ее типа."""
+    def _forward(self, inputs: dict) -> torch.Tensor:
+        """Достает image-эмбеддинги из модели независимо от ее типа.
+
+        Аргументы процессора передаются как есть: naFlex-модели SigLIP 2 требуют
+        дополнительные ``spatial_shapes`` и ``pixel_attention_mask``.
+        """
         with torch.no_grad():
             get_features = getattr(self.model, "get_image_features", None)
             if callable(get_features):
-                return get_features(pixel_values=pixel_values)
-            outputs = self.model(pixel_values=pixel_values)
-            if getattr(outputs, "image_embeds", None) is not None:
-                return outputs.image_embeds
-            if getattr(outputs, "pooler_output", None) is not None:
-                return outputs.pooler_output
-            return _pool_hidden_state(outputs.last_hidden_state)
+                try:
+                    extracted = _extract_features(get_features(**inputs))
+                except TypeError:
+                    extracted = None
+                if extracted is not None:
+                    return extracted
+            outputs = self.model(**inputs)
+            extracted = _extract_features(outputs)
+            if extracted is not None:
+                return extracted
+            raise RuntimeError(f"cannot extract image features from {self.model_id}")
 
     def encode_images(self, images: list[Image.Image]) -> np.ndarray:
         """Кодирует изображения и возвращает L2-нормированную матрицу (N, D)."""
@@ -97,9 +124,12 @@ class ImageEncoder:
         batches: list[np.ndarray] = []
         for start in range(0, len(images), self.batch_size):
             chunk = images[start:start + self.batch_size]
-            inputs = self.processor(images=chunk, return_tensors="pt")
-            pixel_values = inputs["pixel_values"].to(self.device)
-            features = self._forward(pixel_values)
+            raw = self.processor(images=chunk, return_tensors="pt")
+            inputs = {
+                key: (value.to(self.device) if isinstance(value, torch.Tensor) else value)
+                for key, value in raw.items()
+            }
+            features = self._forward(inputs)
             vectors = features.detach().to("cpu", dtype=torch.float32).numpy()
             batches.append(vectors)
         matrix = np.concatenate(batches, axis=0)

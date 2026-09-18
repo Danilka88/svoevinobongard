@@ -37,6 +37,7 @@ from packages.common.images import load_bgr
 from packages.common.logging import log_marker
 from packages.common.catalog import CatalogStore
 from services.retrieval.app.encoder import ImageEncoder, load_encoder
+from services.retrieval.app.head import describe_head, load_head, read_head_meta
 from services.retrieval.app.index import VectorIndex, load_index
 from services.retrieval.app.search import search_images
 
@@ -77,6 +78,7 @@ class Runtime:
     index: VectorIndex
     store: CatalogStore
     meta: dict
+    head: object | None = None
 
 
 _runtime: Runtime | None = None
@@ -113,11 +115,17 @@ def get_runtime() -> Runtime:
     if model_id and meta.get("encoder") and meta["encoder"] != settings.encoder:
         log_marker("M-RETRIEVAL", "get_runtime", "ENCODER_OVERRIDE",
                    env=settings.encoder, index=meta["encoder"], model=model_id)
+    head = None
+    head_payload = read_head_meta(meta)
+    if head_payload:
+        head = load_head(Path(settings.index_dir) / head_payload["file"], device="cpu")
+        log_marker("M-RETRIEVAL", "get_runtime", "HEAD_LOADED", shape=describe_head(meta))
     _runtime = Runtime(
         encoder=load_encoder(model_id=model_id, device=settings.encoder_device),
         index=index,
         store=CatalogStore.from_jsonl(settings.catalog_jsonl),
         meta=meta,
+        head=head,
     )
     log_marker("M-RETRIEVAL", "get_runtime", "READY", vectors=len(_runtime.index.slugs),
                catalog=len(_runtime.store), model=_runtime.encoder.model_id)
@@ -134,6 +142,7 @@ def health() -> dict:
         "encoder": meta.get("encoder") or settings.encoder,
         "model": meta.get("model") or settings.resolved_encoder_model,
         "vector_backend": meta.get("backend") or settings.vector_backend,
+        "head": describe_head(meta),
         "index_loaded": _runtime is not None,
         "index_size": len(_runtime.index.slugs) if _runtime else 0,
     }
@@ -154,7 +163,8 @@ async def search_endpoint(image: UploadFile = File(...)) -> dict:
 
     started = time.perf_counter()
     hits = await run_in_threadpool(
-        search_images, runtime.encoder, runtime.index, runtime.store, [np.asarray(array)], settings.top_k
+        search_images, runtime.encoder, runtime.index, runtime.store,
+        [np.asarray(array)], settings.top_k, runtime.head,
     )
     latency_ms = (time.perf_counter() - started) * 1000.0
 

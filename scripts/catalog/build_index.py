@@ -38,6 +38,7 @@ from packages.common.catalog import load_catalog  # noqa: E402
 from packages.common.images import flatten_alpha  # noqa: E402
 from packages.common.logging import log_marker  # noqa: E402
 from services.retrieval.app.encoder import load_encoder  # noqa: E402
+from services.retrieval.app.head import apply_head, head_meta, load_head  # noqa: E402
 from services.retrieval.app.index import VectorIndex, save_index  # noqa: E402
 
 __all__ = [
@@ -87,6 +88,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--encoder", default=settings.encoder, choices=["siglip2", "dinov2", "clip"])
     parser.add_argument("--model", default="")
     parser.add_argument("--device", default=settings.encoder_device)
+    parser.add_argument("--head", default="", help="путь к обученной проекционной голове (models/head.pt)")
     parser.add_argument("--limit", type=int, default=0, help="ограничить число позиций (0 = все)")
     return parser.parse_args(argv)
 
@@ -140,6 +142,13 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  encoded {len(slugs)}/{len(entries)}", file=sys.stderr)
 
     matrix = np.concatenate(vectors, axis=0) if vectors else np.zeros((0, 0), dtype=np.float32)
+    head_payload: dict | None = None
+    if args.head:
+        head = load_head(args.head, device="cpu")
+        matrix = apply_head(head, matrix, device="cpu")
+        head_payload = head_meta(head)
+        log_marker("M-RETRIEVAL", "build_index", "HEAD_APPLIED",
+                   in_dim=head.in_dim, out_dim=head.out_dim, vectors=len(slugs))
     index = VectorIndex(backend=settings.vector_backend)
     index.build(slugs, matrix)
     meta = {
@@ -152,7 +161,14 @@ def main(argv: list[str] | None = None) -> int:
         "max_side": _MAX_SIDE,
         "catalog": str(args.catalog),
     }
+    if head_payload is not None:
+        meta["head"] = head_payload
     save_index(args.out, index, meta)
+    if head_payload is not None:
+        target_head = Path(args.out) / head_payload["file"]
+        target_head.parent.mkdir(parents=True, exist_ok=True)
+        target_head.write_bytes(Path(args.head).read_bytes())
+        log_marker("M-RETRIEVAL", "build_index", "HEAD_SAVED", path=str(target_head))
     elapsed = time.perf_counter() - started
     print("=== INDEX REPORT ===")
     print(f"encoder:        {args.encoder} ({encoder.model_id})")
@@ -160,6 +176,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"indexed slugs:  {len(slugs)}")
     print(f"missing images: {missing}")
     print(f"dim:            {index.dim}")
+    print(f"head:           {head_payload['in_dim']}->{head_payload['out_dim']}" if head_payload else "head:           none")
     print(f"elapsed:        {elapsed:.1f}s")
     print(f"out:            {args.out}")
     return 0

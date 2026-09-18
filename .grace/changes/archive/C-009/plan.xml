@@ -1,0 +1,103 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-009>
+    <IntentSummary>Поднять точность Tier-1 без смены архитектуры сервисов: (1) выбрать сильнейший
+      permissive-энкодер на честном сравнении, (2) синтезировать «полевые» пары и hard negatives,
+      (3) обучить контрастивную проекционную голову поверх замороженного энкодера, (4) пересобрать индекс
+      и замерить before/after тем же proxy-набором.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/retrieval/app/encoder.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/baseline_report.py</Value></MustExist>
+      <MustExist><Value>data/index/meta.json</Value></MustExist>
+      <MustVerify><Module>M-RETRIEVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>scripts/train/synthetic_pairs.py</Value></MustExist>
+      <MustExist><Value>scripts/train/train_head.py</Value></MustExist>
+      <MustExist><Value>services/retrieval/app/head.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-RETRIEVAL</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustLink><From>M-RETRIEVAL</From><To>M-CATALOG</To></MustLink>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-RETRIEVAL/>
+      <M-EVAL/>
+      <M-COMMON/>
+      <M-CONTRACTS/>
+      <V-M-RETRIEVAL/>
+      <V-M-EVAL/>
+      <DF-001/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>scripts/train/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>services/retrieval/app/</Path>
+      <Path>packages/common/</Path>
+      <Path>tests/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/verification/</Path>
+      <File>.env.example</File>
+      <Path>models/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Сравнение энкодеров: dinov2-small (baseline), dinov2-base, siglip2-base, dinov2-large и siglip2-so400m по возможности</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Для каждого энкодера собран индекс на одном и том же подмножестве каталога (600 slug) и замерен proxy-набор 120 сэмплов, seed 42.</Criterion>
+          <Criterion>Таблица содержит acc@1, acc@5, f1_macro@1, self-retrieval и latency p50/p95.</Criterion>
+          <Criterion>Если веса недоступны — blocker зафиксирован, а не выдуман результат.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/catalog/build_index.py --encoder dinov2 --model facebook/dinov2-base --out data/index-dinov2-base --limit 600</Command>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --index data/index-dinov2-base --samples 120 --seed 42 --normalize --only-indexed --out reports/enc-dinov2-base.json</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Синтетический генератор пар: «полевое» фото из эталона плюс hard negatives из той же винодельни и сорта</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Генератор строит пары (anchor = аугментированный эталон, positive = чистый эталон) с фиксированным seed.</Criterion>
+          <Criterion>Аугментации покрывают фон (полка, стол, витрина), перспективу, блик и блик-градиент, размытие, шум, JPEG и изменение освещения.</Criterion>
+          <Criterion>Hard negatives строятся по совпадению винодельни, сорта или серии (near-duplicates драйвят обучение).</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/train/synthetic_pairs.py --out data/train --per-slug 2 --seed 42 --limit 700</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Контрастивная домен-адаптация: проекционная голова поверх замороженного энкодера, InfoNCE с hard negatives</Title>
+        <DependsOn>T-001, T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Энкодер заморожен: обучаются только параметры проекционной головы.</Criterion>
+          <Criterion>Loss падает на обучении; метрики по эпохам логируются.</Criterion>
+          <Criterion>Обучение укладывается в timebox 20 минут на MPS.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/train/train_head.py --pairs data/train/pairs.jsonl --encoder-model facebook/dinov2-base --epochs 12 --batch 256 --out models/head.pt --report reports/train_head.json</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Повторный замер: индекс дообученной моделью, proxy before/after тем же seed и набором, полевой прогон через gateway</Title>
+        <DependsOn>T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Тот же proxy-набор (seed 42, 200 сэмплов) даёт сравнимое before/after по acc@1, acc@5 и f1_macro@1.</Criterion>
+          <Criterion>self-retrieval не ниже 0.95; latency p95 ниже 3000 мс.</Criterion>
+          <Criterion>Полевой прогон 31 изображение через gateway не имеет ошибок и пустых slug.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/catalog/build_index.py --encoder siglip2 --model google/siglip2-so400m-patch16-naflex --head models/head.pt --out data/index</Command>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --index data/index --samples 200 --seed 42 --normalize --out reports/baseline-c009-after.json</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-009>
+</GraceChangePlan>

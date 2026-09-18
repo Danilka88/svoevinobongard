@@ -42,12 +42,16 @@
       <Scenario id="S-EVAL-1">Модуль импортируется только из stdlib.</Scenario>
       <Scenario id="S-EVAL-2">Реальный multipart-POST против stub-сервера: predicted_slug и top5 записаны.</Scenario>
       <Scenario id="S-EVAL-3">Метрики accuracy@1/@5 и percentile монотонны.</Scenario>
-      <Scenario id="S-EVAL-4">Полевой прогон 31 изображение: processed 31, errors 0, null_slug 0, p95 152.1 ms.</Scenario>
+      <Scenario id="S-EVAL-4">Полевой прогон 31 изображение: processed 31, errors 0, null_slug 0, p95 152.1 ms (C-002) и p95 238.9 ms (C-009).</Scenario>
       <Marker>[M-EVAL][POST_IMAGE][MULTIPART]</Marker>
       <Marker>[M-EVAL][METRICS][F1]</Marker>
       <Marker>[M-EVAL][MAIN][REPORT]</Marker>
       <Marker>[M-EVAL][baseline][START]</Marker>
       <Marker>[M-EVAL][baseline][DONE]</Marker>
+      <Marker>[M-EVAL][synthetic_pairs][DONE]</Marker>
+      <Evidence note="c009">C-009: baseline_report получил поддержку --only-indexed (честное сравнение энкодеров)
+        и применения проекционной головы к запросу; synthetic_pairs построил 2100 эмбеддингов,
+        700 пар и 5486 hard negatives за 355 с на MPS.</Evidence>
     </V-M-EVAL>
 
     <V-M-GATEWAY>

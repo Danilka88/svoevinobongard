@@ -41,27 +41,41 @@
     <V-M-RETRIEVAL>
       <Priority>critical</Priority>
       <Status>built</Status>
-      <Description>Tier-1 retrieval: индекс эталонных фото (2037 slug, dim 384, numpy exact backend),
-        косинусный Top-K, энкодер берётся из meta.json индекса, а не из окружения.</Description>
+      <Description>Tier-1 retrieval: индекс эталонных фото, косинусный Top-K, энкодер из meta.json индекса,
+        опциональная проекционная голова домен-адаптации (change C-009). Энкодер: SigLIP 2 so400m naFlex (Apache-2.0).</Description>
       <TestFiles>
         <File>tests/test_retrieval_index.py</File>
+        <File>tests/test_projection_head.py</File>
         <File>services/retrieval/app/main.py</File>
+        <File>services/retrieval/app/head.py</File>
       </TestFiles>
-      <Command>.venv/bin/python -m pytest tests/test_retrieval_index.py -v</Command>
-      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --index data/index --samples 200 --seed 42 --normalize --out reports/baseline-dinov2-normalized.json</Command>
+      <Command>.venv/bin/python -m pytest tests/test_retrieval_index.py tests/test_projection_head.py -v</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/catalog/build_index.py --encoder siglip2 --model google/siglip2-so400m-patch16-naflex --head models/head.pt --out data/index</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --index data/index --samples 200 --seed 42 --normalize --out reports/baseline-c009-after.json</Command>
       <Scenario id="S-RETRIEVAL-1">Top-K отсортирован по убыванию косинусного скора; точный запрос дает скор 1.0.</Scenario>
       <Scenario id="S-RETRIEVAL-2">k ограничивает длину выдачи и не превышает размер индекса.</Scenario>
       <Scenario id="S-RETRIEVAL-3">save_index и load_index дают эквивалентный индекс (round-trip).</Scenario>
       <Scenario id="S-RETRIEVAL-4">numpy-бэкенд не поднимает faiss (на macOS arm64 libomp от faiss конфликтует с torch).</Scenario>
+      <Scenario id="S-RETRIEVAL-5">Проекционная голова: выход L2-нормирован, веса восстанавливаются без потери результата, apply_head совпадает с прямым вызовом модуля.</Scenario>
+      <Scenario id="S-RETRIEVAL-6">Энкодер запросов совпадает с энкодером индекса (meta.json авторитетен); naFlex-модель получает spatial_shapes из процессора.</Scenario>
       <Marker>[M-RETRIEVAL][build_index][NUMPY]</Marker>
+      <Marker>[M-RETRIEVAL][build_index][HEAD_APPLIED]</Marker>
       <Marker>[M-RETRIEVAL][load_encoder][LOAD]</Marker>
-      <Marker>[M-RETRIEVAL][get_runtime][READY]</Marker>
+      <Marker>[M-RETRIEVAL][get_runtime][HEAD_LOADED]</Marker>
       <Marker>[M-RETRIEVAL][search][TOPK]</Marker>
-      <Evidence note="baseline">self-retrieval accuracy@1 = 0.97 (mean top1 score 1.0);
-        synthetic field proxy accuracy@1 = 0.175, accuracy@5 = 0.30, f1_macro@1 = 0.1068, latency p50 21.2 ms / p95 29.3 ms
-        (dinov2-small, 200 сэмплов, seed 42, с нормализацией). Без нормализации accuracy@1 = 0.085 — вклад нормализации измерим.</Evidence>
-      <Evidence note="e2e">Полевой прогон через gateway: 31/31 обработано, 0 ошибок, 0 пустых slug,
-        latency p50 86.9 ms / p95 152.1 ms (SLA ниже 3000 ms).</Evidence>
+      <Marker>[M-RETRIEVAL][train_head][DONE]</Marker>
+      <Evidence note="encoder-comparison">Сравнение на одном подмножестве (600 slug, 120 сэмплов, seed 42, с нормализацией):
+        dinov2-small acc@1 0.1333 / acc@5 0.2833 / f1 0.0866; dinov2-base 0.1500 / 0.3333 / 0.1010;
+        siglip2-base 0.2833 / 0.5250 / 0.2143; siglip2-so400m 0.4833 / 0.6750 / 0.3736.
+        Победитель — siglip2-so400m-patch16-naflex (Apache-2.0, dim 1152).</Evidence>
+      <Evidence note="domain-adaptation">Обучение головы 1152-512-256 (InfoNCE + hard negatives):
+        700 пар, 1400 anchors, 5486 hard negatives; 12 эпох за 4.3 с на MPS; loss 7.3110 -> 1.5114;
+        batch acc@1 0.160 -> 0.809. Энкодер заморожен, обучалась только голова.</Evidence>
+      <Evidence note="baseline-after">Полный индекс (2037, dim 256), 200 сэмплов, seed 42, с нормализацией:
+        acc@1 0.495, acc@5 0.745, f1_macro@1 0.3404, self-retrieval 0.985, latency p50 139.9 / p95 192.5 мс.
+        Без головы тот же энкодер даёт 0.440 / 0.675 / 0.3398.</Evidence>
+      <Evidence note="e2e">Полевой прогон 31 изображение через gateway: 0 ошибок, 0 пустых slug,
+        latency p50 171.8 / p95 238.9 мс (max 358.2). Холодный старт первого запроса ~6.1 с — нужен прогрев.</Evidence>
     </V-M-RETRIEVAL>
   </VD-M1-TIER1>
 </GraceVerificationDocument>

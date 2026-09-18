@@ -1,0 +1,34 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-009>
+    <Summary>Accuracy engine: довести proxy-точность Tier-1 с acc@1 0.175 (dinov2-small, synthetic proxy)
+      максимально близко к целевым 90 % двумя рычагами — сильным энкодером (SigLIP 2 / DINOv2 большей ёмкости)
+      и домен-адаптацией на синтетических «полевых» парах (контрастивная проекционная голова).</Summary>
+    <Goals>Поднять synthetic proxy F1@1 не менее чем в два раза относительно baseline C-002 (0.175 → 0.35+)
+      и F1@5 до 0.50+. Сравнить не менее трёх энкодеров с permissive-лицензией на одном proxy-наборе и
+      зафиксировать победителя в meta.json индекса. Обучить домен-адаптацию за timebox не более 20 минут на MPS.
+      Не допустить регресса self-retrieval ниже 0.95 и удержать latency p95 ниже 3000 мс.</Goals>
+    <Constraints>Только permissive-лицензии (Apache-2.0 / MIT): SigLIP 2, DINOv2. Docker и PostgreSQL не поднимаются —
+      остаёмся на numpy dev-бэкенде. Замороженный энкодер: обучается только проекционная голова (adapter), полный
+      fine-tune вне scope. Seed фиксирован для воспроизводимости. Один и тот же proxy-набор для всех сравнений.</Constraints>
+    <NonGoals>Геоверификация и margin (C-003). VLM-fallback и matcher (C-004). LLM Router (C-008). UI (C-005).
+      Flywheel и очередь ревью (C-006). Обучение на реальных полевых фото организатора (их нет).
+      Полный fine-tune энкодера и LoRA-ранжирование.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>Сравнение энкодеров: таблица acc@1, acc@5, f1_macro@1, self-retrieval и latency минимум для трёх энкодеров на одном proxy-наборе (seed 42).</Criterion>
+      <Criterion>synthetic proxy F1@1 не ниже 0.35 (двукратный рост относительно 0.175) и F1@5 не ниже 0.50.</Criterion>
+      <Criterion>self-retrieval accuracy@1 не ниже 0.95 после домен-адаптации.</Criterion>
+      <Criterion>latency p95 Tier-1 ниже 3000 мс на Mac M4 (MPS).</Criterion>
+      <Criterion>Домен-адаптация обучается не дольше 20 минут; конфигурация и метрики обучения зафиксированы.</Criterion>
+      <Criterion>Все использованные модели имеют лицензию Apache-2.0 или MIT, что записано в meta.json индекса.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-RETRIEVAL/>
+      <M-EVAL/>
+      <M-COMMON/>
+      <M-CONTRACTS/>
+    </AffectedAreas>
+    <VerificationIntent>Обновить V-M-RETRIEVAL и V-M-EVAL реальными цифрами before/after: сравнение энкодеров,
+      обучение головы, повторный замер тем же seed и набором, полевой прогон через gateway (31 изображение),
+      self-retrieval и latency p50/p95.</VerificationIntent>
+  </C-009>
+</GraceChangeSpec>

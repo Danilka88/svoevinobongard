@@ -51,8 +51,9 @@
       <Type>CORE_LOGIC</Type>
       <Status>built</Status>
       <Purpose>Дешёвый и быстрый Tier-1 — закрывает большинство лёгких запросов (вклад в 50 баллов за точность).</Purpose>
-      <Scope>Энкодер-плагин siglip2 | dinov2 | clip (MPS/ONNX); индекс pgvector (prod) / FAISS (dev);
-        Top-K по косинусу; геоверификация SuperPoint + LightGlue + RANSAC → скор и margin.</Scope>
+      <Scope>Энкодер-плагин siglip2 | dinov2 | clip (MPS, naFlex через spatial_shapes); индекс numpy (dev) /
+        FAISS (там, где нет libomp-конфликта) / pgvector (prod); Top-K по косинусу; проекционная голова
+        домен-адаптации (change C-009, 1152→512→256); геоверификация SuperPoint + LightGlue + RANSAC → margin (C-003).</Scope>
       <Source>services/retrieval/</Source>
       <Test>tests/retrieval/</Test>
       <Interface>POST /search (image | embeddings) → Top-K + скоры</Interface>
@@ -62,7 +63,10 @@
       <Reads>
         <M-CATALOG/>
       </Reads>
-      <Boundary>Энкодер и kNN — change C-002; геоверификация и margin — change C-003.</Boundary>
+      <Exports>ImageEncoder, load_encoder, VectorIndex, load_index, save_index, search_images,
+        ProjectionHead, load_head, apply_head</Exports>
+      <Boundary>Энкодер, kNN и голова — changes C-002 и C-009; геоверификация и margin — change C-003.</Boundary>
+      <Note>C-009: SigLIP 2 so400m naFlex (Apache-2.0, dim 1152) + обученная голова; proxy acc@1 0.175 → 0.495.</Note>
       <Verification>V-M-RETRIEVAL</Verification>
     </M-RETRIEVAL>
 
@@ -196,7 +200,9 @@
         accuracy@1/@5 и macro-F1 при наличии ground truth.</Scope>
       <Source>scripts/eval/</Source>
       <Test>tests/eval/</Test>
-      <Exports>post_image, extract_slug, extract_top5, load_ground_truth, compute_metrics, percentile</Exports>
+      <Exports>post_image, extract_slug, extract_top5, load_ground_truth, compute_metrics, percentile,
+        field_augment, random_background, synthetic pairs CLI (scripts/train/synthetic_pairs.py),
+        head training CLI (scripts/train/train_head.py, модуль головы живёт в M-RETRIEVAL)</Exports>
       <Probes>
         <M-GATEWAY/>
       </Probes>
