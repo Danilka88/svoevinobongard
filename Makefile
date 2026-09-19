@@ -9,7 +9,7 @@ SLUG  ?= kokur-suhoe-2025
 PORT  ?= 8080
 
 .PHONY: help setup etl index images up down logs warm eval test lint lint-change web-dev web-build web-preview clean \
-        flywheel-ingest flywheel-stats flywheel-queue flywheel-review flywheel-dataset flywheel-train flywheel-registry flywheel-eval
+        flywheel-ingest flywheel-stats flywheel-queue flywheel-review flywheel-dataset flywheel-train flywheel-registry flywheel-eval demo-eval
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -36,11 +36,16 @@ index: ## Собрать векторный индекс + признаки ге
 warm: ## Прогреть retrieval до первого запроса
 	curl -fsS -X POST http://127.0.0.1:8082/warmup || true
 
-eval: ## Оценка качества: baseline (Tier-1 + гео) и полевой прогон через gateway
+eval: ## Оценка качества: самодостаточный синтетический baseline (Tier-1 + гео)
 	PYTHONPATH=. $(PY) scripts/eval/baseline_report.py --index data/index \
-	  --samples 200 --seed 42 --normalize --geo --out reports/baseline.json
-	python3 scripts/eval/evaluate.py --images data/samples/field \
-	  --endpoint http://127.0.0.1:$(PORT)/v1/eval/predict --output reports/predictions.field.jsonl
+	  --samples $(or $(SAMPLES),200) --seed 42 --normalize --geo --out reports/baseline.json
+
+demo-eval: ## Официальные контрольные фото организатора (опционально, если папка есть)
+	@if [ -d data/samples/eval_queries ]; then \
+	  python3 scripts/eval/evaluate.py --images data/samples/eval_queries \
+	    --endpoint http://127.0.0.1:$(PORT)/v1/eval/predict \
+	    --output reports/predictions.eval_queries.jsonl; \
+	else echo "data/samples/eval_queries отсутствует — цель demo-eval пропущена"; fi
 
 test: ## Прогнать тесты
 	PYTHONPATH=. WARMUP_ON_START=0 $(PY) -m pytest tests/ -q

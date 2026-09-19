@@ -44,6 +44,12 @@
         <V-M-WEB/>
       </Owns>
     </VD-M5-WEB>
+    <VD-M-DATA>
+      <Path>verification/VD-M-DATA.xml</Path>
+      <Owns>
+        <V-M-DATA/>
+      </Owns>
+    </VD-M-DATA>
     <VD-M6-DEPLOY>
       <Path>verification/VD-M6-DEPLOY.xml</Path>
       <Owns>

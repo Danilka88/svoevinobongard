@@ -257,8 +257,22 @@
       <Source>deploy/</Source>
       <Test>tests/</Test>
       <Verification>V-M-DEPLOY</Verification>
-      <Note>C-007: docker compose config проходит (8 сервисов), один базовый и один ML-базовый образ,
-        non-root пользователь. Docker daemon был выключен — сборка образов не подтверждена.</Note>
     </M-DEPLOY>
+
+    <M-DATA>
+      <Name>Data Hygiene</Name>
+      <Type>DATA_LAYER</Type>
+      <Status>built</Status>
+      <Purpose>Происхождение данных и правило их использования: только официальные материалы конкурса,
+        данные из old/ не используются нигде.</Purpose>
+      <Scope>docs/DATA.md как источник истины о данных; очистка old-производных артефактов (полевые фото,
+        отчёты, логи flywheel); воспроизводимая оценка: синтетический baseline в make eval и опциональная
+        демонстрация на официальных data/samples/eval_queries.</Scope>
+      <Source>docs/DATA.md</Source>
+      <Test>tests/</Test>
+      <Verification>V-M-DATA</Verification>
+      <Note>C-011: правило закреплено в AGENTS.md, constraints.xml (D-3) и requirements.xml (AN-3);
+        архивные бандлы C-001/C-002/C-004/C-010 не редактировались (история).</Note>
+    </M-DATA>
   </GD-001>
 </GraceGraphDocument>

@@ -1,0 +1,111 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-011>
+    <IntentSummary>Удалить данные, произведённые из old/, и сделать оценку самодостаточной на официальных
+      материалах: синтетический baseline в `make eval`, опциональная демо-цель на `eval_queries`,
+      policy-правило в GRACE и машинная проверка V-M-DATA.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>data/samples/field</Value></MustExist>
+      <MustExist><Value>scripts/eval/baseline_report.py</Value></MustExist>
+      <MustExist><Value>docs/LIMITATIONS.md</Value></MustExist>
+      <MustNotExist><Value>docs/DATA.md</Value></MustNotExist>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustNotExist><Value>data/samples/field</Value></MustNotExist>
+      <MustExist><Value>data/samples/eval_queries</Value></MustExist>
+      <MustExist><Value>docs/DATA.md</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>make eval</Command></MustPassCommand>
+      <MustNotContain><File>README.md</File><Text>data/samples/field</Text></MustNotContain>
+      <MustNotContain><File>scripts/eval/evaluate.py</File><Text>data/samples/field</Text></MustNotContain>
+      <MustNotContain><File>scripts/eval/baseline_report.py</File><Text>data/samples/field</Text></MustNotContain>
+      <MustNotContain><File>Makefile</File><Text>data/samples/field</Text></MustNotContain>
+      <MustNotContain><File>docs/LIMITATIONS.md</File><Text>old/test_obj</Text></MustNotContain>
+      <MustVerify><Module>M-DATA</Module></MustVerify>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-DATA/>
+      <M-EVAL/>
+      <M-DEPLOY/>
+      <V-M-DATA/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <File>docs/DATA.md</File>
+      <File>docs/DEMO.md</File>
+      <File>docs/LIMITATIONS.md</File>
+      <File>README.md</File>
+      <File>AGENTS.md</File>
+      <File>Makefile</File>
+      <File>scripts/eval/README.md</File>
+      <File>scripts/eval/evaluate.py</File>
+      <File>scripts/eval/baseline_report.py</File>
+      <Path>.grace/context/</Path>
+      <Path>.grace/verification/</Path>
+      <Path>.grace/graph/</Path>
+      <Path>data/samples/field/</Path>
+      <Path>data/flywheel/</Path>
+      <Path>reports/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Удалить данные, произведённые из old/: полевые фото, полевые отчёты и накопленные логи flywheel</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>data/samples/field отсутствует (31 файл удалён).</Criterion>
+          <Criterion>reports/predictions.field* удалены.</Criterion>
+          <Criterion>data/flywheel/ очищен от логов, БД и подтверждённых меток, построенных на old-фото.</Criterion>
+          <Criterion>data/samples/eval_queries сохранён без изменений (официальные материалы).</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>test ! -d data/samples/field</Command>
+          <Command>ls data/samples/eval_queries</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Makefile: самодостаточный make eval и опциональная демо-цель на официальных eval_queries</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>make eval не обращается к data/samples/field и работает после etl+index без Docker.</Criterion>
+          <Criterion>Отдельная опциональная цель печатает демо-прогон на eval_queries и не падает, если папки нет.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>make -n eval</Command>
+          <Command>make eval</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Почистить живые ссылки на полевой набор в README, scripts/eval и документации</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>README.md, scripts/eval/README.md, evaluate.py, baseline_report.py не упоминают data/samples/field.</Criterion>
+          <Criterion>Примеры команд в docstring ссылаются на официальные данные или нейтральные пути.</Criterion>
+          <Criterion>docs/DEMO.md и docs/LIMITATIONS.md не используют негативы и latency из old-данных.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -rn "data/samples/field" --include="*.md" --include="*.py" --include="Makefile" . | grep -v "\.grace/changes/archive"</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>GRACE policy и V-M-DATA: правило отказа от old-данных и его машинная проверка</Title>
+        <DependsOn>T-001, T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>AGENTS.md содержит правило: данные из old/ не используются ни для обучения, ни для оценки, ни для демонстрации.</Criterion>
+          <Criterion>constraints.xml D-3 запрещает использование old-данных; requirements.xml AN-3 переформулирована без old/test_obj.</Criterion>
+          <Criterion>V-M-DATA проверяет отсутствие каталога, отсутствие живых ссылок и работоспособность make eval.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path .</Command>
+          <Command>.venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-011>
+</GraceChangePlan>

@@ -5,7 +5,7 @@
 
 ```bash
 python3 scripts/eval/evaluate.py \
-  --images data/samples/field \
+  --images data/samples/eval_queries \
   --endpoint http://127.0.0.1:8080/v1/scan \
   --output predictions.jsonl
 ```

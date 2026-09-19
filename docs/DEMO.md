@@ -48,7 +48,7 @@ make web-dev               # UI на http://127.0.0.1:3000
 3. Показать определение по API-ответу: `slug`, `path`, `latency_ms`
    (`curl -X POST -F image=@data/samples/eval_queries/019c68d0.jpg http://127.0.0.1:8080/v1/scan`).
 4. Отдельно показать контракт организатора: `POST /v1/eval/predict` → `{"slug": "..."}`.
-5. Случай «вино не найдено»: загрузить негатив (например `data/samples/field/сыр.jpg`) →
+5. Случай «вино не найдено»: загрузить любое фото без этикетки (пейзаж, предмет) →
    интерфейс показывает ближайшие кандидаты, а не пустой экран.
 
 ## 4:00–5:00 — Метрики F1@1/@5 и SLA
@@ -57,8 +57,7 @@ make web-dev               # UI на http://127.0.0.1:3000
 
 ```bash
 make eval | tail -20
-python3 scripts/eval/evaluate.py --images data/samples/field \
-  --endpoint http://127.0.0.1:8080/v1/eval/predict --output reports/predictions.field.jsonl
+make demo-eval      # официальные 2 контрольных фото организатора: latency и кандидаты
 ```
 
 | Метрика | Значение | Где смотреть |
@@ -66,11 +65,11 @@ python3 scripts/eval/evaluate.py --images data/samples/field \
 | synthetic proxy acc@1 / acc@5 | 0.685 / 0.790 | `reports/baseline-c003-after.json` |
 | группа near-duplicates acc@1 | 0.690 (групповая) | там же, `group_accuracy@1` |
 | self-retrieval acc@1 | 0.985 | там же |
-| SLA полевого прогона | p50 ≈ 235 мс, p95 ≈ 358 мс (цель < 3000) | `reports/predictions.field.report.json` |
-| контракт организатора | 31/31 обработано, 0 ошибок | там же |
+| latency демо на официальных фото | `make demo-eval` → `reports/predictions.eval_queries.report.json` |
+| синтетический baseline | полевого набора в комплекте нет — качество измеряется proxy-набором | `reports/baseline.json` |
 
-Обязательно проговорить: ground truth полевых фото у команды нет, поэтому на `field` считаются
-латентность и кандидаты, а F1 — на синтетическом proxy-наборе (`docs/LIMITATIONS.md`).
+Обязательно проговорить: полевой набор в комплект не входит, используются только официальные
+материалы конкурса; F1 измеряется на синтетическом proxy-наборе (`docs/LIMITATIONS.md`).
 
 ## 5:00–6:10 — Функция после поиска (retention)
 

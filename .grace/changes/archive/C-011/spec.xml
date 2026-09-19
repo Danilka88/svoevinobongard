@@ -1,0 +1,31 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-011>
+    <Summary>Data hygiene и воспроизводимая оценка: данные, произведённые из old/, полностью исключаются из
+      проекта (обучение, оценка, демонстрация), а оценка становится самодостаточной на официальных материалах
+      конкурса.</Summary>
+    <Goals>Убрать из живых путей все следы данных из old/ (31 полевое фото и производные отчёты/логи).
+      Сделать `make eval` самодостаточным: синтетический baseline после `etl`+`index` и опциональная демо-цель
+      на официальных `data/samples/eval_queries`. Зафиксировать правило в GRACE-policy (AGENTS, constraints,
+      requirements) и добавить verification V-M-DATA, который это правило проверяет машинно.</Goals>
+    <Constraints>Исторические архивные бандлы C-001/C-002/C-004/C-010 не редактируются — это история.
+      old/, my/ и материалы конкурса не изменяются. ML-логика не меняется: правки только в данных,
+      документации, сборке и policy. data/ в .gitignore — чистить в git нечего.</Constraints>
+    <NonGoals>Изменение алгоритмов retrieval/геоверификации/OCR/VLM. Удаление официальных
+      data/samples/eval_queries. Переписывание архивных change-бандлов. Удаление самого каталога data/.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>Каталог data/samples/field отсутствует; data/samples/eval_queries сохранён (2 официальных фото).</Criterion>
+      <Criterion>Отчёты reports/predictions.field* и накопленные data/flywheel/* удалены.</Criterion>
+      <Criterion>make eval проходит без Docker и без полевого набора; демо на eval_queries — отдельная опциональная цель, не падает при отсутствии папки.</Criterion>
+      <Criterion>Ни одна живая (не архивная) ссылка не упоминает data/samples/field или old/test_obj.</Criterion>
+      <Criterion>docs/DATA.md описывает происхождение данных и правило отказа от old/-данных.</Criterion>
+      <Criterion>V-M-DATA существует и его команды проверяют отсутствие каталога и живых ссылок.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-DATA/>
+      <M-EVAL/>
+      <M-DEPLOY/>
+    </AffectedAreas>
+    <VerificationIntent>Создать V-M-DATA: отсутствие каталога old-фото, отсутствие живых упоминаний в коде
+      и документации, работоспособность make eval. Привести grep-доказательства.</VerificationIntent>
+  </C-011>
+</GraceChangeSpec>

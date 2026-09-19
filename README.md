@@ -82,8 +82,8 @@ PYTHONPATH=. .venv/bin/python -m uvicorn services.gateway.app.main:app  --port 8
 # 5. Оценка: калибровка порогов и baseline-отчёт
 PYTHONPATH=. .venv/bin/python scripts/eval/calibrate.py --index data/index --samples 200 --normalize --out reports/calibration.json
 PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --index data/index --samples 200 --normalize --geo --out reports/baseline.json
-python3 scripts/eval/evaluate.py --images data/samples/field \
-  --endpoint http://127.0.0.1:8080/v1/eval/predict --output reports/predictions.field.jsonl
+python3 scripts/eval/evaluate.py --images data/samples/eval_queries \
+  --endpoint http://127.0.0.1:8080/v1/eval/predict --output reports/predictions.eval_queries.jsonl
 ```
 
 ## Прогрев и SLA

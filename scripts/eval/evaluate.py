@@ -27,12 +27,12 @@
 Без внешних зависимостей (stdlib).
 
 Примеры:
-  python3 scripts/eval/evaluate.py --images data/samples/field \
+  python3 scripts/eval/evaluate.py --images data/samples/eval_queries \
       --endpoint http://127.0.0.1:8080/v1/eval/predict \
       --output predictions.jsonl
 
-  python3 scripts/eval/evaluate.py --images data/samples/field \
-      --ground-truth data/samples/field/ground_truth.tsv \
+  python3 scripts/eval/evaluate.py --images data/samples/eval_queries \
+      --ground-truth data/samples/eval_queries/ground_truth.tsv \
       --endpoint http://127.0.0.1:8080/v1/scan \
       --output predictions.jsonl
 """

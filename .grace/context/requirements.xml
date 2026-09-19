@@ -108,7 +108,8 @@
       DSC_09173_4a9ff95cc2.webp (aligote-barrel-2024/2025), bottle_02_Cabernet_Franc_ec42fb71c4.webp,
       Rebo_reserve_2023_2f54a334ff.webp, Vione_2023_13d6c1ebf6.webp.</Anomaly>
     <Anomaly id="AN-2">66 slug из CSV не имеют записи в sitemap → нет эталонного фото.</Anomaly>
-    <Anomaly id="AN-3">Публичный набор полевых фото неполон (2 фото в eval/queries + 31 в old/test_obj вместо ~100).</Anomaly>
+    <Anomaly id="AN-3">Публичный полевой набор неполон: в официальном комплекте только 2 контрольных фото
+      вместо заявленных ~100. Данные из old/ не используются, поэтому качество измеряется synthetic proxy.</Anomaly>
     <Anomaly id="AN-4">eval/queries.tsv ссылается на 02eef911.webp, физически отсутствующий.</Anomaly>
     <Anomaly id="AN-5">Много эталонов — вырезы на прозрачном фоне (_no_bg_preview_carve_photos) → домен-разрыв с полевыми фото.</Anomaly>
     <Anomaly id="AN-6">Год в названии только у 228/4147 строк; цвет в CSV «грязный» (много вариантов) → нужна нормализация.</Anomaly>

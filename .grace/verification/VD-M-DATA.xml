@@ -1,0 +1,47 @@
+<GraceVerificationDocument graceVersion="4.0">
+  <VD-M-DATA>
+    <Purpose>Верификация гигиены данных (change C-011): данные из old/ исключены из проекта,
+      оценка воспроизводима на официальных материалах конкурса.</Purpose>
+
+    <V-M-DATA>
+      <Priority>high</Priority>
+      <Status>built</Status>
+      <Description>Данные, произведённые из old/, удалены из проекта (полевые фото, полевые отчёты,
+        логи flywheel на них). Оценка самодостаточна: синтетический baseline в make eval и опциональная
+        демонстрация на официальных data/samples/eval_queries. Правило закреплено в AGENTS.md,
+        constraints.xml (D-3) и requirements.xml (AN-3); живые ссылки на old-данные отсутствуют.</Description>
+      <TestFiles>
+        <File>docs/DATA.md</File>
+        <File>Makefile</File>
+        <File>.grace/context/constraints.xml</File>
+        <File>AGENTS.md</File>
+      </TestFiles>
+      <Command>test ! -d data/samples/field</Command>
+      <Command>ls data/samples/eval_queries</Command>
+      <Command>make eval</Command>
+      <Command>grep -rn "data/samples/field" --include="*.md" --include="*.py" --include="Makefile" . | grep -v "\.grace/changes/archive"</Command>
+      <Scenario id="S-DATA-1">Каталог data/samples/field отсутствует; производные reports/predictions.field* и data/flywheel/* удалены.</Scenario>
+      <Scenario id="S-DATA-2">Официальные 2 контрольных фото сохранены в data/samples/eval_queries.</Scenario>
+      <Scenario id="S-DATA-3">Ни один живой файл (кроме .grace/changes/archive/) не упоминает data/samples/field или old/test_obj.</Scenario>
+      <Scenario id="S-DATA-4">make eval работает без Docker и без полевого набора: синтетический baseline после etl и index.</Scenario>
+      <Scenario id="S-DATA-5">Цель demo-eval опциональна: при отсутствии папки печатает сообщение и не падает.</Scenario>
+      <Scenario id="S-DATA-6">Правило отказа от old-данных записано в AGENTS.md, constraints.xml (D-3) и requirements.xml (AN-3).</Scenario>
+      <Marker>[M-DATA][hygiene][CLEAN]</Marker>
+      <Evidence note="cleanup">Удалено: data/samples/field (31 файл), reports/predictions.field.jsonl и
+        reports/predictions.field.report.json, каталог data/flywheel (queries.jsonl, flywheel.db,
+        confirmed.jsonl — построены на old-фото). Сохранено: data/samples/eval_queries (2 официальных фото).</Evidence>
+      <Evidence note="references">Из живых путей убраны упоминания data/samples/field: Makefile (полевой шаг
+        заменён на самодостаточный baseline + цель demo-eval), README.md, scripts/eval/README.md,
+        scripts/eval/evaluate.py (примеры → eval_queries), scripts/eval/baseline_report.py (докстринг и note),
+        docs/DEMO.md (негатив и latency-строки), docs/LIMITATIONS.md (упоминание old/test_obj).
+        Контрольный grep по живым файлам даёт пустой результат; архивные бандлы C-001..C-010 не редактировались.</Evidence>
+      <Evidence note="policy">AGENTS.md: в Constraints добавлено правило «данные из old/ не используются
+        ни для обучения, ни для оценки, ни для демонстрации». constraints.xml: правило D-3 повышено до
+        critical и запрещает использование old-данных. requirements.xml: AN-3 переформулирована без old/test_obj.
+        Новый коммитируемый документ docs/DATA.md описывает происхождение данных и правило.</Evidence>
+      <Evidence note="reproducible-eval">make eval больше не зависит от полевого набора: сначала
+        синтетический baseline (scripts/eval/baseline_report.py, seed 42), затем при наличии папки —
+        demo-eval на официальных фото. Работает без Docker (numpy dev-бэкенд).</Evidence>
+    </V-M-DATA>
+  </VD-M-DATA>
+</GraceVerificationDocument>

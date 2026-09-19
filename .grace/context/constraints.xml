@@ -46,7 +46,8 @@
   <Data>
     <Rule id="D-1" severity="high">data/ и models/* — gitignored (датасеты, веса). Не коммитить.</Rule>
     <Rule id="D-2" severity="critical">.env и .env.* — gitignored; секреты только в env/Lockbox.</Rule>
-    <Rule id="D-3" severity="medium">Полевые фото из old/test_obj копируются ТОЛЬКО как изображения (включая негативы
-      «не-вино») в data/samples/field/; old/ не модифицируется.</Rule>
+    <Rule id="D-3" severity="critical">Данные из old/ НЕ используются ни для обучения, ни для оценки,
+      ни для демонстрации. Используются только официальные материалы конкурса; производные артефакты
+      (отчёты, логи, подтверждённые метки) из old-данных удалены из проекта.</Rule>
   </Data>
 </Constraints>

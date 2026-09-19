@@ -24,8 +24,9 @@
    проверяется достоверность по ТЗ.
 4. **Статистика геоверификации** — средний geo-скор у верных и неверных ответов.
 
-Ground truth полевых фото у команды нет, поэтому реальные F1@1/@5 на
-``data/samples/field`` не считаются — только кандидаты и latency.
+Полевой набор в комплект не входит: используются только официальные материалы
+конкурса, поэтому реальные F1@1/@5 на полевых фото не считаются — метрики качества
+берутся из synthetic proxy, а официальные фото дают демонстрацию и latency.
 """
 from __future__ import annotations
 
@@ -299,7 +300,7 @@ def main(argv: list[str] | None = None) -> int:
             "mean_top1_geo_correct": round(float(np.mean(geo_correct)), 4) if geo_correct else 0.0,
             "mean_top1_geo_wrong": round(float(np.mean(geo_wrong)), 4) if geo_wrong else 0.0,
         },
-        "note": ("Ground truth для data/samples/field отсутствует, поэтому реальные F1@1/@5 "
+        "note": ("Полевой набор не входит в комплект (только официальные материалы конкурса), "
                  "не считаются; synthetic_field — proxy-оценка доменного разрыва. "
                  "Групповые метрики считаются по группам near-duplicates (винодельня + название без года)."),
     }
