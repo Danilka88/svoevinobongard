@@ -1,5 +1,5 @@
 <GraceGraphIndex graceVersion="4.0">
-  <Description>Knowledge graph проекта «Своё Вино — сканер этикеток»: 11 модулей (8 core + 3 supporting),
+  <Description>Knowledge graph проекта «Своё Вино — сканер этикеток»: 15 модулей (включая M-TEXT с C-013),
     ациклический HTTP/JSON граф, 7 data flows. Детали контрактов — GD-001, рёбра и потоки — GD-002.</Description>
 
   <GraphDocuments>
@@ -13,6 +13,7 @@
         <M-MATCHER/>
         <M-CATALOG/>
         <M-OCR/>
+        <M-TEXT/>
         <M-ACTIVE-LEARNING/>
         <M-WEB/>
         <M-COMMON/>

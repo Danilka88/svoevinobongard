@@ -38,6 +38,12 @@
         <V-M-OCR/>
       </Owns>
     </VD-M4-OCR>
+    <VD-M2-TEXT>
+      <Path>verification/VD-M2-TEXT.xml</Path>
+      <Owns>
+        <V-M-TEXT/>
+      </Owns>
+    </VD-M2-TEXT>
     <VD-M5-WEB>
       <Path>verification/VD-M5-WEB.xml</Path>
       <Owns>

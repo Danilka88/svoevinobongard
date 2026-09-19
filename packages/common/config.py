@@ -109,6 +109,17 @@ class AppSettings:
     matcher_vintage_bonus: float = field(default_factory=lambda: _env_float("MATCHER_VINTAGE_BONUS", 0.3))
     matcher_sweetness_bonus: float = field(default_factory=lambda: _env_float("MATCHER_SWEETNESS_BONUS", 0.25))
 
+    # text fusion + enriched catalog (C-013); флаг по умолчанию выключен до валидации
+    text_fusion_enabled: bool = field(
+        default_factory=lambda: _env("TEXT_FUSION_ENABLED", "0").lower() not in {"0", "false", "no", ""})
+    text_fusion_weight: float = field(default_factory=lambda: _env_float("TEXT_FUSION_WEIGHT", 0.6))
+    text_fusion_year_bonus: float = field(
+        default_factory=lambda: _env_float("TEXT_FUSION_YEAR_BONUS", 0.35))
+    text_fusion_sweetness_bonus: float = field(
+        default_factory=lambda: _env_float("TEXT_FUSION_SWEETNESS_BONUS", 0.25))
+    catalog_enriched_jsonl: str = field(
+        default_factory=lambda: _env("CATALOG_ENRICHED_JSONL", "data/catalog/catalog_enriched.jsonl"))
+
     # encoder / index
     encoder: str = field(default_factory=lambda: _env("ENCODER", "siglip2"))
     encoder_model: str = field(default_factory=lambda: _env("ENCODER_MODEL", ""))

@@ -1,0 +1,33 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-013>
+    <Summary>Label-text KB и гибридный текстовый retrieval: точечное обогащение 228 целевых slug из near-dup
+      групп (OCR везде, gemma4:12b только для пробелов), отдельный файл catalog_enriched.jsonl, нормализация
+      color в category, пометка ambiguous, и текстовый фьюжн в matcher за флагом.</Summary>
+    <Goals>Дать онлайн-пути дешёвый текстовый сигнал с запроса (OCR) поверх визуального top-K и обогатить
+      каталог теми полями, которых не хватает для дизамбигуации near-duplicates (sweetness у 194 из 228,
+      year у 188). Не трогать исходный catalog.jsonl и не прогонять все 2037 эталонов.</Goals>
+    <Constraints>Обрабатываются только целевые 228 slug из near-dup групп. Обогащение пишется в отдельный
+      файл; исходный catalog.jsonl не перезаписывается. Свободный текст color не используется как признак —
+      только нормализация в category. gemma4:12b применяется только там, где OCR не дал поле: его p50 ~34 с
+      делает полный прогон офлайн-задачей. Текстовый фьюжн включается флагом TEXT_FUSION_ENABLED (по умолчанию off).
+      Только permissive-лицензии; old/, my/ и материалы конкурса не изменяются.</Constraints>
+    <NonGoals>Переиндексация всех 2037 эталонов. Охота за годом (групп, различающихся только годом, нет).
+      Подключение облачного VLM (ждёт ключ). Новые фотографии. Обучение эмбеддингов.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>Пилот на выборке эталонов показывает, по каким полям OCR и 12b дают результат и совпадают с каталогом; вывод приложен реальными цифрами.</Criterion>
+      <Criterion>Обогащение формирует catalog_enriched.jsonl только по целевым slug, не меняя catalog.jsonl.</Criterion>
+      <Criterion>Группы с полностью идентичными метаданными помечены ambiguous; color нормализован в category.</Criterion>
+      <Criterion>Гибридный фьюжн реализован за флагом TEXT_FUSION_ENABLED и не ломает текущий путь при выключенном флаге.</Criterion>
+      <Criterion>Валидация на hold-out эталонах и синтетических near-dup показывает acc@1/@5 до и после текстового фьюжна с honest-оговоркой про домен.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-TEXT/>
+      <M-MATCHER/>
+      <M-OCR/>
+      <M-EVAL/>
+      <M-CATALOG/>
+    </AffectedAreas>
+    <VerificationIntent>Добавить V-M-TEXT (KB и качество чтения полей), обновить V-M-MATCHER текстовым фьюжном
+      и зафиксировать реальные цифры валидации.</VerificationIntent>
+  </C-013>
+</GraceChangeSpec>

@@ -76,6 +76,17 @@
       <Evidence note="gateway-e2e">Живой прогон через gateway (5 сервисов, VLM включен): path=retrieval 28,
         path=vlm_fallback 7, VLM_DEGRADED 22 (таймаут 4 с). Латентность полевого прогона 31 фото:
         p50 395.7 мс, p95 5174.1 мс, max 5692.3 мс — p95 выходит за цель 3 с (но ниже жёсткого лимита 10 с).</Evidence>
+      <Command>.venv/bin/python -m pytest tests/test_text_fusion.py -v</Command>
+      <Scenario id="S-MATCHER-7">При выключенном TEXT_FUSION_ENABLED рейтинг и скоры идентичны прежнему пути: overlay обогащения не применяется.</Scenario>
+      <Scenario id="S-MATCHER-8">С включённым флагом дозаполненная сладость и год разводят членов near-dup группы; свободный color в скоре не участвует.</Scenario>
+      <Evidence note="text-fusion">C-013, валидация на 150 эталонах как pseudo-запросах против всего каталога (2103):
+        acc@1 0.040 → 0.0667, acc@5 0.1533 → 0.2667, дизамбигуация внутри near-dup групп 0.5867 → 0.7000 (+11.3 п.п.).
+        Латентность: OCR p50 228 мс, rerank p50 14.0 → 14.3 мс. Абсолютный текстовый acc@1 низкий (0.067 при
+        визуальных 0.670), поэтому текст — только реранкер поверх визуального top-K, не самостоятельный сигнал.
+        Домен тот же (эталоны), полевых фото нет (удалены в C-011) — флаг по умолчанию выключен.</Evidence>
+      <Evidence note="not-regressed">При TEXT_FUSION_ENABLED=0 текстовый скор считается прежней формулой
+        0.6*winery + 0.4*name, overlay не применяется: test_fusion_off_keeps_previous_path сравнивает скоры
+        и порядок с overlay и без него — совпадают.</Evidence>
     </V-M-MATCHER>
   </VD-M3-VLM>
 </GraceVerificationDocument>

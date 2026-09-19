@@ -1,0 +1,102 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-013>
+    <IntentSummary>Построить label-text KB точечно (228 целевых slug), обогатить каталог недостающими
+      sweetness/year/grape в отдельный файл, нормализовать color, пометить ambiguous и включить текстовый
+      фьюжн в matcher за флагом; проверить прирост на hold-out и синтетике.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>data/catalog/catalog.jsonl</Value></MustExist>
+      <MustExist><Value>services/matcher/app/merge.py</Value></MustExist>
+      <MustExist><Value>packages/common/ocr.py</Value></MustExist>
+      <MustVerify><Module>M-MATCHER</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>scripts/kb/build_label_kb.py</Value></MustExist>
+      <MustExist><Value>data/kb/label_text.jsonl</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog_enriched.jsonl</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-TEXT</Module></MustVerify>
+      <MustVerify><Module>M-MATCHER</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-TEXT</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-TEXT/>
+      <M-MATCHER/>
+      <M-OCR/>
+      <M-EVAL/>
+      <M-CATALOG/>
+      <V-M-TEXT/>
+      <V-M-MATCHER/>
+      <DF-002/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>scripts/kb/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>services/matcher/app/</Path>
+      <Path>tests/</Path>
+      <Path>data/kb/</Path>
+      <Path>data/catalog/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/</Path>
+      <File>.env.example</File>
+      <File>docs/LIMITATIONS.md</File>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Фаза 0 — пилот: читаемость полей OCR против gemma4:12b на выборке эталонов</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Пилот прогоняет OCR по выборке (20 slug с годом в тексте и 20 без) плюс 2 официальных фото.</Criterion>
+          <Criterion>gemma4:12b прогоняется на подвыборке (полный прогон 40 x ~34 с не влезает по времени; подвыборка и её размер зафиксированы).</Criterion>
+          <Criterion>Отчёт печатает читаемость по полям winery/name/grape/sweetness/year и долю совпадений с каталогом по rapidfuzz.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/kb/build_label_kb.py pilot --report reports/kb_pilot.json --vlm-subset 6 --vlm-timeout 180</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Фаза 1 — обогащение 228 целевых slug в отдельный catalog_enriched.jsonl</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Обогащение обрабатывает только целевые slug near-dup групп; исходный catalog.jsonl не изменяется.</Criterion>
+          <Criterion>Заполняются отсутствующие sweetness/year/grape; OCR везде, 12b только для пробелов (подвыборка офлайн).</Criterion>
+          <Criterion>Свободный color нормализуется в category и не используется как признак; группы с идентичными метаданными помечены ambiguous.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/kb/build_label_kb.py enrich --report reports/kb_enrich.json --vlm-gap-limit 2 --vlm-timeout 180</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Фаза 2 — гибридный фьюжн в matcher за флагом TEXT_FUSION_ENABLED</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Текстовый матч идёт по winery/name/grape/sweetness из обогащённого каталога, визуальный top-K сохраняется.</Criterion>
+          <Criterion>При TEXT_FUSION_ENABLED=0 поведение прежнее (фьюжн не применяется).</Criterion>
+          <Criterion>Нормализация color в category применяется при чтении метаданных.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_text_fusion.py -v</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Фаза 3 — валидация: hold-out эталонов как pseudo-запросов и синтетические near-dup</Title>
+        <DependsOn>T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Отчёт показывает acc@1/@5 до и после текстового фьюжна, долю ambiguous и latency.</Criterion>
+          <Criterion>Прямо указано, что домен тот же (эталоны), а не полевые фото.</Criterion>
+          <Criterion>Если прироста нет — это зафиксировано честно с объяснением.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/text_fusion_eval.py --samples 150 --out reports/text_fusion.json</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-013>
+</GraceChangePlan>

@@ -1,0 +1,47 @@
+<GraceVerificationDocument graceVersion="4.0">
+  <VD-M2-TEXT>
+    <Purpose>Верификация label-text KB и гибридного текстового retrieval (change C-013): точечное чтение
+      текста эталонов, обогащение каталога недостающими полями, нормализация цвета и текстовый фьюжн за флагом.</Purpose>
+
+    <V-M-TEXT>
+      <Priority>high</Priority>
+      <Status>built</Status>
+      <Description>KB текста этикеток: OCR по всем целевым эталонам, gemma4:12b только для пробелов;
+        обогащение пишется в отдельный data/catalog/catalog_enriched.jsonl, исходный catalog.jsonl не меняется;
+        свободный color нормализуется в category и не используется как признак; полностью неразличимые
+        группы помечаются ambiguous.</Description>
+      <TestFiles>
+        <File>scripts/kb/build_label_kb.py</File>
+        <File>tests/test_text_fusion.py</File>
+        <File>services/matcher/app/textfusion.py</File>
+      </TestFiles>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/kb/build_label_kb.py pilot --report reports/kb_pilot.json --vlm-subset 6 --vlm-timeout 180</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/kb/build_label_kb.py enrich --report reports/kb_enrich.json --vlm-gap-limit 2 --vlm-timeout 180</Command>
+      <Scenario id="S-TEXT-1">Пилот измеряет читаемость полей OCR и 12b на целевых эталонах и печатает реальные доли.</Scenario>
+      <Scenario id="S-TEXT-2">Обогащение обрабатывает только целевые near-dup slug и не перезаписывает catalog.jsonl.</Scenario>
+      <Scenario id="S-TEXT-3">Дозаполняются только отсутствующие поля: существующие значения каталога не перетираются.</Scenario>
+      <Scenario id="S-TEXT-4">Группы с полностью совпадающими метаданными получают ambiguous; группы, различающиеся только свободным color, считаются отдельно.</Scenario>
+      <Scenario id="S-TEXT-5">12b вызывается только для пробелов и с таймаутом, покрывающим p95 (40 с давали ReadTimeout).</Scenario>
+      <Marker>[M-TEXT][pilot][DONE]</Marker>
+      <Marker>[M-TEXT][enrich][DONE]</Marker>
+      <Marker>[M-TEXT][load_enriched][DONE]</Marker>
+      <Marker>[M-TEXT][load_enriched][SKIP]</Marker>
+      <Evidence note="scope">Near-dup анализ каталога: 102 группы / 228 slug (10.8% каталога; в постановке
+        называлось 106/240 — расхождение в правиле группировки). Различия внутри групп: color 84,
+        name 37, grape 29, category 23, year 20, sweetness 3. Групп, различающихся ТОЛЬКО годом — 0,
+        поэтому охота за годом отменена и полный прогон 2037 эталонов не делался.</Evidence>
+      <Evidence note="pilot-ocr">OCR (RapidOCR) на 40 целевых эталонах + 2 официальных фото: строки 1.0,
+        год прочитан 0.619, год ВЕРЕН 0.333, winery ≥0.6 в 0.262, name ≥0.6 в 0.381, grape ≥0.6 в 0.0,
+        сладость 0.119. Вывод: OCR читает год, но часто не тот, и почти не подтверждает винодельню.</Evidence>
+      <Evidence note="pilot-vlm">gemma4:12b (full-frame letterbox + P&amp;S 4, ctx 8192, короткий JSON-промпт)
+        на подвыборке 6 эталонов: год прочитан 1.0, год ВЕРЕН 0.833, winery ≥0.6 в 0.333, поля заполнены 1.0,
+        сладость 0.0 — модель не отдаёт сладость вовсе. Латентность 16.8-17.2 с на 5 изображениях
+        при таймауте 180 с; при таймауте 40 с было 4 отказа из 6 (ReadTimeout) — прежний дефолт был слишком тесным.</Evidence>
+      <Evidence note="enrich">Обогащение: 228 целевых slug из 102 групп, обогащено 78 (сладость 25, год 69,
+        виноград 0 — он уже был у всех). ambiguous: 10 slug в 5 группах (совпали ВСЕ поля, включая color);
+        ещё 28 групп различаются только свободным color, который как признак не используется.
+        Полное обогащение с 12b на каждый эталон ≈ 2.2 ч при p50 34 с — поэтому это офлайн-задача,
+        и в change 12b вызывался только на пробелах (2-4 вызова). catalog.jsonl не изменён (проверка байт в main).</Evidence>
+    </V-M-TEXT>
+  </VD-M2-TEXT>
+</GraceVerificationDocument>

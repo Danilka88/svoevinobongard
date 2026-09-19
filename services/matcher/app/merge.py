@@ -114,6 +114,8 @@ def rerank_candidates(
     text_weight: float = 0.6,
     vintage_bonus: float = 0.3,
     sweetness_bonus: float = 0.25,
+    enriched: dict | None = None,
+    fusion: bool | None = None,
 ) -> list[Candidate]:
     """Переранжирует Top-K по полям VLM и метаданным каталога.
 
@@ -124,31 +126,50 @@ def rerank_candidates(
         text_weight: вклад текстового матча.
         vintage_bonus: бонус за совпадение года (дизамбигуация серий).
         sweetness_bonus: бонус за совпадение сладости.
+        enriched: overlay ``slug -> запись`` из catalog_enriched.jsonl (C-013). Применяется
+            только когда включён TEXT_FUSION_ENABLED; иначе путь работает как раньше.
+        fusion: явный override флага (для тестов и валидации); None — брать из окружения.
 
     Returns:
         Список Candidate, отсортированный по убыванию итогового скора.
     """
+    from .textfusion import enriched_record, fusion_weights, text_fusion_enabled
+
+    fusion_on = text_fusion_enabled() if fusion is None else bool(fusion)
+    overlay = enriched if (fusion_on and enriched) else None
+    weights = fusion_weights() if fusion_on else {
+        "text_weight": text_weight, "year_bonus": vintage_bonus, "sweetness_bonus": sweetness_bonus}
+
     winery_q = _normalize(fields.get("winery"))
     name_q = _normalize(fields.get("wine_name"))
+    grape_q = _normalize(fields.get("grape"))
     reranked: list[Candidate] = []
 
     for item in candidates:
         slug = str(item.get("slug", ""))
         if not slug:
             continue
-        record = store.get(slug) or {}
+        record = dict(store.get(slug) or {})
+        if overlay is not None:
+            record.setdefault("slug", slug)
+            record = enriched_record(record, overlay)
         base = float(item.get("score", 0.0))
 
         winery_score = fuzz.token_set_ratio(winery_q, _normalize(record.get("winery"))) / 100.0 if winery_q else 0.0
         name_score = fuzz.token_set_ratio(name_q, _normalize(record.get("name"))) / 100.0 if name_q else 0.0
-        text_score = round(0.6 * winery_score + 0.4 * name_score, 4)
+        if fusion_on:
+            grape_score = (fuzz.token_set_ratio(grape_q, _normalize(record.get("grape"))) / 100.0
+                           if grape_q else 0.0)
+            text_score = round(0.55 * winery_score + 0.35 * name_score + 0.10 * grape_score, 4)
+        else:
+            text_score = round(0.6 * winery_score + 0.4 * name_score, 4)
 
         v_hit = vintage_hit(fields.get("vintage"), record)
         s_hit = sweetness_hit(fields.get("wine_type"), record)
         c_hit = color_hit(fields.get("wine_type"), record)
 
-        final = base + text_weight * text_score + (vintage_bonus if v_hit else 0.0) \
-            + (sweetness_bonus if s_hit else 0.0)
+        final = base + weights["text_weight"] * text_score + (weights["year_bonus"] if v_hit else 0.0) \
+            + (weights["sweetness_bonus"] if s_hit else 0.0)
         notes = []
         if v_hit:
             notes.append("vintage")

@@ -113,6 +113,34 @@
       <Verification>V-M-MATCHER</Verification>
     </M-MATCHER>
 
+    <M-TEXT>
+      <Name>Label Text KB</Name>
+      <Type>SHARED</Type>
+      <Status>built</Status>
+      <Purpose>Дешёвый текстовый сигнал: KB текста этикеток и обогащение метаданных каталога для дизамбигуации near-duplicates.</Purpose>
+      <Scope>Пилот читаемости полей (OCR против gemma4:12b), точечное обогащение 228 целевых near-dup slug,
+        catalog_enriched.jsonl, нормализация свободного color в category, пометка ambiguous, текстовый фьюжн
+        за флагом TEXT_FUSION_ENABLED.</Scope>
+      <Source>scripts/kb/, services/matcher/app/textfusion.py</Source>
+      <Test>tests/test_text_fusion.py</Test>
+      <Exports>build_label_kb, load_enriched_catalog, enriched_record, color_normalize, fusion_weights, text_fusion_enabled</Exports>
+      <Invokes>
+        <M-OCR/>
+        <M-CATALOG/>
+      </Invokes>
+      <Feeds>
+        <M-MATCHER/>
+      </Feeds>
+      <Depends>
+        <M-COMMON/>
+        <M-VLM/>
+      </Depends>
+      <Verification>V-M-TEXT</Verification>
+      <Note>C-013: 12b не отдаёт сладость (0.0), но читает год с точностью 0.833; текстовый фьюжн даёт
+        +11.3 п.п. acc@5 и +11.3 п.п. дизамбигуации near-dup групп на pseudo-запросах. Абсолютный текстовый
+        acc@1 низкий (0.067), поэтому флаг по умолчанию выключен: текст — реранкер поверх визуального top-K.</Note>
+    </M-TEXT>
+
     <M-CATALOG>
       <Name>Catalog and ETL</Name>
       <Type>DATA_LAYER</Type>
