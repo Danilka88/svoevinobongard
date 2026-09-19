@@ -111,7 +111,11 @@ def test_run_scan_rich_response(tmp_path, monkeypatch) -> None:
     assert result.path == "retrieval"
     # confidence — калиброванный softmax по top-K (C-003), а не сырой косинус
     assert 0.0 < result.confidence <= 1.0
-    assert result.f1_top1 == pytest.approx(0.81, abs=1e-6)
+    # ТЗ требует разные f1_top1 и f1_top5: первый — уверенность решения, второй — средний скор пятёрки
+    assert result.f1_top1 == pytest.approx(result.confidence, abs=1e-6)
+    assert result.f1_top5 == pytest.approx(
+        sum(item.score for item in result.top5) / len(result.top5), abs=1e-6)
+    assert result.f1_top5 != result.f1_top1
     assert result.margin == pytest.approx(0.29, abs=1e-6)
     assert len(result.top5) == 2
     assert result.not_found is False

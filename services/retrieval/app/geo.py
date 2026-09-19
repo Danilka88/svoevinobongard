@@ -189,7 +189,10 @@ class GeoIndex:
         self.descriptors = descriptors
         self.counts = counts
         self.method = method
-        self._position = {slug: index for index, slug in enumerate(self.slugs)}
+        self._positions: dict[str, list[int]] = {}
+        for index, slug in enumerate(self.slugs):
+            self._positions.setdefault(slug, []).append(index)
+        self._position = {slug: positions[0] for slug, positions in self._positions.items()}
 
     @classmethod
     def load(cls, directory: str | Path, meta: dict) -> "GeoIndex | None":
@@ -223,6 +226,24 @@ class GeoIndex:
             return None
         count = int(self.counts[position])
         return GeoFeatures(self.keypoints[position][:count], self.descriptors[position][:count])
+
+    def verify_all_views(self, slug: str, query: GeoFeatures,
+                         min_matches: int = 8) -> GeoResult:
+        """Проверяет все виды slug и берёт лучший результат.
+
+        Мультивью-галерея хранит несколько наборов признаков на позицию; проверка одного
+        произвольного вида (последнего в массиве) теряла остальные ракурсы.
+        """
+        best: GeoResult | None = None
+        for position in self._positions.get(slug, []):
+            reference = GeoFeatures(self.keypoints[position], self.descriptors[position],
+                                    int(self.counts[position]))
+            result = verify(query, reference, method=self.method, min_matches=min_matches)
+            if best is None or result.score > best.score:
+                best = result
+        if best is None:
+            return GeoResult(score=0.0, inliers=0, homography=None)
+        return best
 
     def verify_slug(self, slug: str, query: GeoFeatures, min_matches: int = 8) -> GeoResult:
         """Верифицирует запрос против эталона по slug."""

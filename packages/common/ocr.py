@@ -37,6 +37,7 @@ import cv2
 import numpy as np
 
 from packages.common.config import settings
+from packages.common.text_norm import fold, cyr_to_lat
 from packages.common.logging import log_marker
 
 __all__ = ["OcrResult", "resolve_engine", "reset_engine", "run_ocr", "parse_fields",
@@ -257,6 +258,23 @@ _SWEETNESS_EN = (
 )
 
 
+def _winery_hint(lines: list[str]) -> str:
+    """Винодельня-подсказка: самая «словесная» строка, а не первая.
+
+    Первой строкой часто оказывается логотип, год или служебный текст, поэтому
+    выбирается строка с максимумом букв при разумной длине.
+    """
+    best, best_score = "", 0.0
+    for line in lines:
+        letters = sum(1 for char in line if char.isalpha())
+        if letters < 3:
+            continue
+        score = letters / max(len(line), 1) * min(letters, 24)
+        if score > best_score:
+            best, best_score = line, score
+    return best or (lines[0] if lines else "")
+
+
 def _rapid_lines(image: np.ndarray, max_side: int = 768) -> list[str]:
     """Строки от латинского движка (он несёт цифры). Пустой список при сбое."""
     try:
@@ -291,7 +309,8 @@ def fusion_lines(image: np.ndarray, max_side: int = 768) -> list[str]:
     merged: list[str] = []
     seen: set[str] = set()
     for line in _rapid_lines(image, max_side) + _cyrillic_lines(image, max_side):
-        key = " ".join(line.lower().split())
+        # кросс-скриптовый ключ: «cyxoe» и «сухое» схлопываются в один вариант
+        key = cyr_to_lat(fold(line))
         if not key or key in seen:
             continue
         seen.add(key)
@@ -392,6 +411,6 @@ def run_ocr(image: np.ndarray, max_side: int = 768, engine: str | None = None) -
         lines=lines,
         vintage=fields["vintage"],
         sweetness=fields["sweetness"],
-        winery_hint=lines[0] if lines else "",
+        winery_hint=_winery_hint(lines),
         latency_ms=round(latency_ms, 1),
     )

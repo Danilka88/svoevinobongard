@@ -102,10 +102,31 @@ def load_head(path: str | Path, device: str = "cpu") -> ProjectionHead:
     return head
 
 
-def apply_head(head: ProjectionHead | None, vectors: np.ndarray, device: str = "cpu") -> np.ndarray:
+def _default_device() -> str:
+    """Устройство по умолчанию: MPS, если доступен, иначе CPU.
+
+    Энкодер считает на MPS, поэтому перенос головы на CPU на каждом запросе давал
+    лишнюю синхронизацию; поведение можно вернуть переменной окружения HEAD_DEVICE.
+    """
+    import os  # noqa: PLC0415
+
+    requested = os.getenv("HEAD_DEVICE")
+    if requested:
+        return requested
+    try:
+        import torch  # noqa: PLC0415
+
+        return "mps" if torch.backends.mps.is_available() else "cpu"
+    except Exception:  # noqa: BLE001
+        return "cpu"
+
+
+def apply_head(head: ProjectionHead | None, vectors: np.ndarray, device: str | None = None) -> np.ndarray:
     """Применяет голову к L2-нормированной матрице эмбеддингов."""
     if head is None or vectors.size == 0:
         return vectors
+    device = device or _default_device()
+    head = head.to(device)
     with torch.no_grad():
         tensor = torch.from_numpy(np.ascontiguousarray(vectors, dtype=np.float32)).to(device)
         projected = head(tensor).detach().to("cpu").numpy().astype(np.float32)

@@ -51,7 +51,8 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from packages.common.catalog import load_catalog  # noqa: E402
-from packages.common.logging import log_marker  # noqa: E402
+from packages.common.logging import log_marker
+from packages.common.text_norm import similarity  # noqa: E402
 
 WINERY_HINTS = {
     "abrau": ["абрау", "abrau"], "абрау": ["абрау", "abrau"],
@@ -141,10 +142,12 @@ def identity_candidates(label: dict, catalog: dict, threshold: float) -> list[st
         haystack = f"{haystack} {slug.replace('-', ' ')}".lower()
         if label["wineries"] and not any(winery in haystack for winery in label["wineries"]):
             continue
-        token_scores = [fuzz.partial_ratio(token, haystack) for token in tokens]
-        if max(token_scores) < threshold:
+        # транслит-нормализация: «Шато Тамань» совпадает с chateau-tamagne, а не только по буквам
+        score = similarity(label["text"],
+                           f"{record.get('winery', '')} {record.get('name', '')} {record.get('grape', '')}")
+        if score < threshold / 100.0:
             continue
-        hits.append((max(token_scores), slug))
+        hits.append((score, slug))
     hits.sort(reverse=True)
     return [slug for _, slug in hits[:25]]
 

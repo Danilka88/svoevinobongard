@@ -32,6 +32,7 @@ from dataclasses import dataclass, field
 
 from packages.common.catalog import CatalogStore
 from packages.common.official_api import absolute_url
+from packages.common.text_norm import fold, similarity
 from packages.common.logging import log_marker
 
 __all__ = ["find_similar", "find_similar_official", "official_dishes", "pairing_for", "catalog_recommendations",
@@ -49,8 +50,8 @@ class Similarity:
 
 
 def _norm(value: str | None) -> str:
-    """Нижний регистр без лишних пробелов."""
-    return " ".join((value or "").lower().split())
+    """Нормализация для сопоставления: единый вид для латиницы и кириллицы."""
+    return fold(value)
 
 
 def find_similar(store: CatalogStore, slug: str, limit: int = 6) -> list[dict]:
@@ -94,8 +95,6 @@ def find_similar(store: CatalogStore, slug: str, limit: int = 6) -> list[dict]:
         else:
             score += 0.1
             reasons.append("другой регион")
-        if not reasons:
-            continue
         scored.append((score, reasons, record))
 
     scored.sort(key=lambda item: (-item[0], _norm(item[2].get("name"))))

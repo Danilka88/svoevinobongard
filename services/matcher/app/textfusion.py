@@ -37,6 +37,7 @@ from pathlib import Path
 
 from packages.common.config import settings
 from packages.common.logging import log_marker
+from packages.common.text_norm import cyr_to_lat, fold
 
 ENRICH_KEYS = ("sweetness", "year", "grape")
 # C-017: поля официального API, пригодные для текстового матча
@@ -149,9 +150,13 @@ def trigger_max_gap() -> float:
 
 
 def near_dup_key(record: dict) -> str:
-    """Ключ near-dup группы: винодельня + название без цифр (как в C-013)."""
-    winery = " ".join(str(record.get("winery") or "").lower().split())
-    name = " ".join(re.sub(r"\d+", " ", str(record.get("name") or "").lower()).split())[:48]
+    """Ключ near-dup группы: винодельня + название без цифр, приведённые к латинице.
+
+    Транслит нужен потому, что каталог смешанный: «Пино Нуар» и `pino-nuar` — одна
+    позиция, и без приведения к одному алфавиту они попадали в разные группы.
+    """
+    winery = cyr_to_lat(fold(str(record.get("winery") or "")))
+    name = " ".join(re.sub(r"\d+", " ", cyr_to_lat(fold(str(record.get("name") or "")))).split())[:48]
     return f"{winery}|{name}"
 
 

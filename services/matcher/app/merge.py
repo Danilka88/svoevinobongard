@@ -27,12 +27,14 @@ from dataclasses import dataclass, field
 from rapidfuzz import fuzz
 
 from packages.common.catalog import CatalogStore
+from packages.common.text_norm import fold, similarity
 from packages.common.logging import log_marker
 
 __all__ = ["Candidate", "rerank_candidates", "vintage_hit", "sweetness_hit", "color_hit"]
 
 _SWEETNESS_TOKENS = (
     "экстра брют", "брют натюр", "брют", "полусладкое", "полусухое", "сладкое", "сухое",
+    "extra brut", "brut nature", "brut", "semi-sweet", "semisweet", "semi-dry", "dry", "sweet",
 )
 _COLOR_TOKENS = {
     "белое": ("белое", "белый", "белая", "white"),
@@ -59,8 +61,8 @@ class Candidate:
 
 
 def _normalize(value: str | None) -> str:
-    """Нижний регистр без пунктуации и лишних пробелов."""
-    return " ".join(re.sub(r"[^0-9a-zа-яё\s]", " ", (value or "").lower()).split())
+    """Нормализация для сопоставления: единый вид для латиницы и кириллицы."""
+    return fold(value)
 
 
 def _years(value: str | None) -> set[str]:
@@ -161,12 +163,12 @@ def rerank_candidates(
             record = enriched_record(record, overlay)
         base = float(item.get("score", 0.0))
 
-        winery_score = fuzz.token_set_ratio(winery_q, _normalize(record.get("winery"))) / 100.0 if winery_q else 0.0
-        name_score = fuzz.token_set_ratio(name_q, _normalize(record.get("name"))) / 100.0 if name_q else 0.0
+        # сравнение по вариантам написания: латиница этикетки против кириллицы каталога и наоборот
+        winery_score = similarity(fields.get("winery"), record.get("winery")) if winery_q else 0.0
+        name_score = similarity(fields.get("wine_name"), record.get("name")) if name_q else 0.0
         extra_notes: list[str] = []
         if fusion_on:
-            grape_score = (fuzz.token_set_ratio(grape_q, _normalize(record.get("grape"))) / 100.0
-                           if grape_q else 0.0)
+            grape_score = similarity(fields.get("grape"), record.get("grape")) if grape_q else 0.0
             text_score = round(0.55 * winery_score + 0.35 * name_score + 0.10 * grape_score, 4)
             # C-017: гастросочетания и цифровые поля официального API (флаги по умолчанию выключены)
             extra, extra_notes = text_signal(fields, record)

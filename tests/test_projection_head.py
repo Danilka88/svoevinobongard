@@ -66,7 +66,9 @@ def test_apply_head_matches_module(tmp_path) -> None:
     head = ProjectionHead(in_dim=32, hidden=16, out_dim=8)
     vectors = _sample_vectors()
     via_helper = apply_head(head, vectors)
-    via_module = head(torch.from_numpy(vectors)).detach().numpy()
+    # apply_head может перенести голову на ускоритель, поэтому считаем на её устройстве
+    device = next(head.parameters()).device
+    via_module = head(torch.from_numpy(vectors).to(device)).detach().cpu().numpy()
     assert np.allclose(via_helper, via_module, atol=1e-6)
     assert np.allclose(apply_head(None, vectors), vectors)
 

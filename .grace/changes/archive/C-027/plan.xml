@@ -1,0 +1,108 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-027>
+    <IntentSummary>Ввести нормализацию текста для сопоставления, подключить её ко всем путям сравнения,
+      исправить семь багов и измерить эффект на proxy и реальных фото с честным disclosure регрессий.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/retrieval/app/search.py</Value></MustExist>
+      <MustExist><Value>services/matcher/app/merge.py</Value></MustExist>
+      <MustExist><Value>packages/common/ocr.py</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog.jsonl</Value></MustExist>
+      <MustExist><Value>reports/real_field.json</Value></MustExist>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-RETRIEVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>packages/common/text_norm.py</Value></MustExist>
+      <MustExist><Value>tests/test_text_norm.py</Value></MustExist>
+      <MustExist><Value>reports/text_only_ceiling.json</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-RETRIEVAL</Module></MustVerify>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-COMMON</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-COMMON/>
+      <M-MATCHER/>
+      <M-OCR/>
+      <M-RETRIEVAL/>
+      <M-GATEWAY/>
+      <M-EVAL/>
+      <V-M-RETRIEVAL/>
+      <V-M-GATEWAY/>
+      <V-M-EVAL/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>services/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>tests/</Path>
+      <Path>docs/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Модуль text_norm: транслит, двойники, алиасы, варианты написания</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>fold нормализует NFKC, регистр и пунктуацию, снимая диакритику только у латиницы.</Criterion>
+          <Criterion>cyr_to_lat/lat_to_cyr работают по таблице с многосимвольными диграфами, включая дефисы и разделители.</Criterion>
+          <Criterion>aliases покрывают сорта, типы и сладость, цвета, регионы, общие термины и бренды.</Criterion>
+          <Criterion>forms даёт набор вариантов, similarity сравнивает по максимуму, tokens сохраняют числа и различающие слова.</Criterion>
+          <Criterion>Тесты покрывают пары лат↔кир, OCR-двойники и реальные примеры C-025.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_text_norm.py -v</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Эмпирическая валидация таблицы по каталогу</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>На выборке записей сравнивается сопоставление slug с названием до и после нормализации.</Criterion>
+          <Criterion>Приводится покрытие и примеры резких улучшений; ухудшения не скрываются.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -c "from packages.common.text_norm import similarity; print(similarity('Шато Тамань','chateau tamagne'))"</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Семь баг-фиксов и подключение нормализации</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>pipeline.py: f1_top1 — уверенность решения, f1_top5 — средний скор пятёрки; тест обновлён и проверяет их различие.</Criterion>
+          <Criterion>merge._normalize, textfusion.near_dup_key, recommend._norm и слабая GT real_field_eval используют text_norm.</Criterion>
+          <Criterion>geo.py проверяет все виды позиции и берёт максимум.</Criterion>
+          <Criterion>ocr.py: winery_hint — самая «словесная» строка; дедуп в fusion_lines кросс-скриптовый.</Criterion>
+          <Criterion>merge.py знает английские токены сладости; recommend.py без недостижимой ветки; head.apply_head работает на устройстве ускорителя.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Замеры: proxy, реальные фото, потолок текста</Title>
+        <DependsOn>T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Синтетический proxy прогнан и сравнён с состоянием до change; любая регрессия disclosed.</Criterion>
+          <Criterion>Реальные 21 фото прогнаны до/после; приведены identity@1/@5, совпадение винодельни и latency.</Criterion>
+          <Criterion>Text-only потолок измерен строгим правилом (винодельня И название/сорт) и сопоставлен с системным identity@1.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>make eval</Command>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/real_field_eval.py scan --out reports/real_field.json</Command>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/text_only_ceiling.py</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-027>
+</GraceChangePlan>

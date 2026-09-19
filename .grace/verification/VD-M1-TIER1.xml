@@ -174,6 +174,21 @@
         top-30 0.579, top-50 0.632, top-100 0.684; правильной идентичности нет даже в top-100 у 6 из 19 (32%).
         От top-5 до top-30 прироста нет — значит система упирается в представление, а не в ранжирование:
         там, где нужная позиция вообще попадает в пул, она в 10 из 13 случаев уже первая.</Evidence>
+          <Command>.venv/bin/python -m pytest tests/test_text_norm.py tests/test_search_dedupe.py -v</Command>
+      <Scenario id="S-RET-14">Нормализация текста сравнивает латиницу и кириллицу по вариантам написания, не отождествляя разные вина.</Scenario>
+      <Scenario id="S-RET-15">Геоверификация проверяет все виды позиции мультивью-индекса и берёт лучший результат.</Scenario>
+      <Evidence note="C027-translit">Таблица транслита выведена по каталогу и проверена на 400 записях: 331 улучшение,
+        0 ухудшений, покрытие 1.000. Практические пары (все 1.0): Пино Нуар ↔ pino-nuar, Шато Тамань ↔ chateau tamagne,
+        Каберне Совиньон ↔ kaberne-sovinon, Фанагория ↔ fanagoriya, сухое ↔ dry, полусладкое ↔ semi-sweet,
+        Кюве ↔ cuvee, Миллезимато ↔ millesimato. Подключено к merge._normalize, textfusion.near_dup_key,
+        recommend._norm и слабой GT real_field_eval; группы near-dup стали кросс-скриптовыми.</Evidence>
+      <Evidence note="C027-real-effect">На реальных 21 фото транслит дал: identity@5 0.5789 -&gt; 0.6316 и совпадение
+        винодельни 0.5263 -&gt; 0.5789 (+5.3 п.п. каждое), identity@1 без изменений (0.5263).
+        Потолок текстового сигнала при строгом правиле — 6 из 21 (0.286), то есть ниже системного identity@1:
+        основной сигнал визуальный.</Evidence>
+      <Evidence note="C027-geo-multiview">В geo.py добавлен verify_all_views: проверяются все виды позиции и берётся максимум
+        (раньше verify_slug смотрел одно произвольное вхождение slug, а VectorIndex.score — первое, то есть два
+        пути расходились).</Evidence>
     </V-M-RETRIEVAL>
   </VD-M1-TIER1>
 </GraceVerificationDocument>

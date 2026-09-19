@@ -270,8 +270,10 @@ async def run_scan(
     response = ScanResponse(
         slug=best.slug,
         confidence=confidence,
-        f1_top1=round(best.score, 6),
-        f1_top5=round(best.score, 6),
+        # f1_top1 — уверенность решения по первому кандидату, f1_top5 — средний скор пятёрки:
+        # это разные величины (раньше стояла копипаста), и обе — рантайм-прокси, а не измеренный F1
+        f1_top1=round(confidence, 6),
+        f1_top5=round(sum(item.score for item in top5[:5]) / max(len(top5[:5]), 1), 6),
         margin=margin,
         path=path,
         latency_ms=round(latency_ms, 1),
