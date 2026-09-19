@@ -109,6 +109,37 @@ Top-K переранжируется локальными признаками: 
 на синтетическом proxy-наборе и фиксируются в `.env.example`. `confidence` — softmax по top-K
 (калиброванная вероятность), `margin` — отрыв top1 от top2.
 
+## Запуск через Docker (весь стек)
+
+```bash
+make images                 # один раз: базовые образы svoe-base и svoe-ml-base
+cp .env.example .env
+docker compose up --build -d
+make warm                   # прогрев retrieval: первый запрос не платит за загрузку модели
+# gateway http://127.0.0.1:8080  ·  UI http://127.0.0.1:3000
+docker compose config       # валидация конфигурации
+```
+
+Локальные LLM/VLM (Ollama :11434, LM Studio :1234) работают **на хосте**; из контейнеров они
+доступны как `host.docker.internal` (в compose настроен `extra_hosts`). Веса моделей и данные
+монтируются volume-ами (`./data`, `./models`), а не запекаются в образ.
+
+## Единые команды (Makefile)
+
+| Команда | Что делает |
+|---|---|
+| `make setup` | venv + python-зависимости + `bun install` |
+| `make etl` | каталог: CSV + sitemap → `data/catalog` (2103 slug) |
+| `make index` | векторный индекс + признаки геоверификации (+ голова, если обучена) |
+| `make warm` | прогрев retrieval до первого запроса (SLA) |
+| `make eval` | baseline-отчёт (Tier-1 + гео) и полевой прогон через gateway |
+| `make test` / `make lint` | pytest и `grace lint` |
+| `make up` / `make down` / `make logs` | весь стек в Docker |
+| `make web-dev` / `make web-build` / `make web-preview` | Nuxt: dev, сборка, запуск сборки |
+
+Материалы для сдачи: `docs/DEMO.md` (сценарий видео ≤7 мин) и `docs/LIMITATIONS.md`
+(честные ограничения и замеры).
+
 ## Переменные окружения
 
 См. `.env.example`. Ключевые: `ENCODER`, `ENCODER_MODEL`, `ENCODER_DEVICE`, `VECTOR_BACKEND`, `TOP_K`,

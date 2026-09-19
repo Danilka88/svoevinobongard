@@ -1,4 +1,4 @@
-<GraceChangeSpec graceVersion="4.0" status="approved">
+<GraceChangeSpec graceVersion="4.0" status="applied">
   <C-007>
     <Summary>M6 — контейнеризация сервисов, манифесты Yandex Cloud, единые команды запуска,
       финальная документация и видео-демо до семи минут.</Summary>

@@ -1,0 +1,16 @@
+# Serverless Container: normalize (внутренний, публичного доступа нет).
+service_account_id: <SA_ID>
+
+image:
+  image_ref: cr.yandex/<REGISTRY_ID>/svoe-normalize:<TAG>
+  environment:
+    MAX_UPLOAD_MB: "10"
+  mounts: []
+
+container:
+  concurrency: 4
+  memory: 1Gb
+  cores: 2
+  core_fraction: 100
+  timeout: 30
+  network_id: <NETWORK_ID>

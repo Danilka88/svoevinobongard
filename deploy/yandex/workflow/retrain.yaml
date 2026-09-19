@@ -1,0 +1,76 @@
+# Workflow: переобучение Tier-1 (flywheel, change C-006) и периодический прогон качества.
+# Запуск: yc serverless workflow create --name svoe-retrain --spec deploy/yandex/workflow/retrain.yaml
+# Триггер по расписанию: yc serverless trigger create timer --name svoe-nightly --cron-expression "0 3 * * *" ...
+ycl_version: "1.0"
+
+input:
+  type: object
+  properties:
+    reason:
+      type: string
+      description: manual | schedule | samples-threshold
+
+steps:
+  # 1. Собрать логи запросов из Object Storage и загрузить в контейнер active-learning.
+  load_logs:
+    container:
+      image_ref: cr.yandex/<REGISTRY_ID>/svoe-active-learning:<TAG>
+      command: ["python", "-m", "services.active_learning.app.jobs.load_logs"]
+      environment:
+        LOGS_BUCKET: svoe-vino-logs
+        DATABASE_URL: <DATABASE_URL>
+      timeout: 600
+
+  # 2. Отфильтровать кейсы для ревью (низкий margin, ошибки) и положить в очередь.
+  build_review_queue:
+    container:
+      image_ref: cr.yandex/<REGISTRY_ID>/svoe-active-learning:<TAG>
+      command: ["python", "-m", "services.active_learning.app.jobs.review_queue"]
+      environment:
+        MARGIN_DELTA: "0.0659"
+      timeout: 600
+    depends_on: [load_logs]
+
+  # 3. Синтетическая аугментация подтверждённых меток (Albumentations).
+  augment:
+    container:
+      image_ref: cr.yandex/<REGISTRY_ID>/svoe-active-learning:<TAG>
+      command: ["python", "-m", "services.active_learning.app.jobs.augment"]
+      timeout: 1800
+    depends_on: [build_review_queue]
+
+  # 4. Дообучение Tier-1 и оценка F1@1/@5.
+  retrain:
+    container:
+      image_ref: cr.yandex/<REGISTRY_ID>/svoe-active-learning:<TAG>
+      command: ["python", "-m", "services.active_learning.app.jobs.retrain"]
+      environment:
+        MLFLOW_TRACKING_URI: <MLFLOW_URI>
+      timeout: 7200
+    depends_on: [augment]
+
+  # 5. Пересобрать индекс новой версией модели и прогреть retrieval.
+  reindex:
+    container:
+      image_ref: cr.yandex/<REGISTRY_ID>/svoe-retrieval:<TAG>
+      command: ["python", "scripts/catalog/build_index.py", "--features", "--out", "/app/data/index"]
+      timeout: 3600
+    depends_on: [retrain]
+
+  # 6. Контрольный прогон качества: публичный набор всегда, приватный — у организатора.
+  evaluate:
+    container:
+      image_ref: cr.yandex/<REGISTRY_ID>/svoe-active-learning:<TAG>
+      command: ["python", "scripts/eval/baseline_report.py", "--index", "/app/data/index", "--samples", "200", "--seed", "42", "--normalize", "--geo"]
+      timeout: 1800
+    depends_on: [reindex]
+
+  # 7. Публикация артефактов отчёта.
+  publish:
+    container:
+      image_ref: cr.yandex/<REGISTRY_ID>/svoe-active-learning:<TAG>
+      command: ["python", "-m", "services.active_learning.app.jobs.publish_report"]
+      environment:
+        REPORTS_BUCKET: svoe-vino-reports
+      timeout: 300
+    depends_on: [evaluate]

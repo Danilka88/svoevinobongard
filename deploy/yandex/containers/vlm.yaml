@@ -1,0 +1,31 @@
+# Serverless Container: vlm (провайдеры LLM; локально Ollama, в облаке — внешние API).
+service_account_id: <SA_ID>
+
+image:
+  image_ref: cr.yandex/<REGISTRY_ID>/svoe-vlm:<TAG>
+  environment:
+    LLM_PROVIDERS_FILE: /app/config/providers.yaml
+    # В облаке локального Ollama нет: работает облачная часть цепочки.
+    LLM_LOCAL_ONLY: "0"
+    VLM_FALLBACK_ENABLED: "0"
+    VLM_ONLINE_MODEL: gemma4:e4b
+  secrets:
+    - id: <LOCKBOX_SECRET_ID>
+      version_id: <LOCKBOX_VERSION_ID>
+      key: OPENROUTER_API_KEY
+    - id: <LOCKBOX_SECRET_ID>
+      version_id: <LOCKBOX_VERSION_ID>
+      key: YANDEX_API_KEY
+  mounts:
+    - mount_point: /app/config
+      mode: ro
+      object_storage:
+        bucket: svoe-vino-config
+
+container:
+  concurrency: 4
+  memory: 1Gb
+  cores: 2
+  core_fraction: 100
+  timeout: 60
+  network_id: <NETWORK_ID>

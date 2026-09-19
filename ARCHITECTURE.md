@@ -68,6 +68,39 @@ VLM_PROVIDER=ollama | lmstudio | openrouter | yandex | custom
 VLM_BASE_URL=...   VLM_API_KEY=...   VLM_MODEL=gemma4:12b   VLM_MODEL_FAST=gemma4:e4b
 ```
 
+## Схема развёртывания
+
+```
+                 ┌──────────────────────────────────────────────┐
+   браузер ─────▶│  web (Nuxt 3 / Nitro)  :3000                 │
+                 └───────────────────┬──────────────────────────┘
+                                     │ HTTP (NUXT_PUBLIC_API_BASE)
+                 ┌───────────────────▼──────────────────────────┐
+   скрипт  ─────▶│  gateway (FastAPI)     :8080                 │  ← единственный публичный вход
+   организатора  └──┬────────┬────────┬────────┬────────┬───────┘
+                     │        │        │        │        │
+              normalize  retrieval   vlm    matcher    ocr        (по HTTP/JSON, без импортов)
+               :8081      :8082    :8083    :8084    :8085
+                     │        │        │        │        │
+                     └────────┴───┬────┴────────┴────────┘
+                                  ▼
+                     PostgreSQL + pgvector (прод) / numpy-индекс (dev)
+                     Локальные LLM: Ollama :11434 НА ХОСТЕ (host.docker.internal)
+```
+
+**Локально:** `docker compose up` поднимает postgres + 6 сервисов + web; базовые образы
+собираются `make images`. Работает и без Docker — numpy dev-бэкенд (`make setup && make index`).
+
+**Yandex Cloud (манифесты в `deploy/yandex/`):** каждый сервис — Serverless Container;
+оркестрация и триггеры переобучения — Workflow; изображения/веса/отчёты — Object Storage;
+каталог — Managed PostgreSQL + pgvector; секреты — Lockbox; образы — Container Registry.
+
+**Границы слоёв (не нарушаются):**
+- `web` обращается только к `gateway`; удаление UI не влияет на ML.
+- `services/*` не импортируют друг друга — только HTTP/JSON; общий код живёт в `packages/*`.
+- Локальные LLM/VLM не переносятся в образы: провайдеры подключаются через `config/providers.yaml`
+  и env, поэтому локальный запуск и облако используют один код.
+
 ## Нефункциональные требования
 
 - SLA < 3 сек (цель), жёсткий лимит скрипта 10 сек. Замер M1: полевой прогон p50 235 мс, p95 358 мс,

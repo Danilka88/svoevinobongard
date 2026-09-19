@@ -240,10 +240,25 @@
       <Exports>post_image, extract_slug, extract_top5, load_ground_truth, compute_metrics, percentile,
         field_augment, random_background, synthetic pairs CLI (scripts/train/synthetic_pairs.py),
         head training CLI (scripts/train/train_head.py, модуль головы живёт в M-RETRIEVAL)</Exports>
-      <Probes>
-        <M-GATEWAY/>
-      </Probes>
       <Verification>V-M-EVAL</Verification>
     </M-EVAL>
+
+    <M-DEPLOY>
+      <Name>Packaging &amp; Deploy</Name>
+      <Type>INFRASTRUCTURE</Type>
+      <Status>built</Status>
+      <Purpose>Воспроизводимый запуск и материалы для сдачи: контейнеры, compose, единые команды,
+        манифесты Yandex Cloud и документация (демо + ограничения).</Purpose>
+      <Scope>deploy/docker/*.Dockerfile и requirements; Dockerfile на каждый сервис и UI;
+        docker-compose.yml (postgres+pgvector, 6 сервисов, web, healthcheck, host.docker.internal);
+        Makefile (setup/etl/index/images/up/down/eval/test/lint/web-*); deploy/yandex/ (Serverless
+        Containers, Workflow переобучения, заметки по Object Storage/Managed PostgreSQL/Lockbox);
+        README.md, ARCHITECTURE.md, docs/DEMO.md, docs/LIMITATIONS.md.</Scope>
+      <Source>deploy/</Source>
+      <Test>tests/</Test>
+      <Verification>V-M-DEPLOY</Verification>
+      <Note>C-007: docker compose config проходит (8 сервисов), один базовый и один ML-базовый образ,
+        non-root пользователь. Docker daemon был выключен — сборка образов не подтверждена.</Note>
+    </M-DEPLOY>
   </GD-001>
 </GraceGraphDocument>

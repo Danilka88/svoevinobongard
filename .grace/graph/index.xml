@@ -18,6 +18,7 @@
         <M-COMMON/>
         <M-CONTRACTS/>
         <M-EVAL/>
+        <M-DEPLOY/>
       </Owns>
     </GD-001>
     <GD-002>

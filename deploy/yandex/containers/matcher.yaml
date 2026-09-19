@@ -1,0 +1,23 @@
+# Serverless Container: matcher (фьюжн полей VLM/OCR с каталогом).
+service_account_id: <SA_ID>
+
+image:
+  image_ref: cr.yandex/<REGISTRY_ID>/svoe-matcher:<TAG>
+  environment:
+    CATALOG_JSONL: /app/data/catalog/catalog.jsonl
+    MATCHER_TEXT_WEIGHT: "0.6"
+    MATCHER_VINTAGE_BONUS: "0.3"
+    MATCHER_SWEETNESS_BONUS: "0.25"
+  mounts:
+    - mount_point: /app/data
+      mode: ro
+      object_storage:
+        bucket: svoe-vino-data
+
+container:
+  concurrency: 4
+  memory: 512Mb
+  cores: 1
+  core_fraction: 100
+  timeout: 30
+  network_id: <NETWORK_ID>

@@ -1,0 +1,17 @@
+# Serverless Container: web (Nuxt 3 / Nitro, public ingress).
+service_account_id: <SA_ID>
+
+image:
+  image_ref: cr.yandex/<REGISTRY_ID>/svoe-web:<TAG>
+  environment:
+    NUXT_PUBLIC_API_BASE: https://<GATEWAY_PUBLIC_URL>
+    NITRO_PORT: "3000"
+    HOST: 0.0.0.0
+
+container:
+  concurrency: 16
+  memory: 512Mb
+  cores: 1
+  core_fraction: 100
+  timeout: 30
+  network_id: <NETWORK_ID>

@@ -1,0 +1,30 @@
+# Контекст сборки Docker: исключаем всё, что не нужно образам.
+.git
+.gitignore
+.grace
+.venv
+.venv/**
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# данные и веса (монтируются volume-ами, не копируются)
+data
+models
+reports
+*.log
+
+# node/UI артефакты (пересобираются внутри образа)
+**/node_modules
+apps/web/.output
+apps/web/.nuxt
+apps/web/.cache
+
+# служебное
+old
+my
+"материалы для конкурса"
+.DS_Store
+docs

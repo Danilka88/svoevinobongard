@@ -1,0 +1,47 @@
+<GraceVerificationDocument graceVersion="4.0">
+  <VD-M6-DEPLOY>
+    <Purpose>Верификация упаковки, деплой-манифестов и документации (change C-007):
+      контейнеры, compose, единые команды, Yandex Cloud и материалы для сдачи.</Purpose>
+
+    <V-M-DEPLOY>
+      <Priority>high</Priority>
+      <Status>built</Status>
+      <Description>Воспроизводимый запуск: базовый и ML-базовый образы, Dockerfile на каждый сервис и UI,
+        полный docker-compose (postgres+pgvector, 6 сервисов, web), Makefile с командами для работы
+        с Docker и без него, манифесты Yandex Cloud, документация демо и ограничений.</Description>
+      <TestFiles>
+        <File>docker-compose.yml</File>
+        <File>Makefile</File>
+        <File>deploy/docker/base.Dockerfile</File>
+        <File>deploy/yandex/README.md</File>
+        <File>docs/DEMO.md</File>
+        <File>docs/LIMITATIONS.md</File>
+      </TestFiles>
+      <Command>docker compose config</Command>
+      <Command>make -n setup etl index images up down eval test lint web-dev web-build</Command>
+      <Command>grace lint --path .</Command>
+      <Command>.venv/bin/python -m pytest tests/ -q</Command>
+      <Scenario id="S-DEPLOY-1">docker compose config разбирается без ошибок и содержит 8 сервисов: postgres, gateway, normalize, retrieval, vlm, matcher, ocr, web.</Scenario>
+      <Scenario id="S-DEPLOY-2">Каждый сервис собирается из своего Dockerfile на общем базовом образе; процессы работают под non-root пользователем svoe/node.</Scenario>
+      <Scenario id="S-DEPLOY-3">Все цели Makefile валидны (make -n) и работают без Docker: setup, etl, index, eval, test, lint, web-dev, web-build.</Scenario>
+      <Scenario id="S-DEPLOY-4">Манифесты Yandex Cloud покрывают все сервисы, содержат secrets через Lockbox и mounts из Object Storage; Workflow описывает flywheel-цикл.</Scenario>
+      <Scenario id="S-DEPLOY-5">Документация сдачи: docs/DEMO.md содержит сценарий ≤7 минут по структуре ТЗ, docs/LIMITATIONS.md — честные ограничения с цифрами.</Scenario>
+      <Marker>[M-DEPLOY][compose][VALID]</Marker>
+      <Marker>[M-DEPLOY][docs][READY]</Marker>
+      <Evidence note="compose">docker compose config → exit 0, 193 строки конфига, сервисы:
+        postgres, gateway, normalize, retrieval, vlm, matcher, ocr, web; ссылок на host.docker.internal 9
+        (локальные Ollama/LM Studio живут на хосте), что покрывает требование по VLM вне контейнера.
+        env_file сделан необязательным (path+required:false), чтобы конфиг валидировался без .env.</Evidence>
+      <Evidence note="make">make -n по 11 целям: setup, etl, index, images, up, down, eval, test, lint, web-dev, web-build — все OK.
+        Команды работают и без Docker: numpy dev-бэкенд (setup/etl/index/eval/test/web-*).</Evidence>
+      <Evidence note="docker-honest">Docker CLI 29.7.2 и Compose v5.4.0 установлены, но daemon ВЫКЛЮЧЕН:
+        образы не собирались (docker build не выполнялся). Это честно зафиксировано в docs/LIMITATIONS.md;
+        синтаксис compose проверен через config, Dockerfile-ы написаны по единому паттерну
+        (базовый образ → копирование packages/service → non-root → healthcheck).</Evidence>
+      <Evidence note="docs">README.md дополнен разделами Docker и Makefile; ARCHITECTURE.md — схемой развёртывания
+        и границами слоёв; созданы docs/DEMO.md (7-минутный сценарий: концепция → архитектура → живое демо →
+        метрики F1@1/@5 → retention → выводы) и docs/LIMITATIONS.md (домен-разрыв, покрытие года 5.5%,
+        локальная VLM не читает этикетки, faiss/Docker-нюансы, приватный набор).</Evidence>
+    </V-M-DEPLOY>
+  </VD-M6-DEPLOY>
+</GraceVerificationDocument>

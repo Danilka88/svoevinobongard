@@ -1,0 +1,34 @@
+# Serverless Container: gateway — единственная публичная точка входа.
+# Деплой: yc serverless container revision deploy --spec deploy/yandex/containers/gateway.yaml
+service_account_id: <SA_ID>
+
+image:
+  image_ref: cr.yandex/<REGISTRY_ID>/svoe-gateway:<TAG>
+  environment:
+    GATEWAY_PORT: "8080"
+    NORMALIZE_URL: http://<NORMALIZE_INTERNAL_URL>
+    RETRIEVAL_URL: http://<RETRIEVAL_INTERNAL_URL>
+    VLM_URL: http://<VLM_INTERNAL_URL>
+    MATCHER_URL: http://<MATCHER_INTERNAL_URL>
+    OCR_URL: http://<OCR_INTERNAL_URL>
+    VECTOR_BACKEND: pgvector
+    VLM_FALLBACK_ENABLED: "0"
+    OCR_ENABLED: "1"
+  secrets:
+    # Lockbox: DATABASE_URL и ключи провайдеров не хранятся в манифесте.
+    - id: <LOCKBOX_SECRET_ID>
+      version_id: <LOCKBOX_VERSION_ID>
+      key: DATABASE_URL
+  mounts:
+    - mount_point: /app/data
+      mode: ro
+      object_storage:
+        bucket: svoe-vino-data
+
+container:
+  concurrency: 8
+  memory: 1Gb
+  cores: 2
+  core_fraction: 100
+  timeout: 30
+  network_id: <NETWORK_ID>

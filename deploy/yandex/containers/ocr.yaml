@@ -1,0 +1,17 @@
+# Serverless Container: ocr (RapidOCR, дешёвый текстовый сигнал).
+service_account_id: <SA_ID>
+
+image:
+  image_ref: cr.yandex/<REGISTRY_ID>/svoe-ocr:<TAG>
+  environment:
+    OCR_ENABLED: "1"
+    OCR_MAX_SIDE: "768"
+    OCR_TIMEOUT_S: "1.5"
+
+container:
+  concurrency: 4
+  memory: 1Gb
+  cores: 2
+  core_fraction: 100
+  timeout: 30
+  network_id: <NETWORK_ID>

@@ -1,7 +1,26 @@
+# Полный стек «Своё Вино»: PostgreSQL+pgvector, 6 сервисов и UI.
+#
+# Быстрый старт:
+#   1) make images          # собирает базовые образы svoe-base и svoe-ml-base
+#   2) cp .env.example .env
+#   3) docker compose up --build
+#   4) curl -X POST http://127.0.0.1:8080/v1/warmup
+#
+# Локальные LLM/VLM (Ollama :11434, LM Studio :1234) работают НА ХОСТЕ, а не в compose:
+# из контейнеров они доступны как host.docker.internal (extra_hosts настроен).
+name: svoe-vino-scanner
+
+x-service-base: &service-base
+  restart: unless-stopped
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  networks: [svoe]
+
 services:
   postgres:
     image: pgvector/pgvector:pg16
     container_name: svoe-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-svoe}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-svoe}
@@ -15,32 +34,128 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks: [svoe]
 
   gateway:
+    <<: *service-base
     build:
       context: .
       dockerfile: services/gateway/Dockerfile
     container_name: svoe-gateway
     env_file:
-      - .env
+      # .env не обязателен: все значения имеют дефолты, конфиг валидируется из коробки.
+      - path: .env
+        required: false
     environment:
-      POSTGRES_HOST: postgres
+      NORMALIZE_URL: http://normalize:8081
+      RETRIEVAL_URL: http://retrieval:8082
+      VLM_URL: http://vlm:8083
+      MATCHER_URL: http://matcher:8084
+      OCR_URL: http://ocr:8085
       DATABASE_URL: postgresql://${POSTGRES_USER:-svoe}:${POSTGRES_PASSWORD:-svoe}@postgres:5432/${POSTGRES_DB:-svoe_vino}
     ports:
       - "${GATEWAY_PORT:-8080}:8080"
     depends_on:
-      postgres:
-        condition: service_healthy
+      postgres: { condition: service_healthy }
+      normalize: { condition: service_started }
+      retrieval: { condition: service_started }
     volumes:
       - ./data:/app/data:ro
 
-  # NOTE: VLM/LLM are expected to run on the host (Ollama :11434, LM Studio :1234).
-  # For Linux hosts you may uncomment an ollama service below.
-  # ollama:
-  #   image: ollama/ollama:latest
-  #   ports: ["11434:11434"]
-  #   volumes: ["ollama:/root/.ollama"]
+  normalize:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: services/normalize/Dockerfile
+    container_name: svoe-normalize
+    env_file:
+      # .env не обязателен: все значения имеют дефолты, конфиг валидируется из коробки.
+      - path: .env
+        required: false
+    expose: ["8081"]
+
+  retrieval:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: services/retrieval/Dockerfile
+    container_name: svoe-retrieval
+    env_file:
+      # .env не обязателен: все значения имеют дефолты, конфиг валидируется из коробки.
+      - path: .env
+        required: false
+    environment:
+      ENCODER_DEVICE: ${ENCODER_DEVICE:-cpu}
+      HF_HOME: /models/hf
+      INDEX_DIR: /app/data/index
+      CATALOG_JSONL: /app/data/catalog/catalog.jsonl
+    expose: ["8082"]
+    volumes:
+      - ./data:/app/data:ro
+      - ./models:/models
+
+  vlm:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: services/vlm/Dockerfile
+    container_name: svoe-vlm
+    env_file:
+      # .env не обязателен: все значения имеют дефолты, конфиг валидируется из коробки.
+      - path: .env
+        required: false
+    environment:
+      # Провайдеры живут на хосте: Ollama слушает host.docker.internal:11434.
+      LLM_OLLAMA_BASE_URL: http://host.docker.internal:11434/v1
+      VLM_FALLBACK_ENABLED: ${VLM_FALLBACK_ENABLED:-0}
+    expose: ["8083"]
+    volumes:
+      - ./config:/app/config:ro
+
+  matcher:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: services/matcher/Dockerfile
+    container_name: svoe-matcher
+    env_file:
+      # .env не обязателен: все значения имеют дефолты, конфиг валидируется из коробки.
+      - path: .env
+        required: false
+    environment:
+      CATALOG_JSONL: /app/data/catalog/catalog.jsonl
+    expose: ["8084"]
+    volumes:
+      - ./data:/app/data:ro
+
+  ocr:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: services/ocr/Dockerfile
+    container_name: svoe-ocr
+    env_file:
+      # .env не обязателен: все значения имеют дефолты, конфиг валидируется из коробки.
+      - path: .env
+        required: false
+    expose: ["8085"]
+
+  web:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: svoe-web
+    environment:
+      NUXT_PUBLIC_API_BASE: ${NUXT_PUBLIC_API_BASE:-http://127.0.0.1:8080}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      gateway: { condition: service_started }
 
 volumes:
   pgdata:
-  # ollama:
+
+networks:
+  svoe:
+    driver: bridge

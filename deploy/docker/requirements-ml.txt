@@ -1,0 +1,6 @@
+# ML-зависимости (только retrieval: энкодеры SigLIP 2 / DINOv2).
+torch>=2.4
+torchvision>=0.19
+transformers>=4.45
+safetensors>=0.4
+huggingface_hub>=0.24
