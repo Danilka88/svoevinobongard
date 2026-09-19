@@ -1,0 +1,104 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-006>
+    <IntentSummary>Flywheel как инфраструктура с обязательным human-in-the-loop: логирование запросов без PII,
+      очередь ревью для неуверенных кейсов, ручное подтверждение/исправление метки человеком, экспорт
+      подтверждённых данных в формат scripts/train/* (C-009), ручное переобучение и реестр версий.
+      Автоматическое дообучение по псевдо-меткам НЕ является механикой: C-004 и C-010 показали,
+      что надёжного автоматического источника разметки нет.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>scripts/train/train_head.py</Value></MustExist>
+      <MustExist><Value>scripts/train/synthetic_pairs.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/baseline_report.py</Value></MustExist>
+      <MustNotExist><Value>services/active_learning/app/store.py</Value></MustNotExist>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>services/active_learning/app/store.py</Value></MustExist>
+      <MustExist><Value>services/active_learning/app/main.py</Value></MustExist>
+      <MustExist><Value>scripts/flywheel/cli.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/flywheel_log.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-ACTIVE-LEARNING</Module></MustVerify>
+      <MustLink><From>M-ACTIVE-LEARNING</From><To>M-CATALOG</To></MustLink>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-ACTIVE-LEARNING</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-ACTIVE-LEARNING/>
+      <M-GATEWAY/>
+      <M-EVAL/>
+      <M-CATALOG/>
+      <V-M-ACTIVE-LEARNING/>
+      <DF-005/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>services/active_learning/</Path>
+      <Path>services/gateway/app/</Path>
+      <Path>scripts/flywheel/</Path>
+      <Path>scripts/train/</Path>
+      <Path>tests/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/verification/</Path>
+      <File>Makefile</File>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Логирование запросов без PII: image_sha256, top-K, скоры, path, slug, confidence/margin, latency</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Каждый скан gateway пишет строку лога (без сырых изображений и PII): хеш изображения, top-K, скоры, path, slug, confidence, margin, latency, timestamp.</Criterion>
+          <Criterion>Запись лога best-effort: сбой логирования не влияет на ответ скана и не добавляет заметной латентности.</Criterion>
+          <Criterion>Строка размечается флагом uncertain по margin ниже порога.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_flywheel.py -v -k log</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Очередь ревью и human-in-the-loop: подтверждение или исправление метки человеком</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>SQLite-хранилище принимает JSONL-лог и строит очередь ревью из неуверенных и неверных кейсов.</Criterion>
+          <Criterion>Метка не считается подтверждённой, пока человек не вынес решение; подтверждение и исправление поддерживаются.</Criterion>
+          <Criterion>Есть CLI и HTTP-API для просмотра очереди и вынесения решения.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python scripts/flywheel/cli.py queue --limit 5</Command>
+          <Command>.venv/bin/python scripts/flywheel/cli.py review --id 1 --decision confirmed --reviewer demo</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Датасет-билдер: экспорт подтверждённых пар в формат scripts/train/*</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Экспорт берёт ТОЛЬКО подтверждённые человеком метки и формирует пары (anchor/positive/hard negatives) в формате train_head.py.</Criterion>
+          <Criterion>Не подтверждённые кейсы в датасет не попадают.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python scripts/flywheel/cli.py export --out data/flywheel/confirmed.jsonl</Command>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/train/synthetic_pairs.py --slugs-file data/flywheel/confirmed.jsonl --per-slug 2 --seed 42 --out data/train-confirmed</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Переобучение и реестр: train_head + baseline_report, версия модели и метрик</Title>
+        <DependsOn>T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Переобучение головы запускается вручную и укладывается в секунды.</Criterion>
+          <Criterion>Реестр сохраняет версию, путь к весам, метрики и число подтверждённых кейсов.</Criterion>
+          <Criterion>Оценка после обучения переиспользует baseline_report.py.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python scripts/flywheel/cli.py train --epochs 12 --out models/head-flywheel.pt</Command>
+          <Command>.venv/bin/python scripts/flywheel/cli.py registry</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-006>
+</GraceChangePlan>

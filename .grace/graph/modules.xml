@@ -163,7 +163,7 @@
       <Purpose>Самоулучшение: VLM-разметка после ревью пополняет датасет и дообучает Tier-1 (VLM как учитель).</Purpose>
       <Scope>Лог запросов, очередь ревью, синтетическая аугментация (Albumentations), дообучение Tier-1,
         оценка F1@1/@5, реестр версий (MLflow/DVC), деплой новой версии.</Scope>
-      <Source>services/active-learning/</Source>
+      <Source>services/active_learning/</Source>
       <Test>tests/active-learning/</Test>
       <Writes>
         <M-CATALOG/>

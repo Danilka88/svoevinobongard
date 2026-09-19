@@ -1,0 +1,64 @@
+<GraceVerificationDocument graceVersion="4.0">
+  <VD-M5-FLYWHEEL>
+    <Purpose>Верификация flywheel (change C-006): логирование запросов без PII, очередь ревью,
+      human-in-the-loop решения, экспорт подтверждённых в датасет, переобучение и реестр версий.</Purpose>
+
+    <V-M-ACTIVE-LEARNING>
+      <Priority>medium</Priority>
+      <Status>built</Status>
+      <Description>Инфраструктура самоулучшения с обязательным участием человека: gateway пишет лог каждого
+        запроса (без PII), SQLite-хранилище строит очередь неуверенных кейсов, человек подтверждает или
+        исправляет метку, только после этого данные уходят в датасет, переобучение головы запускается вручную,
+        версия и метрики пишутся в реестр. Автоматическое дообучение по псевдо-меткам сознательно НЕ реализовано:
+        C-004 и C-010 показали отсутствие надёжного автоматического источника разметки.</Description>
+      <TestFiles>
+        <File>tests/test_flywheel.py</File>
+        <File>services/active_learning/app/store.py</File>
+        <File>services/active_learning/app/dataset.py</File>
+        <File>services/gateway/app/flywheel_log.py</File>
+      </TestFiles>
+      <Command>.venv/bin/python -m pytest tests/test_flywheel.py -v</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/flywheel/cli.py ingest</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/flywheel/cli.py queue --limit 6</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/flywheel/cli.py review --id 4 --decision confirmed --reviewer demo</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/flywheel/cli.py export</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/flywheel/cli.py train --epochs 12</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/flywheel/cli.py registry</Command>
+      <Scenario id="S-ACTIVE-LEARNING-1">Каждый скан gateway пишет строку лога: image_sha256, top-K, скоры, path, slug, confidence, margin, latency, timestamp; сырые изображения и PII не сохраняются.</Scenario>
+      <Scenario id="S-ACTIVE-LEARNING-2">Сбой логирования не влияет на ответ скана (best-effort, отдельный поток).</Scenario>
+      <Scenario id="S-ACTIVE-LEARNING-3">Очередь ревью ставит неуверенные кейсы (margin ниже порога) впереди; отревьюенные кейсы из очереди уходят.</Scenario>
+      <Scenario id="S-ACTIVE-LEARNING-4">Решение человека обязательно: допустимы confirmed, corrected, rejected; недопустимое решение и несуществующий id отклоняются.</Scenario>
+      <Scenario id="S-ACTIVE-LEARNING-5">В датасет попадают ТОЛЬКО подтверждённые и исправленные метки; pending и rejected исключаются; исправление меняет slug на corrected_slug.</Scenario>
+      <Scenario id="S-ACTIVE-LEARNING-6">Экспорт совместим с scripts/train/*: synthetic_pairs принимает --slugs-file, train_head обучается, реестр фиксирует версию и метрики.</Scenario>
+      <Scenario id="S-ACTIVE-LEARNING-7">Повторный ingest того же JSONL не создаёт дублей (UNIQUE по image_sha256 и timestamp).</Scenario>
+      <Marker>[M-GATEWAY][run_scan][FLYWHEEL_LOG_FAILED]</Marker>
+      <Marker>[M-ACTIVE-LEARNING][ingest][DONE]</Marker>
+      <Marker>[M-ACTIVE-LEARNING][review][DECISION]</Marker>
+      <Marker>[M-ACTIVE-LEARNING][dataset][EXPORTED]</Marker>
+      <Evidence note="real-log">Реальные сканы через gateway (6 запросов по полевым фото) заполнили лог:
+        `data/flywheel/queries.jsonl` — 6 строк, например sha=61ac0fcbaf00… slug=massandra-muskat-pozdnego-sbora…
+        margin=0.0371 uncertain=True path=retrieval latency=181.1ms top_k=5. Сырых изображений в записи нет.</Evidence>
+      <Evidence note="hitl-cycle">Полный цикл на реальных данных: ingest (added=7, uncertain=5) → queue
+        (неуверенные впереди: margin 0.0094, 0.0178, 0.0371…) → review id=4 confirmed, id=1 confirmed,
+        id=2 corrected (kokur-suhoe-2025) → stats {total 7, pending 4, confirmed 2, corrected 1, uncertain 5}
+        → export {reviewed_rows 3, confirmed 2, corrected 1, unique_slugs 2}.</Evidence>
+      <Evidence note="retrain-registry">Переобучение на подтверждённых данных: synthetic_pairs с --slugs-file
+        собрал пары (1 пара / 2 anchor — у второго подтверждённого slug нет эталонного фото), train_head обучил
+        голову за 0.0 с и записал `models/head-flywheel.pt`; реестр `models/registry.json` получил версию
+        flywheel-1 с метриками и source «flywheel (human-in-the-loop)».</Evidence>
+      <Evidence note="small-dataset-caveat">Честно: демо-датасет крошечный (2 подтверждённых slug, 1 с фото),
+        поэтому loss=0.0 и batch_acc@1=0.0 — при одной паре в батче нет негативов и метрика вырождена.
+        Механика цикла проверена; осмысленное дообучение требует реально наполненной очереди ревью
+        (десятки-сотни подтверждённых кейсов), что возможно только при наличии приватного набора фотографий.</Evidence>
+      <Evidence note="hitl-required">Обязательность human-in-the-loop подтверждена цифрами C-004/C-010:
+        локальная VLM отдаёт пустые поля или неверные названия, OCR читает годы лишь у 7/31 полевых фото,
+        а год в каталоге есть у 5.5% записей. Автоматическая псевдоразметка дала бы шум в датасете,
+        поэтому в обучение попадают только решения человека.</Evidence>
+      <Evidence note="bugfix">Найдена и исправлена ошибка интеграции: каталог `services/active-learning/`
+        с дефисом не импортировался Python (`ModuleNotFoundError: services.active_learning`) — переименован
+        в `services/active_learning/`; ссылки в графе и документации обновлены. Также исправлен порядок
+        фильтра в synthetic_pairs: `--slugs-file` применяется ДО `--limit`, иначе подтверждённые кейсы
+        не попадали в первые N записей каталога.</Evidence>
+    </V-M-ACTIVE-LEARNING>
+  </VD-M5-FLYWHEEL>
+</GraceVerificationDocument>

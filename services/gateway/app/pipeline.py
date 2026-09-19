@@ -25,11 +25,14 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from fastapi.concurrency import run_in_threadpool
+
 from packages.common.catalog import CatalogStore
 from packages.common.config import settings
 from packages.common.logging import log_marker
 from packages.contracts.schemas import Card, ScanResponse, TopKItem
 from services.gateway.app.clients import ServiceClients
+from services.gateway.app.flywheel_log import append_query_log, build_log_record
 
 __all__ = ["calibrated_confidence", "run_scan", "build_card"]
 
@@ -245,7 +248,7 @@ async def run_scan(
                confident=str(confident), path=path, vlm_latency_ms=round(vlm_latency_ms, 1),
                ocr_latency_ms=round(ocr_latency_ms, 1),
                latency_ms=round(latency_ms, 1), normalize=diagnostics.normalize_method)
-    return ScanResponse(
+    response = ScanResponse(
         slug=best.slug,
         confidence=confidence,
         f1_top1=round(best.score, 6),
@@ -263,3 +266,12 @@ async def run_scan(
         degraded=degraded,
         card=build_card(store, best.slug),
     )
+
+    # Flywheel (C-006): лог запроса без PII. Best-effort — сбой не влияет на ответ.
+    if settings.flywheel_enabled:
+        record = build_log_record(image_bytes, response, margin_threshold=settings.margin_delta,
+                                 normalize_method=diagnostics.normalize_method)
+        logged = await run_in_threadpool(append_query_log, record, settings.flywheel_log_path)
+        if not logged:
+            log_marker("M-GATEWAY", "run_scan", "FLYWHEEL_LOG_FAILED")
+    return response

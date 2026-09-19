@@ -1,4 +1,4 @@
-# services/active-learning
+# services/active_learning
 
 Data flywheel — самоулучшение Tier-1.
 

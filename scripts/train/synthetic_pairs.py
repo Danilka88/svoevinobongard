@@ -64,6 +64,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="приоритизировать hard negatives из той же серии (винодельня + название без года)")
     parser.add_argument("--pairs-only", action="store_true",
                         help="пересобрать только pairs.jsonl из закэшированных эмбеддингов (быстрый перебор негативов)")
+    parser.add_argument("--slugs-file", default="",
+                        help="JSONL со списком slug: строить пары только по подтверждённым кейсам (flywheel)")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--out", default=str(_ROOT / "data" / "train"))
     return parser.parse_args(argv)
@@ -81,6 +83,16 @@ def main(argv: list[str] | None = None) -> int:
         for slug, record in sorted(catalog.items())
         if record.get("image") and (uploads / record["image"]).is_file()
     ]
+    # Фильтр по подтверждённым slug применяется ДО ограничения --limit:
+    # иначе подтверждённые кейсы могут не попасть в первые N записей каталога.
+    if args.slugs_file:
+        wanted = {
+            json.loads(line)["slug"]
+            for line in Path(args.slugs_file).read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        }
+        entries = [entry for entry in entries if entry[0] in wanted]
+        print(f"  slugs-file: ограничение до {len(entries)} подтверждённых slug", file=sys.stderr)
     if args.limit:
         entries = entries[: args.limit]
     log_marker("M-EVAL", "synthetic_pairs", "START", slugs=len(entries), per_slug=args.per_slug,

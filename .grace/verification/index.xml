@@ -50,12 +50,12 @@
         <V-M-DEPLOY/>
       </Owns>
     </VD-M6-DEPLOY>
-    <VD-M1-M6-PLANNED>
-      <Path>verification/VD-M1-M6-PLANNED.xml</Path>
+    <VD-M5-FLYWHEEL>
+      <Path>verification/VD-M5-FLYWHEEL.xml</Path>
       <Owns>
         <V-M-ACTIVE-LEARNING/>
       </Owns>
-    </VD-M1-M6-PLANNED>
+    </VD-M5-FLYWHEEL>
     <VD-SHARED>
       <Path>verification/VD-SHARED.xml</Path>
       <Owns>

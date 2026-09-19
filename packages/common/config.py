@@ -85,6 +85,16 @@ class AppSettings:
     ocr_max_side: int = field(default_factory=lambda: _env_int("OCR_MAX_SIDE", 768))
     ocr_timeout_s: float = field(default_factory=lambda: _env_float("OCR_TIMEOUT_S", 1.5))
 
+    # flywheel / active-learning (C-006): логи запросов и human-in-the-loop
+    flywheel_enabled: bool = field(
+        default_factory=lambda: _env("FLYWHEEL_ENABLED", "1") not in {"0", "false", "no"})
+    flywheel_log_path: str = field(
+        default_factory=lambda: _env("FLYWHEEL_LOG_PATH", "data/flywheel/queries.jsonl"))
+    flywheel_db_path: str = field(
+        default_factory=lambda: _env("FLYWHEEL_DB_PATH", "data/flywheel/flywheel.db"))
+    flywheel_confirmed_path: str = field(
+        default_factory=lambda: _env("FLYWHEEL_CONFIRMED_PATH", "data/flywheel/confirmed.jsonl"))
+
     # matcher fusion (C-004)
     matcher_text_weight: float = field(default_factory=lambda: _env_float("MATCHER_TEXT_WEIGHT", 0.6))
     matcher_vintage_bonus: float = field(default_factory=lambda: _env_float("MATCHER_VINTAGE_BONUS", 0.3))

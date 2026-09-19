@@ -8,7 +8,8 @@ MODEL ?= google/siglip2-so400m-patch16-naflex
 SLUG  ?= kokur-suhoe-2025
 PORT  ?= 8080
 
-.PHONY: help setup etl index images up down logs warm eval test lint lint-change web-dev web-build web-preview clean
+.PHONY: help setup etl index images up down logs warm eval test lint lint-change web-dev web-build web-preview clean \
+        flywheel-ingest flywheel-stats flywheel-queue flywheel-review flywheel-dataset flywheel-train flywheel-registry flywheel-eval
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -76,6 +77,33 @@ web-build: ## Прод-сборка Nuxt (.output)
 
 web-preview: ## Запустить собранный UI
 	cd apps/web && NUXT_PUBLIC_API_BASE=http://127.0.0.1:$(PORT) node .output/server/index.mjs
+
+## --- flywheel (C-006): human-in-the-loop ---
+
+flywheel-ingest: ## Загрузить логи запросов gateway в хранилище
+	PYTHONPATH=. $(PY) scripts/flywheel/cli.py ingest
+
+flywheel-stats: ## Сводка хранилища: pending/confirmed/corrected/uncertain
+	PYTHONPATH=. $(PY) scripts/flywheel/cli.py stats
+
+flywheel-queue: ## Очередь ревью: неуверенные кейсы
+	PYTHONPATH=. $(PY) scripts/flywheel/cli.py queue --limit $(or $(LIMIT),10)
+
+flywheel-review: ## Подтвердить метку: make flywheel-review ID=1 [DECISION=corrected CORRECTED=<slug>]
+	PYTHONPATH=. $(PY) scripts/flywheel/cli.py review --id $(ID) \
+	  --decision $(or $(DECISION),confirmed) --corrected-slug "$(CORRECTED)" --reviewer "$${USER}"
+
+flywheel-dataset: ## Экспорт ТОЛЬКО подтверждённых меток в датасет
+	PYTHONPATH=. $(PY) scripts/flywheel/cli.py export
+
+flywheel-train: ## Переобучить голову на подтверждённых данных и записать версию в реестр
+	PYTHONPATH=. $(PY) scripts/flywheel/cli.py train --epochs $(or $(EPOCHS),12)
+
+flywheel-registry: ## Показать реестр версий модели
+	PYTHONPATH=. $(PY) scripts/flywheel/cli.py registry
+
+flywheel-eval: ## Оценить модель после переобучения (baseline_report)
+	PYTHONPATH=. $(PY) scripts/flywheel/cli.py eval --samples $(or $(SAMPLES),200)
 
 clean: ## Убрать кеши и артефакты сборки
 	rm -rf reports/*.jsonl reports/*.report.json apps/web/.output apps/web/.nuxt

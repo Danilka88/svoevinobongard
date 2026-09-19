@@ -12,7 +12,7 @@ services/gateway (FastAPI)  ── /v1/eval/predict  /v1/scan  /v1/similar  /v1/
         ├── services/retrieval     — энкодер (SigLIP 2/DINOv2) + pgvector/FAISS + геоверификация
         ├── services/vlm           — OpenAI-совместимый коннектор (fallback)
         ├── services/matcher       — фьюжн скоров, margin, решение
-        ├── services/active-learning — логи → ревью → аугментация → дообучение
+        ├── services/active_learning — логи → ревью → аугментация → дообучение
         └─────────────────────────────────────────────
                      PostgreSQL + pgvector (catalog)
 ```
