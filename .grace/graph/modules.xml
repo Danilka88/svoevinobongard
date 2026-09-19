@@ -76,37 +76,41 @@
     <M-VLM>
       <Name>VLM Fallback</Name>
       <Type>INTEGRATION</Type>
-      <Status>skeleton</Status>
+      <Status>built</Status>
       <Purpose>Умный арбитр только при неуверенном Tier-1: не платим за VLM на каждом запросе.</Purpose>
-      <Scope>Единый OpenAI-совместимый коннектор (ollama | lmstudio | openrouter | yandex | custom),
-        temperature=0, строгая JSON-схема, constrained decoding + repair-парсер.</Scope>
+      <Scope>Единый OpenAI-совместимый коннектор через LLM Router (ollama | lmstudio | openrouter | yandex | custom),
+        temperature=0, строгая JSON-схема полей этикетки, ремонт JSON, учет finish_reason, деградация ok=false.
+        Онлайн — быстрая модель с reasoning_effort=none и жёстким таймаутом; тяжёлая модель — офлайн.</Scope>
       <Source>services/vlm/</Source>
       <Test>tests/vlm/</Test>
-      <Interface>POST /extract (image + top-K) → JSON полей этикетки</Interface>
+      <Interface>POST /extract (image) → поля этикетки; вызов только через router.chat(role=vision_model)</Interface>
       <Depends>
         <M-COMMON/>
       </Depends>
-      <Boundary>Провайдеры и fallback — change C-008 в M-COMMON; промпт и схема полей — change C-004.</Boundary>
+      <Boundary>Провайдеры и fallback — C-008 в M-COMMON; промпт и схема полей — C-004.</Boundary>
+      <Note>C-004: реализовано; замер показал, что локальный VLM не даёт прироста точности
+        (gemma4:e4b отдаёт пустые поля), поэтому онлайн-fallback выключен по умолчанию.</Note>
       <Verification>V-M-VLM</Verification>
     </M-VLM>
 
     <M-MATCHER>
       <Name>Matcher / Fusion</Name>
       <Type>CORE_LOGIC</Type>
-      <Status>skeleton</Status>
+      <Status>built</Status>
       <Purpose>Превращает поля VLM в решение по каталогу и определяет margin — основу правила ветвления.</Purpose>
-      <Scope>Текстовый матч полей с каталогом (rapidfuzz + ru-эмбеддинги); фьюжн retrieval + geo + text
-        → итоговый скор, margin, top-1/top-5/not_found.</Scope>
+      <Scope>Текстовый матч полей с каталогом (rapidfuzz по винодельне и названию); фьюжн retrieval + geo + text
+        с бонусами за год, сладость и цвет; дизамбигуация near-duplicates; переранжирование Top-K.</Scope>
       <Source>services/matcher/</Source>
       <Test>tests/matcher/</Test>
+      <Interface>POST /rerank (candidates + fields) → переранжированные кандидаты с объяснением</Interface>
       <Depends>
         <M-COMMON/>
       </Depends>
       <Queries>
         <M-CATALOG/>
       </Queries>
+      <Note>C-004: фьюжн покрыт тестами; на замере прироста нет из-за пустых полей VLM, а не из-за фьюжна.</Note>
       <Verification>V-M-MATCHER</Verification>
-      <Note>Реализация — change C-004.</Note>
     </M-MATCHER>
 
     <M-CATALOG>

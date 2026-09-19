@@ -1,4 +1,4 @@
-<GraceChangePlan graceVersion="4.0" status="draft">
+<GraceChangePlan graceVersion="4.0" status="applied">
   <C-004>
     <IntentSummary>Подключить VLM как арбитр для неуверенных запросов и matcher для фьюжна скоров.
       Требует C-008 (LLM Router) как блокирующую предпосылку.</IntentSummary>

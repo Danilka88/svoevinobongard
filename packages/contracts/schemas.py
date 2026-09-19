@@ -70,6 +70,9 @@ class ScanResponse(BaseModel):
     top5: list[TopKItem] = Field(default_factory=list)
     not_found: bool = False
     confident: bool = False
+    vlm_used: bool = False
+    vlm_latency_ms: float = 0.0
+    degraded: bool = False
     card: Card | None = None
 
 

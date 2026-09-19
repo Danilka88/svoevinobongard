@@ -25,11 +25,16 @@
         <V-M-RETRIEVAL/>
       </Owns>
     </VD-M1-TIER1>
-    <VD-M1-M6-PLANNED>
-      <Path>verification/VD-M1-M6-PLANNED.xml</Path>
+    <VD-M3-VLM>
+      <Path>verification/VD-M3-VLM.xml</Path>
       <Owns>
         <V-M-VLM/>
         <V-M-MATCHER/>
+      </Owns>
+    </VD-M3-VLM>
+    <VD-M1-M6-PLANNED>
+      <Path>verification/VD-M1-M6-PLANNED.xml</Path>
+      <Owns>
         <V-M-ACTIVE-LEARNING/>
         <V-M-WEB/>
       </Owns>

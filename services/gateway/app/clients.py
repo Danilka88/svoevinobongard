@@ -71,10 +71,14 @@ class ServiceClients:
         self,
         normalize_url: str | None = None,
         retrieval_url: str | None = None,
+        vlm_url: str | None = None,
+        matcher_url: str | None = None,
         timeout: float | None = None,
     ) -> None:
         self.normalize_url = (normalize_url or settings.normalize_url).rstrip("/")
         self.retrieval_url = (retrieval_url or settings.retrieval_url).rstrip("/")
+        self.vlm_url = (vlm_url or settings.vlm_url).rstrip("/")
+        self.matcher_url = (matcher_url or settings.matcher_url).rstrip("/")
         self.timeout = timeout if timeout is not None else settings.service_timeout_s
         self._client: httpx.AsyncClient | None = None
 
@@ -96,6 +100,37 @@ class ServiceClients:
         return await post_image(
             self.client, f"{self.retrieval_url}/search", data, filename, self.timeout
         )
+
+    async def extract(self, data: bytes, filename: str = "query.png",
+                     timeout: float | None = None) -> dict | None:
+        """Извлекает поля этикетки через VLM (POST /extract).
+
+        Таймаут здесь короткий и задается онлайн-путём: лучше деградировать к
+        Tier-1, чем сорвать SLA.
+        """
+        return await post_image(
+            self.client, f"{self.vlm_url}/extract", data, filename,
+            timeout or settings.vlm_timeout_s + 1.0,
+        )
+
+    async def rerank(self, candidates: list[dict], fields: dict) -> dict | None:
+        """Переранжирует кандидатов по полям VLM (POST /rerank)."""
+        try:
+            response = await self.client.post(
+                f"{self.matcher_url}/rerank",
+                json={"candidates": candidates, "fields": fields},
+                timeout=self.timeout,
+            )
+        except httpx.HTTPError as error:
+            log_marker("M-GATEWAY", "rerank", "CONN_ERROR", error=type(error).__name__)
+            return None
+        if response.status_code != 200:
+            log_marker("M-GATEWAY", "rerank", "BAD_STATUS", status=response.status_code)
+            return None
+        try:
+            return response.json()
+        except ValueError:
+            return None
 
     async def aclose(self) -> None:
         """Закрывает HTTP-клиент."""

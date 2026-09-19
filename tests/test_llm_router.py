@@ -69,6 +69,7 @@ class StubAdapter(BaseAdapter):
         self.fail = fail
         self.retryable = retryable
         self.text = text
+        self.last_extra: dict | None = None
 
     def _maybe_fail(self, model: str) -> None:
         self.calls += 1
@@ -77,10 +78,13 @@ class StubAdapter(BaseAdapter):
             raise ProviderError(self.name, model, "stub failure", retryable=self.retryable)
 
     def chat(self, model: str, messages: list[dict], *, max_tokens: int = 512,
-             temperature: float = 0.0, response_format: dict | None = None) -> ChatResult:
+             temperature: float = 0.0, response_format: dict | None = None,
+             extra: dict | None = None, timeout_s: float | None = None) -> ChatResult:
         self._maybe_fail(model)
+        self.last_extra = extra
         return ChatResult(text=f"{self.text}:{model}", model=model, provider=self.name,
-                          prompt_tokens=10, completion_tokens=5, total_tokens=15, latency_ms=1.0)
+                          prompt_tokens=10, completion_tokens=5, total_tokens=15,
+                          latency_ms=1.0, finish_reason="stop")
 
     def embed(self, model: str, texts: list[str]) -> EmbedResult:
         self._maybe_fail(model)

@@ -132,6 +132,11 @@ async def run_scan(
         raise RuntimeError("retrieval service unavailable")
 
     items = found.get("top_k") or []
+    reranked_items: list[dict] | None = None
+    vlm_used = False
+    vlm_latency_ms = 0.0
+    degraded = False
+
     top5 = [
         TopKItem(
             slug=item.get("slug", ""),
@@ -155,24 +160,78 @@ async def run_scan(
     diagnostics.top1_score = best.score
     diagnostics.second_score = top5[1].score if len(top5) > 1 else 0.0
     margin = round(best.score - diagnostics.second_score, 6)
+    confident = (best.score >= settings.score_tau) and (margin >= settings.margin_delta)
+
+    # Ветвление C-004: неуверенный Tier-1 → VLM-поля → matcher → переранжирование.
+    if not confident and settings.vlm_fallback_enabled:
+        vlm_started = time.perf_counter()
+        extracted = await active_clients.extract(payload, "query.png")
+        vlm_latency_ms = (time.perf_counter() - vlm_started) * 1000.0
+        if extracted and extracted.get("ok"):
+            fields = extracted.get("fields") or {}
+            reranked = await active_clients.rerank(
+                [{"slug": item.get("slug"), "score": float(item.get("score", 0.0))}
+                 for item in items if item.get("slug")],
+                fields,
+            )
+            if reranked and reranked.get("items"):
+                reranked_items = reranked["items"]
+                vlm_used = True
+            else:
+                degraded = True
+                diagnostics.notes.append("matcher unavailable; Tier-1 kept")
+        else:
+            degraded = True
+            reason = (extracted or {}).get("reason", "vlm unavailable")
+            diagnostics.notes.append(f"vlm degraded: {reason}")
+            log_marker("M-GATEWAY", "run_scan", "VLM_DEGRADED", reason=str(reason)[:120])
+    elif not confident:
+        degraded = True
+        diagnostics.notes.append("vlm fallback disabled")
+
+    if reranked_items:
+        by_slug = {item.get("slug"): item for item in items}
+        rebuilt: list[TopKItem] = []
+        for entry in reranked_items[:5]:
+            slug = str(entry.get("slug", ""))
+            source = by_slug.get(slug, {})
+            rebuilt.append(TopKItem(
+                slug=slug,
+                score=float(entry.get("score", 0.0)),
+                name=entry.get("name") or source.get("name"),
+                winery=entry.get("winery") or source.get("winery"),
+                geo_score=float(source.get("geo_score", 0.0)),
+                inliers=int(source.get("inliers", 0)),
+            ))
+        if rebuilt:
+            top5 = rebuilt
+            best = top5[0]
+            diagnostics.top1_score = best.score
+            diagnostics.second_score = top5[1].score if len(top5) > 1 else 0.0
+            margin = round(best.score - diagnostics.second_score, 6)
+
     confidence = round(calibrated_confidence([item.score for item in top5]), 6)
     not_found = best.score < settings.score_tau
     confident = (best.score >= settings.score_tau) and (margin >= settings.margin_delta)
+    path = "vlm_fallback" if vlm_used else "retrieval"
 
     log_marker("M-GATEWAY", "run_scan", "DECISION", slug=best.slug if not not_found else "none",
                score=round(best.score, 4), margin=margin, confidence=confidence,
-               confident=str(confident), latency_ms=round(latency_ms, 1),
-               normalize=diagnostics.normalize_method)
+               confident=str(confident), path=path, vlm_latency_ms=round(vlm_latency_ms, 1),
+               latency_ms=round(latency_ms, 1), normalize=diagnostics.normalize_method)
     return ScanResponse(
         slug=best.slug,
         confidence=confidence,
         f1_top1=round(best.score, 6),
         f1_top5=round(best.score, 6),
         margin=margin,
-        path="retrieval",
+        path=path,
         latency_ms=round(latency_ms, 1),
         top5=top5,
         not_found=not_found,
         confident=confident,
+        vlm_used=vlm_used,
+        vlm_latency_ms=round(vlm_latency_ms, 1),
+        degraded=degraded,
         card=build_card(store, best.slug),
     )

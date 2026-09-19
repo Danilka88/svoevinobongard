@@ -63,7 +63,25 @@ class AppSettings:
     # service endpoints (HTTP/JSON only — services never import each other)
     normalize_url: str = field(default_factory=lambda: _env("NORMALIZE_URL", "http://127.0.0.1:8081"))
     retrieval_url: str = field(default_factory=lambda: _env("RETRIEVAL_URL", "http://127.0.0.1:8082"))
+    vlm_url: str = field(default_factory=lambda: _env("VLM_URL", "http://127.0.0.1:8083"))
+    matcher_url: str = field(default_factory=lambda: _env("MATCHER_URL", "http://127.0.0.1:8084"))
     service_timeout_s: float = field(default_factory=lambda: _env_float("SERVICE_TIMEOUT_S", 60.0))
+
+    # VLM fallback (C-004): online path uses a FAST model with reasoning disabled.
+    # Default OFF: замер C-004 показал, что локальный VLM не даёт прироста точности
+    # (поля пустые у gemma4:e4b), но поднимает p95 до ~5 с. Включается осознанно.
+    vlm_fallback_enabled: bool = field(
+        default_factory=lambda: _env("VLM_FALLBACK_ENABLED", "0") not in {"0", "false", "no"})
+    vlm_online_model: str = field(default_factory=lambda: _env("VLM_ONLINE_MODEL", "gemma4:e4b"))
+    vlm_max_tokens: int = field(default_factory=lambda: _env_int("VLM_MAX_TOKENS", 192))
+    vlm_timeout_s: float = field(default_factory=lambda: _env_float("VLM_TIMEOUT_S", 4.0))
+    vlm_reasoning_effort: str = field(
+        default_factory=lambda: _env("VLM_REASONING_EFFORT", "none"))
+
+    # matcher fusion (C-004)
+    matcher_text_weight: float = field(default_factory=lambda: _env_float("MATCHER_TEXT_WEIGHT", 0.6))
+    matcher_vintage_bonus: float = field(default_factory=lambda: _env_float("MATCHER_VINTAGE_BONUS", 0.3))
+    matcher_sweetness_bonus: float = field(default_factory=lambda: _env_float("MATCHER_SWEETNESS_BONUS", 0.25))
 
     # encoder / index
     encoder: str = field(default_factory=lambda: _env("ENCODER", "siglip2"))

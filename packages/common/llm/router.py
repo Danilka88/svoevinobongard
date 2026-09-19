@@ -138,6 +138,8 @@ class LLMRouter:
         max_tokens: int = 512,
         temperature: float = 0.0,
         response_format: dict | None = None,
+        extra: dict | None = None,
+        timeout_s: float | None = None,
     ) -> ChatResult:
         """Выполняет чат-комплишен по цепочке роли.
 
@@ -148,6 +150,9 @@ class LLMRouter:
             max_tokens: лимит генерации.
             temperature: температура (по умолчанию 0).
             response_format: например {"type": "json_object"}.
+            extra: провайдер-специфичные поля запроса (например reasoning_effort=none,
+                что отключает внутренние рассуждения и радикально снижает латентность).
+            timeout_s: жёсткий таймаут одного вызова (онлайн-путь важнее полного ответа).
 
         Returns:
             ChatResult с текстом, провайдером, моделью и расходом токенов.
@@ -158,7 +163,7 @@ class LLMRouter:
             lambda adapter, entry: adapter.chat(
                 entry.model, messages,
                 max_tokens=max_tokens, temperature=temperature,
-                response_format=response_format,
+                response_format=response_format, extra=extra, timeout_s=timeout_s,
             ),
         )
 

@@ -1,0 +1,62 @@
+<GraceVerificationDocument graceVersion="4.0">
+  <VD-M3-VLM>
+    <Purpose>Верификация VLM-fallback и matcher-фьюжна (change C-004): извлечение полей этикетки,
+      деградация, дизамбигуация near-duplicates и SLA онлайн-пути.</Purpose>
+
+    <V-M-VLM>
+      <Priority>high</Priority>
+      <Status>built</Status>
+      <Description>POST /extract: строгий JSON полей этикетки через router.chat(role="vision_model"),
+        ремонт битого JSON, учет finish_reason, деградация ok=false вместо исключения.
+        Онлайн-модель — gemma4:e4b с reasoning_effort=none и жёстким таймаутом.</Description>
+      <TestFiles>
+        <File>tests/test_vlm_matcher.py</File>
+        <File>services/vlm/app/extract.py</File>
+        <File>services/vlm/app/prompt.py</File>
+      </TestFiles>
+      <Command>.venv/bin/python -m pytest tests/test_vlm_matcher.py -v -k vlm or parse or extract or prompt</Command>
+      <Scenario id="S-VLM-1">Чистый JSON разбирается; markdown-обертки и текстовый мусор вокруг JSON ремонтируются.</Scenario>
+      <Scenario id="S-VLM-2">confidence приводится к диапазону 0..1, нечисловые значения игнорируются.</Scenario>
+      <Scenario id="S-VLM-3">Пустой content при finish_reason=length не считается валидным ответом (ok=false, reason=empty content).</Scenario>
+      <Scenario id="S-VLM-4">Отказ LLM (ProviderError) дает ok=false с причиной, без исключения наружу.</Scenario>
+      <Scenario id="S-VLM-5">Изображение кодируется в data URL с ограничением стороны, сообщения собираются корректно.</Scenario>
+      <Scenario id="S-VLM-6">reasoning_effort=none действительно уходит в запрос (без него латентность 17.4 с вместо 3.6 с).</Scenario>
+      <Marker>[M-VLM][extract_fields][OK]</Marker>
+      <Marker>[M-VLM][extract_fields][PARSE_FAILED]</Marker>
+      <Marker>[M-VLM][extract_fields][VLM_FAILED]</Marker>
+      <Marker>[M-VLM][extract][DONE]</Marker>
+      <Evidence note="latency">Замер на Ollama: gemma4:e4b с reasoning_effort=none — 3.0 c (finish=stop);
+        без него — 17.4 c и пустой content; gemma4:12b — 13.2 c. Жёсткий таймаут онлайна 4 c.</Evidence>
+      <Evidence note="quality-negative">Честный отрицательный результат: gemma4:e4b возвращает валидный JSON,
+        но ВСЕ поля пустые — даже на чистом эталоне 1536px (этикетка во весь кадр). gemma4:12b на том же
+        эталоне 1024px прочитал «Altes Haus» вместо «Алиготе Баррель» при 13.2 c. Значит локальный VLM
+        не является рабочим источником текстового сигнала в текущей конфигурации.</Evidence>
+    </V-M-VLM>
+
+    <V-M-MATCHER>
+      <Priority>high</Priority>
+      <Status>built</Status>
+      <Description>POST /rerank: фьюжн полей VLM с метаданными каталога — текстовый матч (rapidfuzz)
+        по винодельне и названию плюс дизамбигуация near-duplicates бонусами за год, сладость и цвет.</Description>
+      <TestFiles>
+        <File>tests/test_vlm_matcher.py</File>
+        <File>services/matcher/app/merge.py</File>
+      </TestFiles>
+      <Command>.venv/bin/python -m pytest tests/test_vlm_matcher.py -v -k rerank or vintage or sweetness</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/vlm_fallback_eval.py --samples 20 --seed 42 --out reports/vlm_fallback.json</Command>
+      <Scenario id="S-MATCHER-1">При равном базовом скоре выигрывает кандидат с совпадающим годом и сладостью (near-duplicate серия).</Scenario>
+      <Scenario id="S-MATCHER-2">Год сопоставляется с полем year, названием и слагом каталога.</Scenario>
+      <Scenario id="S-MATCHER-3">Сладость и цвет этикетки сопоставляются с метаданными каталога.</Scenario>
+      <Scenario id="S-MATCHER-4">Без полей VLM порядок кандидатов не меняется (деградация безопасна).</Scenario>
+      <Marker>[M-MATCHER][rerank][DONE]</Marker>
+      <Marker>[M-MATCHER][rerank][RESPONSE]</Marker>
+      <Evidence note="vlm-fallback-eval">Подвыборка near-duplicate (n=20 из 228, seed 42, synthetic proxy):
+        Tier-1 acc@1 0.75 / acc@5 0.85; с VLM acc@1 0.75 / acc@5 0.85 — прироста НЕТ.
+        VLM вызван в 9 случаях (45%), деградаций 0; латентность VLM p50 2945 мс, p95 3057 мс, max 3085 мс.
+        Причина отсутствия прироста — пустые поля от gemma4:e4b (см. V-M-VLM), а не ошибка фьюжна.</Evidence>
+      <Evidence note="gateway-e2e">Живой прогон через gateway (5 сервисов, VLM включен): path=retrieval 28,
+        path=vlm_fallback 7, VLM_DEGRADED 22 (таймаут 4 с). Латентность полевого прогона 31 фото:
+        p50 395.7 мс, p95 5174.1 мс, max 5692.3 мс — p95 выходит за цель 3 с (но ниже жёсткого лимита 10 с).</Evidence>
+    </V-M-MATCHER>
+  </VD-M3-VLM>
+</GraceVerificationDocument>

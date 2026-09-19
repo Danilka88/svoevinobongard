@@ -81,8 +81,19 @@ class BaseAdapter:
         return self.config.name
 
     def chat(self, model: str, messages: list[dict], *, max_tokens: int = 512,
-             temperature: float = 0.0, response_format: dict | None = None) -> ChatResult:
-        """Выполняет чат-комплишен."""
+             temperature: float = 0.0, response_format: dict | None = None,
+             extra: dict | None = None, timeout_s: float | None = None) -> ChatResult:
+        """Выполняет чат-комплишен.
+
+        Args:
+            model: идентификатор модели.
+            messages: сообщения OpenAI-формата.
+            max_tokens: лимит генерации.
+            temperature: температура.
+            response_format: например {"type": "json_object"}.
+            extra: провайдер-специфичные поля запроса (например reasoning_effort).
+            timeout_s: жёсткий таймаут одного вызова.
+        """
         raise NotImplementedError
 
     def embed(self, model: str, texts: list[str]) -> EmbedResult:
@@ -110,7 +121,7 @@ class BaseAdapter:
 class OpenAICompatAdapter(BaseAdapter):
     """Единый адаптер для OpenAI-совместимых провайдеров."""
 
-    def _post(self, path: str, payload: dict) -> tuple[dict, float]:
+    def _post(self, path: str, payload: dict, timeout_s: float | None = None) -> tuple[dict, float]:
         """Выполняет POST и возвращает (json, latency_ms).
 
         Raises:
@@ -119,7 +130,7 @@ class OpenAICompatAdapter(BaseAdapter):
         url = f"{self.config.base_url.rstrip('/')}{path}"
         started = time.perf_counter()
         try:
-            with httpx.Client(timeout=self.config.timeout_s) as client:
+            with httpx.Client(timeout=timeout_s or self.config.timeout_s) as client:
                 response = client.post(url, json=payload, headers=self._headers())
         except (httpx.TimeoutException, httpx.TransportError) as error:
             raise ProviderError(self.name, str(payload.get("model", "")),
@@ -139,8 +150,14 @@ class OpenAICompatAdapter(BaseAdapter):
                                 f"invalid json: {error}", retryable=True) from error
 
     def chat(self, model: str, messages: list[dict], *, max_tokens: int = 512,
-             temperature: float = 0.0, response_format: dict | None = None) -> ChatResult:
-        """Выполняет чат-комплишен через /chat/completions."""
+             temperature: float = 0.0, response_format: dict | None = None,
+             extra: dict | None = None, timeout_s: float | None = None) -> ChatResult:
+        """Выполняет чат-комплишен через /chat/completions.
+
+        Args:
+            timeout_s: жёсткий таймаут одного вызова; переопределяет таймаут провайдера
+                (нужен онлайн-пути, где SLA важнее полного ответа).
+        """
         payload: dict = {
             "model": model,
             "messages": messages,
@@ -150,7 +167,8 @@ class OpenAICompatAdapter(BaseAdapter):
         }
         if response_format is not None:
             payload["response_format"] = response_format
-        data, latency_ms = self._post("/chat/completions", payload)
+        payload.update(extra or {})
+        data, latency_ms = self._post("/chat/completions", payload, timeout_s=timeout_s)
         choices = data.get("choices") or []
         if not choices:
             raise ProviderError(self.name, model, "empty choices", retryable=True)
