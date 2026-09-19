@@ -79,6 +79,8 @@ class AppSettings:
         default_factory=lambda: _env("VLM_REASONING_EFFORT", "none"))
 
     # OCR text signal (C-010): дешёвая замена VLM-fallback в онлайн-пути
+    ocr_rec_model: str = field(default_factory=lambda: _env("OCR_REC_MODEL", ""))
+    ocr_rec_keys: str = field(default_factory=lambda: _env("OCR_REC_KEYS", ""))
     ocr_url: str = field(default_factory=lambda: _env("OCR_URL", "http://127.0.0.1:8085"))
     ocr_enabled: bool = field(
         default_factory=lambda: _env("OCR_ENABLED", "1") not in {"0", "false", "no"})
@@ -119,6 +121,9 @@ class AppSettings:
         default_factory=lambda: _env_float("TEXT_FUSION_SWEETNESS_BONUS", 0.25))
     catalog_enriched_jsonl: str = field(
         default_factory=lambda: _env("CATALOG_ENRICHED_JSONL", "data/catalog/catalog_enriched.jsonl"))
+    text_fusion_mode: str = field(default_factory=lambda: _env("TEXT_FUSION_MODE", "off"))
+    text_fusion_trigger_max_gap: float = field(
+        default_factory=lambda: _env_float("TEXT_FUSION_TRIGGER_MAX_GAP", 0.05))
 
     # encoder / index
     encoder: str = field(default_factory=lambda: _env("ENCODER", "siglip2"))

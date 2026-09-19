@@ -60,6 +60,12 @@
       <Evidence note="c009">C-009: baseline_report получил поддержку --only-indexed (честное сравнение энкодеров)
         и применения проекционной головы к запросу; synthetic_pairs построил 2100 эмбеддингов,
         700 пар и 5486 hard negatives за 355 с на MPS.</Evidence>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/text_fusion_eval.py --samples 150 --modes off,always,conditional --out reports/text_fusion.json</Command>
+      <Scenario id="S-EVAL-4">Замер сравнивает три режима фьюжна в одном прогоне на одном и том же наборе, чтобы разница не была шумом выборки.</Scenario>
+      <Evidence note="three-modes">C-014: 150 pseudo-запросов (field_augment по near-dup эталонам), seed 42, реальный визуальный top-30:
+        off acc@1 0.42 / acc@5 0.74; always 0.42 / 0.74; conditional 0.42 / 0.74; визуальный baseline acc@1 0.4333.
+        Метрика acc@1 этих режимов не различает, потому что улучшения касаются рангов внутри группы, а не первого места:
+        диагностические счётчики (always изменил 9 рангов, conditional 2, ухудшений 0) информативнее и приведены в V-M-MATCHER.</Evidence>
     </V-M-EVAL>
 
     <V-M-GATEWAY>

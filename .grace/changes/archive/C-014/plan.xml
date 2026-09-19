@@ -1,0 +1,104 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-014>
+    <IntentSummary>Включить текстовый сигнал условно — только на near-dup пару в визуальном top-2,
+      поднять чтение русских слов кириллическим rec-движком PP-OCRv5 за конфигом, и измерить
+      gemma4:26b-mlx против 12b для офлайн-обогащения.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/matcher/app/merge.py</Value></MustExist>
+      <MustExist><Value>packages/common/ocr.py</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog_enriched.jsonl</Value></MustExist>
+      <MustVerify><Module>M-MATCHER</Module></MustVerify>
+      <MustVerify><Module>M-OCR</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>packages/common/ocr_cyrillic.py</Value></MustExist>
+      <MustExist><Value>reports/text_fusion.json</Value></MustExist>
+      <MustExist><Value>reports/vlm_26b.json</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-MATCHER</Module></MustVerify>
+      <MustVerify><Module>M-OCR</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-OCR</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-MATCHER/>
+      <M-OCR/>
+      <M-EVAL/>
+      <M-VLM/>
+      <M-COMMON/>
+      <V-M-MATCHER/>
+      <V-M-OCR/>
+      <V-M-VLM/>
+      <V-M-EVAL/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>services/matcher/app/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>tests/</Path>
+      <Path>data/models/ocr/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/</Path>
+      <File>.env.example</File>
+      <File>docs/LIMITATIONS.md</File>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Условный триггер text-fusion: режимы off/conditional/always</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Триггер срабатывает только когда top-1 и top-2 визуальной выдачи в одной near-dup группе и разрыв скоров не больше TEXT_FUSION_TRIGGER_MAX_GAP.</Criterion>
+          <Criterion>Режим задаётся TEXT_FUSION_MODE (off по умолчанию); TEXT_FUSION_ENABLED=1 остаётся синонимом always.</Criterion>
+          <Criterion>Тесты доказывают: при off путь идентичен прежнему, на не-near-dup запросах conditional не меняет порядок и скоры.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_text_fusion.py -v</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Трёхрежимный замер на 150 pseudo-запросах поверх реального визуального top-K</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Запрос — синтетическое полевое фото (field_augment), а не сам эталон: иначе acc@1 тривиален.</Criterion>
+          <Criterion>Отчёт печатает acc@1/@5 для off/always/conditional, долю сработавших триггеров и число улучшений/ухудшений ранга.</Criterion>
+          <Criterion>Энкодер и голова берутся из data/index/meta.json, чтобы совпасть с индексом.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/text_fusion_eval.py --samples 150 --modes off,always,conditional --out reports/text_fusion.json</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Кириллический OCR: PP-OCRv5 cyrillic rec за конфигом</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Движок включается OCR_REC_MODEL/OCR_REC_KEYS и при отсутствии файлов молча возвращается к текущему RapidOCR.</Criterion>
+          <Criterion>Свой CTC-декодер: RapidOCR 1.2.3 не прокидывает словарь (Rec.keys_path), а метаданных в ONNX нет.</Criterion>
+          <Criterion>Читаемость сравнена с текущим движком на том же пилоте, включая честную фиксацию проигрыша по году.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. OCR_REC_MODEL=data/models/ocr/cyrillic_PP-OCRv5_rec.onnx OCR_REC_KEYS=data/models/ocr/cyrillic_dict.txt .venv/bin/python scripts/kb/build_label_kb.py pilot --report reports/kb_pilot_cyrillic.json --vlm-subset 0</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Оценка gemma4:26b-mlx на full-frame letterbox + P&amp;S 4</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>26b прогоняется существующим харнессом C-012 на подвыборке 4 эталона с таймаутом 300 с и time-box 25 минут.</Criterion>
+          <Criterion>Сравнение с 12b по числу полей, точности года и винодельни и latency p50/p95.</Criterion>
+          <Criterion>Вывод о применимости сформулирован отдельно для онлайна и для офлайн-обогащения.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/vlm_preprocess_eval.py --samples 4 --configs C --model gemma4:26b-mlx --timeout 300 --out reports/vlm_26b.json</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-014>
+</GraceChangePlan>

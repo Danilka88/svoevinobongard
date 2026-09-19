@@ -42,6 +42,23 @@
         латентно ещё 49 (2.3% сверху) → потолок ~7.8%; sweetness 318 (15.1%), латентного запаса нет;
         category (цвет) есть у 2103 (100%), но цвет near-duplicates не различает.
         Вывод: узкое место дизамбигуации — метаданные каталога, а не качество OCR.</Evidence>
+      <Command>PYTHONPATH=. OCR_REC_MODEL=data/models/ocr/cyrillic_PP-OCRv5_rec.onnx OCR_REC_KEYS=data/models/ocr/cyrillic_dict.txt .venv/bin/python scripts/kb/build_label_kb.py pilot --report reports/kb_pilot_cyrillic.json --vlm-subset 0</Command>
+      <Scenario id="S-OCR-7">Кириллический движок включается конфигом OCR_REC_MODEL/OCR_REC_KEYS и при отсутствии файлов молча уступает текущему RapidOCR.</Scenario>
+      <Scenario id="S-OCR-8">Собственный CTC-декодер сверяет размер словаря с выходом модели и падает с понятной ошибкой при несовпадении.</Scenario>
+      <Evidence note="cyrillic-engine">C-014: PP-OCRv5 mobile cyrillic rec (Apache-2.0, PaddlePaddle/cyrillic_PP-OCRv5_mobile_rec_onnx, 8 МБ)
+        + словарь 850 символов из inference.yml. RapidOCR 1.2.3 не может принять свой словарь: ключ Rec.keys_path не прокидывается
+        через kwargs (rec_keys_path остаётся с префиксом), а метаданных в ONNX нет (проверено: custom_metadata_map пуст, выход 852 = blank + 850 + space),
+        поэтому rec-стадия реализована своим кодом поверх onnxruntime; детекция и классификация угла берутся из штатного RapidOCR.</Evidence>
+      <Evidence note="cyrillic-quality">Качественно движок читает русский текст там, где ch/en-движок давал латинскую кашу:
+        «ПИНОНУАР» (0.96) вместо «IMHO HYAP»; «СИРÁНУВО» (0.69) вместо «CHPA HYBO»; «РОЗОВОЕБРЮТ» (0.89), «RESIRVE» (0.99),
+        «ABRAU-DURSOb» (0.89) вместо «INAN / ABF / WINE»; «RESERVE» (0.94) + «ABRAU-DURSOlb» (0.87). Латентность 119-284 мс (p50 ~200).</Evidence>
+      <Evidence note="cyrillic-aggregate-negative">Агрегатно выигрыш не подтверждён: на 12 эталонах текст целиком → каталог
+        ch 31.4 против cyr 31.6 (ничья), лучшая строка → каталог ch 40.8 против cyr 45.4 (+4.6 в пользу cyrillic).
+        По году движок ПРОИГРЫВАЕТ: в пилоте 42 кадра year прочитан 0.214 против 0.619 у ch, верен 0.119 против 0.333.
+        Причина: год на этих этикетках римскими цифрами (MMXXII), ch-движок отдаёт их латиницей и регексп срабатывает,
+        а cyrillic-движок даёт «cMXXIY», и арабский год не находится. Также winery ≥0.6 упало до 0.0, но это артефакт метрики:
+        сравнивается только первая строка (winery_hint), а порядок боксов у движков разный.
+        Вывод: движок оставлен опцией (по умолчанию выключен), прирост требует доработки разбора римских цифр.</Evidence>
     </V-M-OCR>
   </VD-M4-OCR>
 </GraceVerificationDocument>

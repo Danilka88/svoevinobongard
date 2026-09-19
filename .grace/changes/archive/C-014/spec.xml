@@ -1,0 +1,32 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-014>
+    <Summary>Условный text-fusion (только для near-dup пар в визуальном top-2), кириллический OCR rec-движок
+      за конфигом, и оценка gemma4:26b-mlx на full-frame letterbox + P&amp;S для офлайн-обогащения.</Summary>
+    <Goals>Включать текстовый сигнал ровно там, где он доказал пользу (дизамбигуация near-duplicates, +11.3 п.п.
+      в C-013), не трогая выдачу в остальных случаях; поднять чтение русских слов этикетки лучшим permissive
+      rec-движком; измерить, даёт ли 26b прироста над 12b для офлайн-обогащения.</Goals>
+    <Constraints>Данные — только эталоны каталога (полевых фото нет, C-011). Облако не подключаем. 26b на M4
+      медленная: подвыборка не больше 6 эталонов и суммарный time-box ~20 минут; при перерасходе n уменьшается
+      и это фиксируется. Никаких переписываний retrieval/VLM-логики: 26b оценивается существующим харнессом C-012.
+      services/* не импортируют друг друга — общий код идёт в packages/*. Только permissive-лицензии;
+      old/, my/ и материалы конкурса не изменяются.</Constraints>
+    <NonGoals>Постоянно включённый фьюжн без триггера. Переиндексация каталога. Новые фотографии. Облачные
+      модели. Обучение или дообучение моделей.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>Условный триггер срабатывает только когда top-1 и top-2 визуальной выдачи в одной near-dup группе и их скор близок; пороги задаются через TEXT_FUSION_TRIGGER_*.</Criterion>
+      <Criterion>Тесты доказывают: при выключенном фьюжне путь идентичен прежнему, а на не-near-dup запросах порядок не меняется.</Criterion>
+      <Criterion>Замер на 150 pseudo-запросах (seed 42) показывает acc@1/@5 и near-dup дизамбигуацию для baseline, unconditional и conditional с реальным выводом.</Criterion>
+      <Criterion>Кириллический rec-движок выбирается по permissive-лицензии, включается конфигом и имеет graceful fallback; его читаемость сравнена с текущим движком на том же пилоте.</Criterion>
+      <Criterion>gemma4:26b-mlx сравнен с 12b по полям, точности и latency на одной подвыборке в рамках time-box; вывод о применимости для офлайн-обогащения зафиксирован.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-MATCHER/>
+      <M-OCR/>
+      <M-EVAL/>
+      <M-VLM/>
+      <M-COMMON/>
+    </AffectedAreas>
+    <VerificationIntent>Обновить V-M-MATCHER условным триггером, V-M-OCR кириллическим движком,
+      V-M-VLM оценкой 26b, V-M-EVAL трёхрежимным замером.</VerificationIntent>
+  </C-014>
+</GraceChangeSpec>

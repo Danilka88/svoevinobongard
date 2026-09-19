@@ -133,9 +133,15 @@ def rerank_candidates(
     Returns:
         Список Candidate, отсортированный по убыванию итогового скора.
     """
-    from .textfusion import enriched_record, fusion_weights, text_fusion_enabled
+    from .textfusion import enriched_record, fusion_mode, fusion_weights, should_fuse
 
-    fusion_on = text_fusion_enabled() if fusion is None else bool(fusion)
+    mode = fusion_mode() if fusion is None else fusion
+    if mode is True or mode == "always":
+        fusion_on = True
+    elif mode == "conditional":
+        fusion_on = should_fuse(candidates, store)
+    else:
+        fusion_on = False
     overlay = enriched if (fusion_on and enriched) else None
     weights = fusion_weights() if fusion_on else {
         "text_weight": text_weight, "year_bonus": vintage_bonus, "sweetness_bonus": sweetness_bonus}

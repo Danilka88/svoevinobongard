@@ -82,6 +82,13 @@ def resolve_engine() -> str:
         rapidocr | easyocr | tesseract | none.
     """
     try:
+        from packages.common.ocr_cyrillic import resolve_cyrillic  # noqa: PLC0415
+
+        if resolve_cyrillic() is not None:
+            return "cyrillic"
+    except Exception:  # noqa: BLE001 - кириллический движок опционален
+        pass
+    try:
         import rapidocr_onnxruntime  # noqa: F401
         return "rapidocr"
     except Exception:  # noqa: BLE001
@@ -190,8 +197,12 @@ def run_ocr(image: np.ndarray, max_side: int = 768, engine: str | None = None) -
     started = time.perf_counter()
     prepared = _resize(image, max_side)
     try:
-        active = _get_engine(name)
-        if name == "rapidocr":
+        active = None if name == "cyrillic" else _get_engine(name)
+        if name == "cyrillic":
+            from packages.common.ocr_cyrillic import run_cyrillic  # noqa: PLC0415
+
+            lines = [str(text).strip() for _, text, _ in run_cyrillic(prepared, max_side=max_side)]
+        elif name == "rapidocr":
             result, _ = active(prepared)  # type: ignore[operator]
             lines = [str(item[1]).strip() for item in (result or []) if len(item) > 1]
         elif name == "easyocr":

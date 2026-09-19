@@ -8,6 +8,10 @@
 # END_MODULE_CONTRACT
 # START_MODULE_MAP
 # ENRICH_KEYS - дозаполняемые поля обогащения
+# fusion_mode - режим фьюжна: off, conditional или always
+# trigger_max_gap - максимальный разрыв top-1/top-2 для условного триггера
+# near_dup_key - ключ near-dup группы: винодельня + название без цифр
+# should_fuse - решает, включать ли фьюжн по визуальной выдаче
 # text_fusion_enabled - включён ли текстовый фьюжн флагом окружения
 # fusion_weights - веса текстового сигнала и бонусов за дозаполненные поля
 # color_normalize - нормализация свободного color/category к каноническому цвету
@@ -26,6 +30,7 @@ Overlay из ``catalog_enriched.jsonl`` даёт матчеру то, чего �
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from packages.common.config import settings
@@ -36,6 +41,10 @@ _COLOR_MAP = {"белое": "Белое", "красное": "Красное", "�
 
 __all__ = [
     "ENRICH_KEYS",
+    "fusion_mode",
+    "trigger_max_gap",
+    "near_dup_key",
+    "should_fuse",
     "text_fusion_enabled",
     "fusion_weights",
     "color_normalize",
@@ -115,3 +124,47 @@ def enriched_record(record: dict, overlay: dict[str, dict]) -> dict:
     else:
         datum["category"] = color_normalize(datum)
     return datum
+
+
+def fusion_mode() -> str:
+    """Режим фьюжна: off | conditional | always.
+
+    Обратная совместимость: TEXT_FUSION_ENABLED=1 равносилен режиму always.
+    """
+    if getattr(settings, "text_fusion_enabled", False):
+        return "always"
+    mode = str(getattr(settings, "text_fusion_mode", "off") or "off").strip().lower()
+    return mode if mode in {"off", "conditional", "always"} else "off"
+
+
+def trigger_max_gap() -> float:
+    """Максимальный разрыв скоров top-1 и top-2, при котором триггер ещё срабатывает."""
+    return float(getattr(settings, "text_fusion_trigger_max_gap", 0.05))
+
+
+def near_dup_key(record: dict) -> str:
+    """Ключ near-dup группы: винодельня + название без цифр (как в C-013)."""
+    winery = " ".join(str(record.get("winery") or "").lower().split())
+    name = " ".join(re.sub(r"\d+", " ", str(record.get("name") or "").lower()).split())[:48]
+    return f"{winery}|{name}"
+
+
+def should_fuse(candidates: list[dict], store, max_gap: float | None = None) -> bool:
+    """Срабатывает ли условный триггер: top-1 и top-2 одной near-dup группы и скоры близки.
+
+    Смысл: если визуальная выдача уверенно развела два разных вина, текстовый сигнал
+    не нужен и не должен менять порядок. Он нужен только когда впереди стоят
+    near-duplicates, которые эмбеддинг не различает.
+    """
+    scored = [item for item in candidates if item.get("slug")]
+    if len(scored) < 2:
+        return False
+    ordered = sorted(scored, key=lambda item: float(item.get("score", 0.0)), reverse=True)
+    first, second = ordered[0], ordered[1]
+    gap = float(first.get("score", 0.0)) - float(second.get("score", 0.0))
+    limit = trigger_max_gap() if max_gap is None else max_gap
+    if gap > limit:
+        return False
+    left = near_dup_key(dict(store.get(str(first["slug"])) or {}))
+    right = near_dup_key(dict(store.get(str(second["slug"])) or {}))
+    return bool(left) and left == right

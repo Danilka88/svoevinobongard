@@ -50,6 +50,16 @@
         (winery accuracy 0.0 → 0.333 у C против A) → full-frame + P&amp;S принят как КАНОНИЧЕСКИЙ вход для
         офлайн-обогащения и разметки. Онлайн-ветка остаётся выключенной (VLM_FALLBACK_ENABLED=0):
         при p50 34 с она не влезает ни в SLA 3 с, ни в лимит 10 с скрипта организатора.</Evidence>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/vlm_preprocess_eval.py --samples 4 --configs C --model gemma4:26b-mlx --timeout 300 --out reports/vlm_26b.json</Command>
+      <Scenario id="S-VLM-6">26b прогоняется на той же конфигурации входа, что 12b (full-frame letterbox + P&amp;S 4, ctx 8192), чтобы сравнение было честным.</Scenario>
+      <Evidence note="gemma-26b-vs-12b">C-014, подвыборка 4 эталона, конфигурация C_full_pas4, time-box 25 минут соблюдён (фактически 82 с на 4 вызова):
+        26b-mlx заполнил 5.75 поля в среднем (12b в C-012: 5.67), vintage acc 0.75 (12b 0.667), winery acc 0.75 (12b 0.333),
+        p50 22426 мс / p95 30542 мс (12b: p50 34100 мс). Реальные ответы 26b: vintage='2024' при истине 2024 (aligote-barrel),
+        '2022' при 2022 (amelia), '2023' при 2023 (amelia-2023); winery='Коммуналка' и 'Winemafia' — точные совпадения с каталогом.
+        Один промах: 'KOFFMANN BROTHERS FAMI' вместо ожидаемого значения у amelia-2023.</Evidence>
+      <Evidence note="26b-verdict">Вердикт: 26b-mlx точнее 12b и при этом НЕ медленнее (p50 22.4 с против 34.1 с), поэтому для
+        ОФЛАЙН-обогащения он предпочтителен: 228 целевых slug ≈ 1.4 ч против ≈ 2.2 ч у 12b. Для онлайна непригоден ни тот, ни другой:
+        22 с против SLA 3 с и жёсткого лимита скрипта 10 с. Требования: 18 ГБ на диске и запас RAM (M4/32GB).</Evidence>
     </V-M-VLM>
 
     <V-M-MATCHER>
@@ -87,6 +97,17 @@
       <Evidence note="not-regressed">При TEXT_FUSION_ENABLED=0 текстовый скор считается прежней формулой
         0.6*winery + 0.4*name, overlay не применяется: test_fusion_off_keeps_previous_path сравнивает скоры
         и порядок с overlay и без него — совпадают.</Evidence>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/text_fusion_eval.py --samples 150 --modes off,always,conditional --out reports/text_fusion.json</Command>
+      <Scenario id="S-MATCHER-9">Режим conditional включает фьюжн только если top-1 и top-2 визуальной выдачи в одной near-dup группе и разрыв скоров не больше порога.</Scenario>
+      <Scenario id="S-MATCHER-10">На не-триггерных запросах режим conditional не меняет ни порядок, ни скоры относительно режима off.</Scenario>
+      <Evidence note="conditional-trigger">C-014, 150 near-dup эталонов, запрос — синтетическое полевое фото (field_augment), реальный визуальный top-30
+        (SigLIP2-so400m + голова из data/index/meta.json), seed 42. Визуальный baseline acc@1 0.4333; off 0.42 / acc@5 0.74;
+        always 0.42 / 0.74; conditional 0.42 / 0.74. Триггер сработал 32/150 (21.3%): улучшил ранг 2, ухудшил 0.
+        always переставил ранги в 9/150 случаях (6%) — в том числе там, где near-dup нет, то есть безусловный фьюжн небезопасен;
+        conditional переставил только 2/150 и НИ ОДНОГО раза на 118 не-триггерных запросах. rerank p50 0.3 мс на 30 кандидатах.
+        Вывод: условный триггер даёт ту же пользу, что безусловный, но без вмешательства в обычные запросы.</Evidence>
+      <Evidence note="why-not-always">Прежний (C-013) безусловный режим оставлен как always для сравнения, но дефолт — off,
+        а рекомендуемый прод-режим — conditional: он меняет выдачу в 4.5 раза реже и не трогает запросы вне near-dup.</Evidence>
     </V-M-MATCHER>
   </VD-M3-VLM>
 </GraceVerificationDocument>

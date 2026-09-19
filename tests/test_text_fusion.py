@@ -75,7 +75,7 @@ def test_fusion_on_uses_enriched_sweetness(monkeypatch: pytest.MonkeyPatch) -> N
     off = rerank_candidates(candidates, fields, catalog, enriched=overlay)
     assert all(candidate.sweetness_match is False for candidate in off), "без флага overlay не применяется"
 
-    monkeypatch.setattr(textfusion, "text_fusion_enabled", lambda: True)
+    monkeypatch.setattr(textfusion, "fusion_mode", lambda: "always")
     on = rerank_candidates(candidates, fields, catalog, enriched=overlay)
     assert on[0].slug == "a-2", "дозаполненная сладость должна вывести a-2 вперёд"
     assert on[0].sweetness_match is True and on[1].sweetness_match is False
@@ -83,7 +83,7 @@ def test_fusion_on_uses_enriched_sweetness(monkeypatch: pytest.MonkeyPatch) -> N
 
 def test_fusion_on_uses_grape_signal(monkeypatch: pytest.MonkeyPatch) -> None:
     """С флагом виноград входит в текстовый скор."""
-    monkeypatch.setattr(textfusion, "text_fusion_enabled", lambda: True)
+    monkeypatch.setattr(textfusion, "fusion_mode", lambda: "always")
     catalog = {
         "a": {"slug": "a", "name": "Вино", "winery": "Тест", "grape": "Шардоне"},
         "b": {"slug": "b", "name": "Вино", "winery": "Тест", "grape": "Мерло"},
@@ -99,3 +99,70 @@ def test_fusion_weights_defaults() -> None:
     weights = textfusion.fusion_weights()
     assert set(weights) == {"text_weight", "year_bonus", "sweetness_bonus"}
     assert weights["year_bonus"] > 0
+
+
+CATALOG_GROUPS = {
+    "w-2021": {"slug": "w-2021", "name": "Вино", "winery": "Тест", "category": "Красное", "year": 2021},
+    "w-2022": {"slug": "w-2022", "name": "Вино", "winery": "Тест", "category": "Красное", "year": 2022},
+    "other": {"slug": "other", "name": "Другое", "winery": "Другой", "category": "Белое"},
+}
+OVERLAY_GROUP = {"w-2021": {"slug": "w-2021", "enriched": {"sweetness": "сухое"}},
+                 "w-2022": {"slug": "w-2022", "enriched": {"sweetness": "сухое"}}}
+
+
+def test_conditional_triggers_on_near_dup_pair() -> None:
+    """Триггер срабатывает, когда top-1 и top-2 одной группы и скоры близки."""
+    candidates = [{"slug": "w-2021", "score": 0.70}, {"slug": "w-2022", "score": 0.68}]
+    assert textfusion.should_fuse(candidates, CATALOG_GROUPS) is True
+
+
+def test_conditional_skips_when_top2_different_groups() -> None:
+    """Не-near-dup запросы триггер не включают: выдачу трогать нельзя."""
+    candidates = [{"slug": "w-2021", "score": 0.70}, {"slug": "other", "score": 0.68}]
+    assert textfusion.should_fuse(candidates, CATALOG_GROUPS) is False
+
+
+def test_conditional_skips_on_large_gap() -> None:
+    """Если визуальный лидер уверенно оторвался, текст не нужен."""
+    candidates = [{"slug": "w-2021", "score": 0.90}, {"slug": "w-2022", "score": 0.20}]
+    assert textfusion.should_fuse(candidates, CATALOG_GROUPS) is False
+
+
+def test_conditional_keeps_order_for_non_near_dup() -> None:
+    """В режиме conditional на не-near-dup запросе порядок совпадает с off."""
+    fields = {"winery": "Другой", "wine_name": "Другое", "wine_type": "сухое"}
+    candidates = [{"slug": "other", "score": 0.90}, {"slug": "w-2021", "score": 0.30}]
+    off = rerank_candidates(candidates, fields, CATALOG_GROUPS, enriched=OVERLAY_GROUP, fusion="off")
+    conditional = rerank_candidates(candidates, fields, CATALOG_GROUPS, enriched=OVERLAY_GROUP,
+                                    fusion="conditional")
+    assert [c.slug for c in off] == [c.slug for c in conditional]
+    assert [c.score for c in off] == [c.score for c in conditional]
+
+
+def test_conditional_fuses_on_near_dup_pair() -> None:
+    """На near-dup паре conditional даёт то же, что безусловный фьюжн."""
+    fields = {"winery": "Тест", "wine_name": "Вино", "wine_type": "сухое"}
+    candidates = [{"slug": "w-2021", "score": 0.70}, {"slug": "w-2022", "score": 0.68}]
+    always = rerank_candidates(candidates, fields, CATALOG_GROUPS, enriched=OVERLAY_GROUP, fusion="always")
+    conditional = rerank_candidates(candidates, fields, CATALOG_GROUPS, enriched=OVERLAY_GROUP,
+                                    fusion="conditional")
+    assert [c.slug for c in always] == [c.slug for c in conditional]
+    assert [c.sweetness_match for c in always] == [c.sweetness_match for c in conditional]
+
+
+def test_fusion_mode_parsing() -> None:
+    """Режим разбирается из конфига, неизвестные значения сводятся к off."""
+    settings = textfusion.settings
+    before_enabled, before_mode = settings.text_fusion_enabled, settings.text_fusion_mode
+    try:
+        object.__setattr__(settings, "text_fusion_enabled", False)
+        object.__setattr__(settings, "text_fusion_mode", "conditional")
+        assert textfusion.fusion_mode() == "conditional"
+        object.__setattr__(settings, "text_fusion_mode", "мусор")
+        assert textfusion.fusion_mode() == "off"
+        object.__setattr__(settings, "text_fusion_mode", "off")
+        object.__setattr__(settings, "text_fusion_enabled", True)
+        assert textfusion.fusion_mode() == "always", "TEXT_FUSION_ENABLED=1 равносилен режиму always"
+    finally:
+        object.__setattr__(settings, "text_fusion_enabled", before_enabled)
+        object.__setattr__(settings, "text_fusion_mode", before_mode)
