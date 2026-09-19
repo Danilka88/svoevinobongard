@@ -42,6 +42,16 @@
         и границами слоёв; созданы docs/DEMO.md (7-минутный сценарий: концепция → архитектура → живое демо →
         метрики F1@1/@5 → retention → выводы) и docs/LIMITATIONS.md (домен-разрыв, покрытие года 5.5%,
         локальная VLM не читает этикетки, faiss/Docker-нюансы, приватный набор).</Evidence>
+          <Command>make gate</Command>
+      <Scenario id="S-DEPLOY-5">Цель gate прогоняет lint, pytest, eval с проверкой acc@1 и p95 и живой контракт организатора.</Scenario>
+      <Scenario id="S-DEPLOY-6">Проверка контракта сама поднимает недостающие сервисы, ждёт прогрева retrieval и гасит только поднятые ею процессы.</Scenario>
+      <Evidence note="C021-gate">Финальный гейт оформлен целью make gate и прогнан реально:
+        lint 0/0; pytest 137 passed; eval дал acc@1 0.675 и p95 194.2 мс;
+        final_report --check ответил «ГЕЙТ ПРОЙДЕН: acc@1 0.675 ≥ 0.67, p95 194.2 мс ≤ 3000.0 мс»;
+        check_contract поднял normalize, retrieval, matcher и gateway, дождался прогрева энкодера
+        и получил HTTP 200 с плоским ответом {"slug": "nebo-rossii-glera"}, после чего погасил сервисы.
+        Найден и исправлен дефект самой проверки: gateway отвечает 503, пока retrieval не прогрел энкодер,
+        поэтому в post_predict добавлены ретраи 503 в пределах 150 с — иначе гейт падал на гонке старта.</Evidence>
     </V-M-DEPLOY>
   </VD-M6-DEPLOY>
 </GraceVerificationDocument>

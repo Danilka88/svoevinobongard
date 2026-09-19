@@ -1,3 +1,35 @@
+# START_MODULE_CONTRACT
+# PURPOSE: Верификация текстового фьюжна: overlay обогащения, режимы off/conditional/always и бонусы
+# SCOPE: CATALOG, OVERLAY, CATALOG_GROUPS, OVERLAY_GROUP, test_color_normalize_canonical, test_load_enriched_missing_file_is_not_an_error, test_load_enriched_reads_overlay, test_enriched_record_does_not_overwrite_existing, test_fusion_off_keeps_previous_path, test_fusion_on_uses_enriched_sweetness, test_fusion_on_uses_grape_signal, test_fusion_weights_defaults, test_conditional_triggers_on_near_dup_pair, test_conditional_skips_when_top2_different_groups, test_conditional_skips_on_large_gap, test_conditional_keeps_order_for_non_near_dup, test_conditional_fuses_on_near_dup_pair, test_fusion_mode_parsing, test_default_fusion_mode_is_conditional, test_conditional_default_does_not_touch_non_near_dup, test_text_signal_disabled_by_default, test_text_signal_dishes_and_numbers_when_enabled
+# DEPENDS: services.matcher.app.textfusion, services.matcher.app.merge, packages.common.config, pytest
+# LINKS: M-MATCHER, M-TEXT, V-M-TEXT
+# ROLE: TEST
+# MAP_MODE: LOCALS
+# END_MODULE_CONTRACT
+# START_MODULE_MAP
+# CATALOG - константа тестового каталога
+# OVERLAY - константа тестового каталога
+# CATALOG_GROUPS - константа тестового каталога
+# OVERLAY_GROUP - константа тестового каталога
+# test_color_normalize_canonical - сценарий верификации
+# test_load_enriched_missing_file_is_not_an_error - сценарий верификации
+# test_load_enriched_reads_overlay - сценарий верификации
+# test_enriched_record_does_not_overwrite_existing - сценарий верификации
+# test_fusion_off_keeps_previous_path - сценарий верификации
+# test_fusion_on_uses_enriched_sweetness - сценарий верификации
+# test_fusion_on_uses_grape_signal - сценарий верификации
+# test_fusion_weights_defaults - сценарий верификации
+# test_conditional_triggers_on_near_dup_pair - сценарий верификации
+# test_conditional_skips_when_top2_different_groups - сценарий верификации
+# test_conditional_skips_on_large_gap - сценарий верификации
+# test_conditional_keeps_order_for_non_near_dup - сценарий верификации
+# test_conditional_fuses_on_near_dup_pair - сценарий верификации
+# test_fusion_mode_parsing - сценарий верификации
+# test_default_fusion_mode_is_conditional - сценарий верификации
+# test_conditional_default_does_not_touch_non_near_dup - сценарий верификации
+# test_text_signal_disabled_by_default - сценарий верификации
+# test_text_signal_dishes_and_numbers_when_enabled - сценарий верификации
+# END_MODULE_MAP
 """Тесты текстового фьюжна C-013: overlay обогащения, нормализация цвета, гейт флага."""
 from __future__ import annotations
 
@@ -7,6 +39,31 @@ import pytest
 
 from services.matcher.app import textfusion
 from services.matcher.app.merge import rerank_candidates
+
+__all__ = [
+    "CATALOG",
+    "OVERLAY",
+    "CATALOG_GROUPS",
+    "OVERLAY_GROUP",
+    "test_color_normalize_canonical",
+    "test_load_enriched_missing_file_is_not_an_error",
+    "test_load_enriched_reads_overlay",
+    "test_enriched_record_does_not_overwrite_existing",
+    "test_fusion_off_keeps_previous_path",
+    "test_fusion_on_uses_enriched_sweetness",
+    "test_fusion_on_uses_grape_signal",
+    "test_fusion_weights_defaults",
+    "test_conditional_triggers_on_near_dup_pair",
+    "test_conditional_skips_when_top2_different_groups",
+    "test_conditional_skips_on_large_gap",
+    "test_conditional_keeps_order_for_non_near_dup",
+    "test_conditional_fuses_on_near_dup_pair",
+    "test_fusion_mode_parsing",
+    "test_default_fusion_mode_is_conditional",
+    "test_conditional_default_does_not_touch_non_near_dup",
+    "test_text_signal_disabled_by_default",
+    "test_text_signal_dishes_and_numbers_when_enabled",
+]
 
 
 CATALOG = {

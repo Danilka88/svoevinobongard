@@ -113,3 +113,14 @@ flywheel-eval: ## Оценить модель после переобучени�
 clean: ## Убрать кеши и артефакты сборки
 	rm -rf reports/*.jsonl reports/*.report.json apps/web/.output apps/web/.nuxt
 	find . -name __pycache__ -type d -prune -exec rm -rf {} + 2>/dev/null || true
+
+gate: ## Финальный quality/SLA-гейт: lint + pytest + eval (acc@1/p95) + живой контракт
+	PYTHONPATH=. $(PY) scripts/eval/final_report.py --check --min-acc1 0.67 --max-p95 3000 --out reports/final.json
+	$(MAKE) lint
+	$(MAKE) test
+	$(MAKE) eval
+	PYTHONPATH=. $(PY) scripts/eval/final_report.py --check --min-acc1 0.67 --max-p95 3000 --out reports/final.json
+	PYTHONPATH=. $(PY) scripts/eval/check_contract.py
+
+final-report: ## Итоговые метрики в reports/final.json
+	PYTHONPATH=. $(PY) scripts/eval/final_report.py --out reports/final.json

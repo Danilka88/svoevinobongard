@@ -41,6 +41,7 @@ if str(_ROOT) not in sys.path:
 
 from packages.common.catalog import CatalogStore, load_catalog  # noqa: E402
 from packages.common.images import flatten_alpha  # noqa: E402
+from packages.common.config import settings
 from packages.common.logging import log_marker  # noqa: E402
 from scripts.eval.augment import field_augment  # noqa: E402
 from services.normalize.app.detect import detect_label  # noqa: E402
@@ -242,6 +243,16 @@ def main(argv: list[str] | None = None) -> int:
         if f1 > best_temperature[2]:
             best_temperature = (temperature, threshold, f1)
 
+    # C-021: метрики действующих порогов — иначе нельзя доказать, что новые лучше
+    current_tau_f1 = _f1_at_threshold(top1_scores, correct, float(settings.score_tau))
+    current_delta_f1 = _f1_at_threshold(margins, correct, float(settings.margin_delta))
+    current_confidences = np.array(
+        [_softmax_top1(row, float(settings.confidence_temperature)) for row in top5_scores])
+    current_temp_f1 = _best_threshold(current_confidences, correct)[1]
+    current_weight_row = next(
+        (row for row in weight_table if abs(float(row["geo_weight"]) - float(settings.geo_weight)) < 1e-9),
+        None)
+
     report = {
         "encoder": meta.get("encoder"),
         "model": meta.get("model"),
@@ -263,6 +274,17 @@ def main(argv: list[str] | None = None) -> int:
             "confidence_separation_f1": best_temperature[2],
         },
         "temperature_grid": temperature_table,
+        "current_settings": {
+            "geo_weight": float(settings.geo_weight),
+            "accuracy@1": (current_weight_row or {}).get("accuracy@1"),
+            "accuracy@5": (current_weight_row or {}).get("accuracy@5"),
+            "score_tau": float(settings.score_tau),
+            "score_tau_separation_f1": current_tau_f1,
+            "margin_delta": float(settings.margin_delta),
+            "margin_delta_separation_f1": current_delta_f1,
+            "confidence_temperature": float(settings.confidence_temperature),
+            "confidence_separation_f1": current_temp_f1,
+        },
         "baselines": {
             "accuracy@1_at_best_weight": best["accuracy@1"],
             "accuracy@5_at_best_weight": best["accuracy@5"],

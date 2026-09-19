@@ -1,0 +1,99 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-021>
+    <IntentSummary>Перекалибровать пороги решений под текущий пайплайн, собрать машино-проверяемый
+      quality/SLA-гейт, зафиксировать итоговые метрики в отчёте и документации и добить разметку тестов.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>scripts/eval/calibrate.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/baseline_report.py</Value></MustExist>
+      <MustExist><Value>data/index/vectors.npy</Value></MustExist>
+      <MustExist><Value>Makefile</Value></MustExist>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-DEPLOY</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>reports/calibration.json</Value></MustExist>
+      <MustExist><Value>reports/final.json</Value></MustExist>
+      <MustExist><Value>docs/METRICS.md</Value></MustExist>
+      <MustExist><Value>tests/test_text_fusion.py</Value></MustExist>
+      <MustPassCommand><Command>make gate</Command></MustPassCommand>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-DEPLOY</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-EVAL/>
+      <M-DEPLOY/>
+      <V-M-EVAL/>
+      <V-M-DEPLOY/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>scripts/eval/</Path>
+      <Path>tests/</Path>
+      <Path>docs/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/</Path>
+      <File>Makefile</File>
+      <File>.env.example</File>
+      <File>packages/common/config.py</File>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Ре-калибровка порогов под текущий пайплайн</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Калибратор прогоняется на актуальном proxy (200 сэмплов, seed 42) и печатает новые tau, delta и temperature с их метрикой разделения.</Criterion>
+          <Criterion>GEO_WEIGHT перепроверяется отдельными прогонами baseline_report: сравниваются acc@1, acc@5 и p95.</Criterion>
+          <Criterion>Новые значения принимаются только при измеримом выигрыше; иначе остаются прежние и разница фиксируется честно.</Criterion>
+          <Criterion>Текстовые бонусы проверяются на влияние; если влияние в пределах шума, это фиксируется и значения не меняются.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/calibrate.py --samples 200 --seed 42 --normalize --out reports/calibration.json</Command>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --samples 200 --seed 42 --normalize --geo --geo-weight 2.5 --out reports/baseline.json</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Машино-проверяемый quality/SLA-гейт</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Цель make gate прогоняет lint, pytest, eval и проверку контракта организатора живым запросом.</Criterion>
+          <Criterion>Гейт падает, если acc@1 ниже baseline или p95 превышает 3000 мс.</Criterion>
+          <Criterion>final-assertions проекта включают эти команды.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>make gate</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Итоговые метрики и документация</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>reports/final.json собирает acc@1/@5, near-dup, latency, пороги и включённые режимы.</Criterion>
+          <Criterion>docs/METRICS.md описывает итоговые метрики, дефолты и ограничения; docs/LIMITATIONS.md обновлён.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/final_report.py --out reports/final.json</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Добивка разметки тестов</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>tests/test_text_fusion.py получает MODULE_CONTRACT и карту, warning heuristic-confidence исчезает.</Criterion>
+          <Criterion>Остальные тесты без карты также получают разметку, если это не ломает сбор.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path .</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-021>
+</GraceChangePlan>

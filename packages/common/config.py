@@ -145,14 +145,17 @@ class AppSettings:
     vector_backend: str = field(default_factory=lambda: _env("VECTOR_BACKEND", "numpy"))
     top_k: int = field(default_factory=lambda: _env_int("TOP_K", 30))
 
-    # decision thresholds (calibrated in C-003 on the synthetic proxy set, seed 42)
-    score_tau: float = field(default_factory=lambda: _env_float("SCORE_TAU", 0.7171))
-    margin_delta: float = field(default_factory=lambda: _env_float("MARGIN_DELTA", 0.0659))
+    # decision thresholds: перекалиброваны в C-021 на текущем пайплайне (200 сэмплов, seed 42).
+# score_tau и margin_delta дали +1.25 и +1.53 п.п. separation F1, geo_weight выведен на плато
+# (2.5 -&gt; 3.0: acc@1 0.670 -&gt; 0.675, acc@5 без изменений), confidence_temperature
+# оставлена 0.2: выигрыш 0.14 п.п. в пределах шума.
+    score_tau: float = field(default_factory=lambda: _env_float("SCORE_TAU", 0.796))
+    margin_delta: float = field(default_factory=lambda: _env_float("MARGIN_DELTA", 0.0769))
     confidence_temperature: float = field(
         default_factory=lambda: _env_float("CONFIDENCE_TEMPERATURE", 0.2))
 
     # geo-verification (C-003)
-    geo_weight: float = field(default_factory=lambda: _env_float("GEO_WEIGHT", 2.5))
+    geo_weight: float = field(default_factory=lambda: _env_float("GEO_WEIGHT", 3.0))
     geo_topk: int = field(default_factory=lambda: _env_int("GEO_TOPK", 10))
     geo_min_matches: int = field(default_factory=lambda: _env_int("GEO_MIN_MATCHES", 8))
     warmup_on_start: bool = field(

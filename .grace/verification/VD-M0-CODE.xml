@@ -85,6 +85,23 @@
         off acc@1 0.42 / acc@5 0.74; always 0.42 / 0.74; conditional 0.42 / 0.74; визуальный baseline acc@1 0.4333.
         Метрика acc@1 этих режимов не различает, потому что улучшения касаются рангов внутри группы, а не первого места:
         диагностические счётчики (always изменил 9 рангов, conditional 2, ухудшений 0) информативнее и приведены в V-M-MATCHER.</Evidence>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/calibrate.py --samples 200 --seed 42 --normalize --out reports/calibration.json</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/final_report.py --check --min-acc1 0.67 --max-p95 3000 --out reports/final.json</Command>
+      <Scenario id="S-EVAL-5">Финальный отчёт собирает acc@1/@5, near-dup, latency, пороги и включённые режимы в reports/final.json.</Scenario>
+      <Scenario id="S-EVAL-6">Проверка гейта падает, если acc@1 ниже зафиксированного порога или p95 превышает SLA.</Scenario>
+      <Evidence note="C021-recalibration">Перекалибровка под текущий пайплайн (200 сэмплов, seed 42, normalize, гео):
+        SCORE_TAU 0.7171 -&gt; 0.796 (separation F1 0.8779 -&gt; 0.8904, +1.25 п.п.);
+        MARGIN_DELTA 0.0659 -&gt; 0.0769 (0.8441 -&gt; 0.8594, +1.53 п.п.);
+        GEO_WEIGHT 2.5 -&gt; 3.0 (плато 3.0-4.0 даёт acc@1 0.675 против 0.670, acc@5 0.790 в обоих случаях,
+        при 6.0 деградация до 0.655 и near-dup 0.619);
+        CONFIDENCE_TEMPERATURE оставлена 0.2: альтернатива 0.15 даёт лишь +0.14 п.п. F1, это в пределах шума.
+        Для доказуемости в калибратор добавлен блок current_settings, который считает F1 действующих порогов
+        на тех же данных.</Evidence>
+      <Evidence note="C021-final-metrics">Итог full-frame пайплайна (reports/final.json, make eval):
+        acc@1 0.675 (было 0.670), acc@5 0.790, группа acc@1 0.680, near-dup acc@1 0.7143 при n=21,
+        self acc@1 0.985, latency p50 167-176 мс и p95 194 мс при SLA 3000 мс.
+        Текстовые бонусы не менялись: их влияние в пределах шума (C-014: 2 улучшения и 0 ухудшений;
+        C-020: смена OCR-движка дала ±1 запрос). Все цифры и дефолты сведены в docs/METRICS.md.</Evidence>
     </V-M-EVAL>
 
     <V-M-GATEWAY>

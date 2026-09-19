@@ -1,0 +1,29 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-021>
+    <Summary>Финальная калибровка порогов под текущий пайплайн, машино-проверяемый quality/SLA-гейт,
+      фиксация итоговых метрик в отчёте и документации и добивка разметки тестов.</Summary>
+    <Goals>Убедиться, что пороги решений соответствуют full-frame пайплайну с conditional-фьюжном и двумя
+      OCR-движками, а не старому crop-пайплайну C-003, и зафиксировать итоговое качество и SLA так, чтобы
+      их можно было перепроверить одной командой.</Goals>
+    <Constraints>Меняются только пороги и проверочные артефакты: ML-модели и логика по существу не трогаются.
+      Новые пороги принимаются только при измеримом выигрыше на актуальном proxy (200 сэмплов, seed 42);
+      иначе прежние значения сохраняются, а отрицательный результат фиксируется честно. Гейт обязан быть
+      машино-проверяемым и опираться на реальные команды. catalog*.jsonl не перезаписываются, services/*
+      не импортируют друг друга, только Apache-2.0/MIT, old/, my/ и материалы не изменяются.</Constraints>
+    <NonGoals>Изменение retrieval/VLM/OCR-логики. Обучение моделей. Новые фичи. Расширение каталога.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>Пороги SCORE_TAU, MARGIN_DELTA, GEO_WEIGHT, CONFIDENCE_TEMPERATURE перепроверены на актуальном proxy; решение обосновано цифрами.</Criterion>
+      <Criterion>В Makefile есть цель gate, которая прогоняет lint, pytest, eval с проверкой acc@1 и SLA p95 и живой контракт /v1/eval/predict.</Criterion>
+      <Criterion>reports/final.json и docs/METRICS.md содержат итоговые метрики, включённые по умолчанию режимы и честные ограничения.</Criterion>
+      <Criterion>tests/test_text_fusion.py получает MODULE_CONTRACT и карту, предупреждение heuristic-confidence больше не возникает.</Criterion>
+      <Criterion>Гейт прогнан реально, вывод приложен.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-EVAL/>
+      <M-DEPLOY/>
+      <M-COMMON/>
+      <M-DATA/>
+    </AffectedAreas>
+    <VerificationIntent>Обновить V-M-EVAL финальными метриками и V-M-DEPLOY гейтом gate.</VerificationIntent>
+  </C-021>
+</GraceChangeSpec>
