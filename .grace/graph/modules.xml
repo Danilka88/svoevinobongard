@@ -167,18 +167,21 @@
     <M-COMMON>
       <Name>Shared Common</Name>
       <Type>UTILITY</Type>
-      <Status>partial</Status>
+      <Status>built</Status>
       <Purpose>Общая инфраструктура сервисов и хост LLM Router (fallback chain, circuit breaker, cost breaker).</Purpose>
-      <Scope>Конфиг из env, логирование, HTTP-клиенты, image-хелперы; LLM Router с цепочкой
-        Ollama gemma4:12b → gemma4:e4b → OpenRouter → YandexGPT и локальным авто-fallback.</Scope>
+      <Scope>Конфиг из env, логирование, HTTP-клиенты, image-хелперы, read-only каталог; LLM Router
+        с цепочкой Ollama gemma4:12b → gemma4:e4b → OpenRouter → YandexGPT, per-provider circuit breaker,
+        cost-velocity breaker и локальным режимом (C-008).</Scope>
       <Source>packages/common/</Source>
       <Test>tests/common/</Test>
-      <Exports>LLMRouter, CircuitBreaker, CostVelocityBreaker</Exports>
+      <Exports>LLMRouter, get_router, build_adapter, OpenAICompatAdapter, ChatResult, EmbedResult,
+        CircuitBreaker, CostVelocityBreaker, RouterConfig, load_router_config, CatalogStore, load_catalog</Exports>
       <Depends>
         <M-CONTRACTS/>
       </Depends>
       <Verification>V-M-COMMON</Verification>
-      <Note>LLM Router — change C-008, до C-004.</Note>
+      <Note>LLM Router реализован в C-008; живой smoke против Ollama подтвержден (qwen3.5:9b, gemma4:12b,
+        qwen3-embedding:0.6b). Блокер для C-004 снят.</Note>
     </M-COMMON>
 
     <M-CONTRACTS>

@@ -1,0 +1,107 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-008>
+    <IntentSummary>Ввести единый LLM Router в packages/common: интерфейсы chat() и embed() с цепочкой
+      провайдеров, per-provider circuit breaker, cost-velocity breaker и локальным режимом.
+      Подмена провайдера и модели — только через providers.yaml и env. Блокирует C-004.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>packages/common/config.py</Value></MustExist>
+      <MustNotExist><Value>packages/common/llm/router.py</Value></MustNotExist>
+      <MustNotExist><Value>config/providers.yaml</Value></MustNotExist>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>packages/common/llm/router.py</Value></MustExist>
+      <MustExist><Value>packages/common/llm/adapters.py</Value></MustExist>
+      <MustExist><Value>packages/common/llm/circuit.py</Value></MustExist>
+      <MustExist><Value>config/providers.yaml</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-COMMON/>
+      <M-VLM/>
+      <V-M-COMMON/>
+      <DF-007/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/llm/</Path>
+      <Path>config/</Path>
+      <Path>scripts/llm/</Path>
+      <Path>tests/</Path>
+      <Path>.grace/verification/</Path>
+      <File>.env.example</File>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Конфиг провайдеров providers.yaml и OpenAI-совместимые адаптеры с подстановкой env</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>providers.yaml описывает ollama (12b и e4b), lmstudio, openrouter, yandex и custom с приоритетами и ролями.</Criterion>
+          <Criterion>Один OpenAICompatAdapter закрывает все OpenAI-совместимые провайдеры; провайдер-специфичные заголовки конфигурируемы.</Criterion>
+          <Criterion>Секреты читаются только из env через ${VAR}; в yaml ключей нет.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_llm_router.py -v -k config</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Ядро роутера: chat и embed, разрешение роли и обход цепочки провайдеров</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>chat() и embed() принимают роль и обходят цепочку провайдеров при отказе.</Criterion>
+          <Criterion>Явный model переопределяет модель первого провайдера цепочки, fallback сохраняется.</Criterion>
+          <Criterion>При исчерпании цепочки поднимается типизированная AllProvidersExhausted со списком причин.</Criterion>
+          <Criterion>В коде нет захардкоженных имён провайдеров или моделей.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_llm_router.py -v -k fallback or chat or embed</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Per-provider circuit breaker и cost-velocity breaker</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>После порога подряд ошибок провайдер помечается open и пропускается без вызова.</Criterion>
+          <Criterion>По истечении cooldown провайдер переходит в half-open и при успехе закрывается.</Criterion>
+          <Criterion>Расход токенов выше планового множителя за окно открывает cost breaker на 30 секунд.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_llm_router.py -v -k breaker</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Локальный режим и живой smoke-test против Ollama</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>LLM_LOCAL_ONLY=1 оставляет в цепочке только локальные провайдеры, облако не вызывается.</Criterion>
+          <Criterion>При недоступности провайдера вызов не падает, а переходит к следующему.</Criterion>
+          <Criterion>Живой smoke-test выполняет один короткий чат против Ollama и печатает реальный ответ.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/llm/smoke_live.py --role text_model</Command>
+        </Verification>
+      </T-004>
+
+      <T-005>
+        <Title>Verification: создать V-M-COMMON с доказательствами и пройти гейты</Title>
+        <DependsOn>T-003, T-004</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>V-M-COMMON содержит TestFiles, Command и сценарии fallback, breaker, local mode.</Criterion>
+          <Criterion>grace lint дает 0 errors и 0 warnings; pytest зеленый.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-005>
+    </ImplementationPlan>
+  </C-008>
+</GraceChangePlan>

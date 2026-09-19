@@ -1,20 +1,56 @@
 <GraceVerificationDocument graceVersion="4.0">
   <VD-SHARED>
-    <Purpose>Верификация общих библиотек: LLM Router (change C-008).</Purpose>
+    <Purpose>Верификация общих библиотек: LLM Router (change C-008) — единый chat()/embed() с цепочкой
+      провайдеров, брейкерами и локальным режимом.</Purpose>
 
     <V-M-COMMON>
       <Priority>high</Priority>
-      <Status>planned</Status>
-      <PlannedIn>C-008</PlannedIn>
-      <Description>LLM Router: fallback chain Ollama gemma4:12b → gemma4:e4b → OpenRouter → YandexGPT;
-        per-provider circuit breaker; cost-velocity breaker; локальный режим без сети; подмена провайдера
-        только через env.</Description>
-      <Scenario id="S-COMMON-1">Отказ провайдера номер один переводит вызов на следующий без правки кода.</Scenario>
-      <Scenario id="S-COMMON-2">После порога отказов провайдер пропускается (circuit open) и восстанавливается в half-open.</Scenario>
-      <Scenario id="S-COMMON-3">Превышение расхода токенов открывает cost-velocity breaker на 30 секунд.</Scenario>
-      <Scenario id="S-COMMON-4">При отсутствии сети работает локальная цепочка Ollama.</Scenario>
+      <Status>built</Status>
+      <Description>LLM Router: цепочка провайдеров Ollama gemma4:12b → gemma4:e4b → OpenRouter → YandexGPT,
+        per-provider circuit breaker, cost-velocity breaker, локальный режим, подмена провайдера только
+        через providers.yaml и env. Живой smoke против Ollama подтвержден.</Description>
+      <TestFiles>
+        <File>tests/test_llm_router.py</File>
+        <File>packages/common/llm/router.py</File>
+        <File>packages/common/llm/adapters.py</File>
+        <File>packages/common/llm/circuit.py</File>
+        <File>config/providers.yaml</File>
+      </TestFiles>
+      <Command>.venv/bin/python -m pytest tests/test_llm_router.py -v</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/llm/smoke_live.py --role text_model --max-tokens 256</Command>
+      <Command>.venv/bin/python -m pytest tests/ -q</Command>
+      <Scenario id="S-COMMON-1">Отказ первого провайдера переводит вызов на следующий без правки кода (stub-адаптеры, тест chat_falls_back_to_next_provider).</Scenario>
+      <Scenario id="S-COMMON-2">После порога повторяемых отказов провайдер пропускается без вызова; cooldown переводит брейкер в half-open, успех закрывает его.</Scenario>
+      <Scenario id="S-COMMON-3">Расход токенов выше планового множителя открывает cost-velocity breaker и блокирует вызовы до истечения open_s.</Scenario>
+      <Scenario id="S-COMMON-4">LLM_LOCAL_ONLY=1 оставляет в цепочке только локальных провайдеров; облачный провайдер без ключа выпадает из цепочки.</Scenario>
+      <Scenario id="S-COMMON-5">Исчерпание цепочки поднимает AllProvidersExhausted со списком причин; неизвестная роль дает RoutingError.</Scenario>
+      <Scenario id="S-COMMON-6">Секреты подставляются из env через ${VAR} и ${VAR:-default}; в providers.yaml ключей нет.</Scenario>
+      <Scenario id="S-COMMON-7">Явная модель переопределяет первую ступень цепочки и сохраняет fallback.</Scenario>
+      <Marker>[M-COMMON][LLM][ROUTER_READY]</Marker>
+      <Marker>[M-COMMON][LLM][FALLBACK]</Marker>
+      <Marker>[M-COMMON][LLM][CB_OPEN]</Marker>
       <Marker>[M-COMMON][LLM][CB_SKIP]</Marker>
+      <Marker>[M-COMMON][LLM][CB_HALF_OPEN]</Marker>
       <Marker>[M-COMMON][LLM][COST_BREAK]</Marker>
+      <Marker>[M-COMMON][LLM][ALL_FAILED]</Marker>
+      <Evidence note="stub-tests">12 тестов без сети: fallback chain, model override, circuit open и skip,
+        half-open recovery, cost-breaker (open и блокировка роутера), local-only цепочка, RoutingError,
+        env-подстановка, embed по цепочке. Итог: 12 passed.</Evidence>
+      <Evidence note="live-ollama">Живой smoke: text_model → ollama/qwen3.5:9b, finish=stop, reply «Париж»,
+        prompt 19 / completion 189 / total 208 токенов, latency 12136 мс;
+        embed → ollama/qwen3-embedding:0.6b, 2 вектора x 1024, latency 85.7 мс;
+        vision_model → ollama/gemma4:12b, finish=stop, reply «Четыре», latency 17837 мс.</Evidence>
+      <Evidence note="reasoning-models">Честное наблюдение: локальные модели reasoning-стиля (qwen3.5:9b, gemma4:12b)
+        при малом max_tokens отдают finish_reason=length и пустой content — бюджет уходит во внутренние
+        рассуждения отдельным полем. Поэтому ChatResult несет finish_reason, а smoke-скрипт предупреждает
+        о пустом ответе. Для C-004 это значит: бюджет токенов под извлечение полей этикетки нужно брать с запасом.</Evidence>
+      <Evidence note="structured-output">Проверено для C-004: Ollama с gemma4:12b поддерживает
+        response_format={"type": "json_object"} — ответ был валидным JSON
+        {"winery": "Кокур", "year": 2025} с finish_reason=stop. Значит constrained JSON можно
+        запрашивать через адаптер без обходных путей.</Evidence>
+      <Evidence note="providers">Конфигурация config/providers.yaml: ollama (local), lmstudio (local),
+        openrouter (облако, ключ из env), yandex (облако), custom (выключен). Роли: vision_model,
+        text_model, embedding_model. Лимиты: порог 3 отказа, cooldown 30 с, окно 60 с, множитель 10, open 30 с.</Evidence>
     </V-M-COMMON>
   </VD-SHARED>
 </GraceVerificationDocument>

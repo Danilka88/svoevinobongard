@@ -1,0 +1,74 @@
+# ------------------------------------------------------------------
+# LLM providers and routing for the Svoe Vino scanner.
+# Secrets come from the environment ONLY (${VAR} / ${VAR:-default}).
+# Change provider or model here or via env — never in code.
+# ------------------------------------------------------------------
+version: 1
+
+providers:
+  ollama:
+    type: openai-compat
+    base_url: ${LLM_OLLAMA_BASE_URL:-http://127.0.0.1:11434/v1}
+    api_key: ${LLM_OLLAMA_API_KEY:-ollama}
+    local: true
+    timeout_s: 180
+
+  lmstudio:
+    type: openai-compat
+    base_url: ${LLM_LMSTUDIO_BASE_URL:-http://127.0.0.1:1234/v1}
+    api_key: ${LLM_LMSTUDIO_API_KEY:-lmstudio}
+    local: true
+    timeout_s: 180
+
+  openrouter:
+    type: openai-compat
+    base_url: ${LLM_OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+    api_key: ${OPENROUTER_API_KEY}
+    local: false
+    timeout_s: 60
+    headers:
+      HTTP-Referer: ${OPENROUTER_REFERER:-http://localhost}
+      X-Title: svoe-vino-scanner
+
+  yandex:
+    type: openai-compat
+    base_url: ${LLM_YANDEX_BASE_URL:-https://llm.api.cloud.yandex.net/foundationModels/v1}
+    api_key: ${YANDEX_API_KEY}
+    local: false
+    timeout_s: 60
+    headers:
+      x-folder-id: ${YANDEX_FOLDER_ID}
+
+  custom:
+    type: openai-compat
+    base_url: ${CUSTOM_LLM_BASE_URL}
+    api_key: ${CUSTOM_LLM_API_KEY}
+    local: false
+    timeout_s: 60
+    enabled: false
+
+# Chain order matters: the first provider is the primary, the rest are fallbacks.
+routing:
+  vision_model:
+    - {provider: ollama, model: gemma4:12b}
+    - {provider: ollama, model: gemma4:e4b}
+    - {provider: openrouter, model: google/gemma-4-27b-it}
+    - {provider: yandex, model: yandexgpt-pro}
+
+  text_model:
+    - {provider: ollama, model: qwen3.5:9b}
+    - {provider: ollama, model: qwen3.5:4b}
+    - {provider: openrouter, model: qwen/qwen3.5-9b}
+    - {provider: yandex, model: yandexgpt-pro}
+
+  embedding_model:
+    - {provider: ollama, model: qwen3-embedding:0.6b}
+    - {provider: openrouter, model: qwen/qwen3-embedding-0.6b}
+
+limits:
+  circuit_failure_threshold: 3   # consecutive retryable failures before open
+  circuit_cooldown_s: 30         # open -> half-open cooldown
+  cost_window_s: 60              # token accounting window
+  cost_multiplier: 10            # plan * multiplier opens the breaker
+  cost_open_s: 30                # how long the cost breaker stays open
+  cost_plan_tokens_per_min: 20000

@@ -1,4 +1,4 @@
-<GraceChangeSpec graceVersion="4.0" status="approved">
+<GraceChangeSpec graceVersion="4.0" status="applied">
   <C-008>
     <Summary>LLM Router: единый интерфейс chat и embed с цепочкой провайдеров
       Ollama gemma4:12b → gemma4:e4b → OpenRouter → YandexGPT, per-provider circuit breaker,
