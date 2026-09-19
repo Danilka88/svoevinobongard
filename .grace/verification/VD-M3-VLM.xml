@@ -60,6 +60,24 @@
       <Evidence note="26b-verdict">Вердикт: 26b-mlx точнее 12b и при этом НЕ медленнее (p50 22.4 с против 34.1 с), поэтому для
         ОФЛАЙН-обогащения он предпочтителен: 228 целевых slug ≈ 1.4 ч против ≈ 2.2 ч у 12b. Для онлайна непригоден ни тот, ни другой:
         22 с против SLA 3 с и жёсткого лимита скрипта 10 с. Требования: 18 ГБ на диске и запас RAM (M4/32GB).</Evidence>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/kb/enrich_vlm.py run --resume --timeout 300 --time-budget-min 115 --checkpoint data/catalog/catalog_vlm_enriched.jsonl</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/kb/enrich_vlm.py merge --checkpoint data/catalog/catalog_vlm_enriched.jsonl --merged-out data/catalog/catalog_enriched_v2.jsonl --report reports/vlm_enrich.json</Command>
+      <Scenario id="S-VLM-7">Прогон последовательный (concurrency=1), пишет чекпоинт после каждого slug и продолжается с места прерывания по --resume.</Scenario>
+      <Scenario id="S-VLM-8">Сбой отдельного slug логируется и не прерывает прогон; catalog.jsonl побайтово не изменён.</Scenario>
+      <Scenario id="S-VLM-9">При слиянии приоритет у 26b для year/sweetness, источник каждого поля сохраняется в sources.</Scenario>
+      <Evidence note="offline-enrich-26b">C-016: 228 целевых near-dup slug обработаны последовательно за ~50 минут (p50 20.0 с, ETA сначала 51 мин),
+        time-box 115 минут не исчерпан. Чекпоинт data/catalog/catalog_vlm_enriched.jsonl: 228 записей, из них 206 с заполняемыми полями.
+        22 записи помечены ok=false, но это НЕ отказы модели: 26b прочитал винодельню и название (ESSE ROSE, FANAGORIA PAR AMOUR,
+        TÊTE DE CHEVAL Blanc de Blancs, SIKORY КРАСНОСТОП), просто не дал year/sweetness/grape. Исходный catalog.jsonl не изменён
+        (проверка сравнением байт до и после — вернула True).</Evidence>
+      <Evidence note="enrich-coverage">Объединённое обогащение (data/catalog/catalog_enriched_v2.jsonl): 228 slug, 206 с полями;
+        year от 26b у 137 (OCR C-013 не дал ни одного нового года — 0), sweetness от 26b у 102 (OCR 1), grape у 135;
+        конфликтов между источниками 6, во всех приоритет у 26b. Против C-013 (69 годов, 25 сладостей) покрытие выросло
+        вдвое по году и вчетверо по сладости. Примеры реальных ответов: «Brut d'Or» vintage=2021 grape=Blanc de Noirs;
+        «РИСЛИНГ» vintage=2023 sweetness='ВИНО СУХОЕ БЕЛОЕ'; «Amelia» vintage=2022 winery=Winemafia.</Evidence>
+      <Evidence note="english-sweetness-gap">Найдена и закрыта дыра: 26b часто отвечает латиницей (Brut, Dry, Semi-Sweet),
+        и русский словарь сладости такие ответы не ловил — добавлены англоязычные термины в parse_fields
+        (Brut-&gt;брют, Dry-&gt;сухое, Semi-Sweet-&gt;полусладкое, Extra Brut-&gt;экстра брют), покрыто тестом.</Evidence>
     </V-M-VLM>
 
     <V-M-MATCHER>

@@ -226,6 +226,14 @@ def roman_year(text: str) -> str:
     return ""
 
 
+# VLM и зарубежные этикетки часто отвечают по-английски; без этого словаря сладость теряется.
+_SWEETNESS_EN = (
+    ("extra brut", "экстра брют"), ("brut nature", "брют натюр"), ("brut", "брют"),
+    ("semi-sweet", "полусладкое"), ("semi-dry", "полусухое"), ("off-dry", "полусухое"),
+    ("dry", "сухое"), ("sweet", "сладкое"),
+)
+
+
 def parse_fields(lines: list[str]) -> dict:
     """Извлекает год и сладость из строк OCR.
 
@@ -256,6 +264,11 @@ def parse_fields(lines: list[str]) -> dict:
                 break
         if sweetness:
             break
+    if not sweetness:
+        for term, canonical in _SWEETNESS_EN:
+            if term in folded:
+                sweetness = canonical
+                break
     return {"vintage": vintage, "sweetness": sweetness, "years_found": years}
 
 

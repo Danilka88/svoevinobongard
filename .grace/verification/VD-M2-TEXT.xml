@@ -52,6 +52,22 @@
       <Evidence note="why-conditional-is-safe">Условный режим включается только при совпадении near-dup ключа top-1 и top-2 и разрыве
         скоров не больше TEXT_FUSION_TRIGGER_MAX_GAP (0.05). В C-014 на 118 не-триггерных запросах он не изменил ни одного ранга,
         тогда как безусловный режим переставил 9 рангов из 150, в том числе вне near-dup. Поэтому дефолт — conditional, а не always.</Evidence>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/text_fusion_eval.py --samples 150 --out reports/text_fusion_baseline.json --enriched data/catalog/catalog_enriched.jsonl</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/text_fusion_eval.py --samples 150 --out reports/text_fusion_enriched.json --enriched data/catalog/catalog_enriched_v2.jsonl</Command>
+      <Scenario id="S-TEXT-8">A/B сравнивает baseline и enriched на одном наборе 150 pseudo-запросов (seed 42) и одном визуальном top-K; различается только путь к обогащению.</Scenario>
+      <Scenario id="S-TEXT-9">Режим off обязан быть идентичен в обоих прогонах: он не читает обогащение (проверка корректности стенда).</Scenario>
+      <Evidence note="pre-registered-ab">C-016, пред-регистрированный критерий «дизамбигуация растёт, ухудшений ноль».
+        Baseline (OCR C-013) против enriched (OCR + 26b), режим off: 0.3933/0.7067 в обоих прогонах и 0 изменённых рангов — стенд корректен.
+        conditional: acc@1 0.3933 -&gt; 0.3933, acc@5 0.7067 -&gt; 0.7067, изменённых рангов 0.
+        always: acc@1 0.4067 -&gt; 0.4133, acc@5 0.7067 -&gt; 0.7133, +1 ранг (derbent-vino-di-kaspiko-shar: 6 -&gt; 1), ухудшений 0.
+        КРИТЕРИЙ ДЛЯ conditional НЕ ВЫПОЛНЕН: роста нет (ухудшений тоже нет).</Evidence>
+      <Evidence note="bottleneck-moved-to-query">Причина найдена измерением, а не догадкой: обогащение обогащает КАТАЛОГ,
+        а текстовый сигнал требует обе стороны. Из 150 синтетических полевых запросов год есть в OCR-тексте лишь у 6,
+        слово сладости — ни у одного (0/150); при этом триггер сработал 32 раза и НИ В ОДНОМ из этих 32 случаев года в запросе
+        не было. Год от 26b при этом получили 94 из 150 целевых slug. Вывод: узкое место сместилось со стороны каталога
+        на сторону запроса — нужен текстовый сигнал с самого полевого фото (OCR цифр на cyrillic-rec или VLM онлайн,
+        что упирается в 22 с против SLA 3 с). Дефолт обогащения не переключён на v2: критерий не выполнен, файл оставлен
+        как вход для следующей итерации.</Evidence>
     </V-M-TEXT>
   </VD-M2-TEXT>
 </GraceVerificationDocument>

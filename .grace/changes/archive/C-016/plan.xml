@@ -1,0 +1,89 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-016>
+    <IntentSummary>Прогнать gemma4:26b по 228 целевым near-dup slug последовательно с чекпоинтом и
+      возобновлением, объединить VLM-поля с OCR-обогащением C-013 (приоритет 26b для year/sweetness),
+      и пред-регистрированно замерить дизамбигуацию: рост при нуле ухудшений.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>data/catalog/catalog.jsonl</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog_enriched.jsonl</Value></MustExist>
+      <MustExist><Value>scripts/eval/text_fusion_eval.py</Value></MustExist>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustVerify><Module>M-TEXT</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>scripts/kb/enrich_vlm.py</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog_vlm_enriched.jsonl</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog_enriched_v2.jsonl</Value></MustExist>
+      <MustExist><Value>reports/enrich_ab.json</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-VLM</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-VLM/>
+      <M-TEXT/>
+      <M-CATALOG/>
+      <M-EVAL/>
+      <V-M-VLM/>
+      <V-M-TEXT/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>scripts/kb/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>packages/common/ocr.py</Path>
+      <Path>tests/test_ocr.py</Path>
+      <Path>data/catalog/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Скрипт офлайн-обогащения 26b с чекпоинтом, resume и time-box</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Результат пишется по одному slug в JSONL с flush, поэтому прерывание не теряет прогресс.</Criterion>
+          <Criterion>--resume пропускает уже обработанные slug; --limit ограничивает прогон для smoke-теста.</Criterion>
+          <Criterion>Time-box 115 минут: при перерасходе прогон останавливается на чекпоинте, а не начинается заново.</Criterion>
+          <Criterion>catalog.jsonl проверяется сравнением байт до и после (как в C-013).</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/kb/enrich_vlm.py run --limit 2 --timeout 300 --checkpoint data/catalog/_smoke.jsonl</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Прогон 26b по 228 slug и объединение с OCR-обогащением</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Обработаны все 228 целевых slug либо зафиксировано, сколько успело в пределах time-box.</Criterion>
+          <Criterion>Объединённый файл сохраняет источник каждого поля и отдаёт приоритет 26b при конфликте.</Criterion>
+          <Criterion>Сладость от 26b в латинице (Brut, Dry) распознаётся: добавлены англоязычные термины в parse_fields.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/kb/enrich_vlm.py run --resume --timeout 300 --time-budget-min 115 --checkpoint data/catalog/catalog_vlm_enriched.jsonl</Command>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/kb/enrich_vlm.py merge --ocr-enriched data/catalog/catalog_enriched.jsonl --checkpoint data/catalog/catalog_vlm_enriched.jsonl --merged-out data/catalog/catalog_enriched_v2.jsonl --report reports/vlm_enrich.json</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Пред-регистрированный замер дизамбигуации: baseline против enriched</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Оба прогона идут на одном наборе 150 pseudo-запросов (seed 42) и одном визуальном top-K; различается только путь к обогащению.</Criterion>
+          <Criterion>Отчёт печатает acc@1/@5, дизамбигуацию near-dup и число улучшенных/ухудшенных рангов между прогонами.</Criterion>
+          <Criterion>Успех — рост дизамбигуации при нуле ухудшений; при невыполнении результат фиксируется честно.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/text_fusion_eval.py --samples 150 --out reports/text_fusion_baseline.json --enriched data/catalog/catalog_enriched.jsonl</Command>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/text_fusion_eval.py --samples 150 --out reports/text_fusion_enriched.json --enriched data/catalog/catalog_enriched_v2.jsonl</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-016>
+</GraceChangePlan>

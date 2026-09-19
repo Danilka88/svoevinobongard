@@ -1,6 +1,6 @@
 # START_MODULE_CONTRACT
 # PURPOSE: Верификация OCR-сигнала: парсинг полей, выбор движка, graceful fallback и стабильность на синтетике
-# SCOPE: test_parse_fields_year, test_parse_fields_sweetness_with_lookalikes, test_parse_fields_empty, test_resolve_engine_available, test_run_ocr_on_rendered_text, test_run_ocr_degrades_without_engine, test_ocr_result_as_fields, test_roman_to_int_basic, test_roman_to_int_rejects_garbage, test_roman_year_accepts_label_years, test_roman_year_dirty_variants, test_roman_year_range_guard, test_parse_fields_prefers_arabic_and_adds_roman, test_parse_fields_roman_does_not_break_empty
+# SCOPE: test_parse_fields_year, test_parse_fields_sweetness_with_lookalikes, test_parse_fields_empty, test_resolve_engine_available, test_run_ocr_on_rendered_text, test_run_ocr_degrades_without_engine, test_ocr_result_as_fields, test_roman_to_int_basic, test_roman_to_int_rejects_garbage, test_roman_year_accepts_label_years, test_roman_year_dirty_variants, test_roman_year_range_guard, test_parse_fields_prefers_arabic_and_adds_roman, test_parse_fields_roman_does_not_break_empty, test_parse_fields_english_sweetness
 # DEPENDS: packages.common.ocr, numpy, cv2
 # LINKS: M-OCR
 # ROLE: TEST
@@ -21,6 +21,7 @@
 # test_roman_year_range_guard - годы вне диапазона каталога не принимаются
 # test_parse_fields_prefers_arabic_and_adds_roman - арабский год приоритетнее, римский добавляется
 # test_parse_fields_roman_does_not_break_empty - без года поле остаётся пустым
+# test_parse_fields_english_sweetness - англоязычные термины сладости распознаются
 # END_MODULE_MAP
 """V-M-OCR: OCR-сигнал."""
 from __future__ import annotations
@@ -159,3 +160,13 @@ def test_parse_fields_prefers_arabic_and_adds_roman() -> None:
 def test_parse_fields_roman_does_not_break_empty() -> None:
     """Без года ни арабского, ни римского поле остаётся пустым."""
     assert parse_fields(["ПИНО НУАР", "РОЗОВОЕ БРЮТ"])["vintage"] == ""
+
+
+def test_parse_fields_english_sweetness() -> None:
+    """Англоязычные термины сладости распознаются (VLM и зарубежные этикетки)."""
+    assert parse_fields(["Brut d'Or", "Blanc de Noirs"])["sweetness"] == "брют"
+    assert parse_fields(["Dry White Wine"])["sweetness"] == "сухое"
+    assert parse_fields(["Semi-Sweet Red"])["sweetness"] == "полусладкое"
+    assert parse_fields(["Extra Brut Reserve"])["sweetness"] == "экстра брют"
+    # русский словарь остаётся приоритетным
+    assert parse_fields(["сухое"])["sweetness"] == "сухое"

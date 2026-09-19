@@ -81,6 +81,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--out", default=str(_ROOT / "reports" / "text_fusion.json"))
     parser.add_argument("--uploads", default=str(_DEFAULT_UPLOADS))
+    parser.add_argument("--enriched", default="",
+                        help="overlay обогащения; по умолчанию из настроек")
     return parser.parse_args(argv)
 
 
@@ -115,7 +117,9 @@ def main(argv: list[str] | None = None) -> int:
     modes = [mode.strip() for mode in args.modes.split(",") if mode.strip()]
     catalog = load_catalog(_ROOT / settings.catalog_jsonl)
     store = CatalogStore(catalog)
-    enriched = load_enriched_catalog(_ROOT / settings.catalog_enriched_jsonl)
+    enriched_path = Path(args.enriched) if args.enriched else (_ROOT / settings.catalog_enriched_jsonl)
+    enriched = load_enriched_catalog(enriched_path)
+    print(f"обогащение: {enriched_path.name} ({len(enriched)} slug)")
     uploads = Path(args.uploads)
     meta = json.loads((_ROOT / settings.index_dir / "meta.json").read_text(encoding="utf-8"))
     # энкодер обязан совпадать с тем, которым построен индекс (иначе 768 против 1152)
@@ -234,6 +238,7 @@ def main(argv: list[str] | None = None) -> int:
           f"из них улучшил ранг {len(improved)}, ухудшил {len(hurt)}")
     print(f"OCR p50 {report['latency_ms']['ocr_p50']} мс")
     print(f"домен: {report['domain_warning']}")
+    print(f"enriched: {enriched_path.name}")
     print(f"report: {out}")
     return 0
 
