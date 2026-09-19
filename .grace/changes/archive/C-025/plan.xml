@@ -1,0 +1,111 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-025>
+    <IntentSummary>Скопировать реальные фото в data/, разметить их локально (26b + OCR fusion), построить
+      слабую GT по идентичности из имён файлов, прогнать систему и получить первые честные полевые метрики.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>data/index/meta.json</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog.jsonl</Value></MustExist>
+      <MustExist><Value>data/index/meta.json</Value></MustExist>
+      <MustExist><Value>scripts/eval/baseline_report.py</Value></MustExist>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-DATA</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>data/samples/real_field/manifest.tsv</Value></MustExist>
+      <MustExist><Value>reports/real_field_labels.jsonl</Value></MustExist>
+      <MustExist><Value>reports/real_field.json</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-DATA</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-EVAL/>
+      <M-RETRIEVAL/>
+      <M-DATA/>
+      <V-M-EVAL/>
+      <V-M-DATA/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>scripts/eval/</Path>
+      <Path>data/samples/real_field/</Path>
+      <Path>reports/</Path>
+      <Path>docs/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Ингест реальных фото и фиксация провенанса</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>21 фото скопированы в data/samples/real_field (gitignored), исходный my/real_photo не изменён.</Criterion>
+          <Criterion>manifest.tsv содержит имя файла и текст этикетки из имени (слабая GT).</Criterion>
+          <Criterion>Провенанс зафиксирован как user-provided store photos, переданные владельцем для тестирования.</Criterion>
+          <Criterion>Фото не попадают в галерею и не используются для обучения — только тест.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>ls data/samples/real_field | wc -l</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Псевдо-разметка 26b и OCR fusion</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Для каждого фото сохраняются поля winery/name/year/sweetness/grape/region от 26b (full-frame letterbox + P&amp;S, ctx 8192).</Criterion>
+          <Criterion>Параллельно сохраняется текст OCR-движка fusion.</Criterion>
+          <Criterion>Кэш JSONL с возобновлением и time-box; при перерасходе фиксируется, сколько обработано.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/real_field_label.py --limit 1 --out reports/real_field_labels.jsonl</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Слабая GT по идентичности и сопоставление с каталогом</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Из имени файла извлекаются винодельня, название, год и тип сладости.</Criterion>
+          <Criterion>Fuzzy-поиск по каталогу даёт множество правдоподобных slug-кандидатов (истинная идентичность).</Criterion>
+          <Criterion>Явно не-российские позиции помечаются как вне каталога и ожидают not_found или близкие аналоги.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/real_field_eval.py --prepare --out reports/real_field.json</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Прогон системы на реальных фото</Title>
+        <DependsOn>T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Сервисы поднимаются с ожиданием готовности retrieval и ретраями 503.</Criterion>
+          <Criterion>POST /v1/scan вызывается для каждого фото; сохраняются top-1, top-5, confidence, path и latency.</Criterion>
+          <Criterion>В тот же прогон включаются два официальных фото для сравнения.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/real_field_eval.py --scan --out reports/real_field.json</Command>
+        </Verification>
+      </T-004>
+
+      <T-005>
+        <Title>Метрики, диагностика промахов, реранк 26b и перекалибровка</Title>
+        <DependsOn>T-004</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Считаются identity-match@1 и @5, доля корректного not-found для не-российских, near-dup и latency p50/p95.</Criterion>
+          <Criterion>Таблица промахов описывает по каждому: детекция этикетки, наличие истинной идентичности в top-5, что прочитали 26b и OCR, признак near-dup.</Criterion>
+          <Criterion>Офлайн-реранк по полям 26b измерен; прирост identity@1 зафиксирован или отклонён.</Criterion>
+          <Criterion>Пороги перекалиброваны на реальных фото и сравнены с прежними; дефолты меняются только при выигрыше.</Criterion>
+          <Criterion>Реальные фото зафиксированы в документации как новый честный holdout вместо синтетического OOD.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/real_field_eval.py --report --out reports/real_field.json</Command>
+        </Verification>
+      </T-005>
+    </ImplementationPlan>
+  </C-025>
+</GraceChangePlan>
