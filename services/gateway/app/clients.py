@@ -102,3 +102,18 @@ class ServiceClients:
         if self._client is not None:
             await self._client.aclose()
             self._client = None
+
+    async def warmup(self) -> dict | None:
+        """Прогревает retrieval (POST /warmup), чтобы первый запрос не платил за загрузку модели."""
+        try:
+            response = await self.client.post(f"{self.retrieval_url}/warmup", timeout=self.timeout)
+        except httpx.HTTPError as error:
+            log_marker("M-GATEWAY", "warmup", "CONN_ERROR", error=type(error).__name__)
+            return None
+        if response.status_code != 200:
+            log_marker("M-GATEWAY", "warmup", "BAD_STATUS", status=response.status_code)
+            return None
+        try:
+            return response.json()
+        except ValueError:
+            return None

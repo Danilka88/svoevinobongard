@@ -35,20 +35,28 @@
       <TestFiles>
         <File>tests/test_eval_harness.py</File>
         <File>scripts/eval/baseline_report.py</File>
+        <File>scripts/eval/calibrate.py</File>
       </TestFiles>
       <Command>.venv/bin/python -m pytest tests/test_eval_harness.py -v</Command>
       <Command>python3 -m py_compile scripts/eval/evaluate.py</Command>
-      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --index data/index --samples 200 --seed 42 --normalize --out reports/baseline-dinov2-normalized.json</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/calibrate.py --index data/index --samples 200 --seed 42 --normalize --out reports/calibration.json</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --index data/index --samples 200 --seed 42 --normalize --geo --out reports/baseline-c003-after.json</Command>
       <Scenario id="S-EVAL-1">Модуль импортируется только из stdlib.</Scenario>
       <Scenario id="S-EVAL-2">Реальный multipart-POST против stub-сервера: predicted_slug и top5 записаны.</Scenario>
       <Scenario id="S-EVAL-3">Метрики accuracy@1/@5 и percentile монотонны.</Scenario>
-      <Scenario id="S-EVAL-4">Полевой прогон 31 изображение: processed 31, errors 0, null_slug 0, p95 152.1 ms (C-002) и p95 238.9 ms (C-009).</Scenario>
+      <Scenario id="S-EVAL-4">Полевой прогон 31 изображение: processed 31, errors 0, null_slug 0, p95 152.1 мс (C-002), 238.9 мс (C-009), 357.7 мс (C-003).</Scenario>
+      <Scenario id="S-EVAL-5">Групповые метрики: f1_macro_group по группам near-duplicates вместо singleton-macro-F1; отдельный отчёт по near-duplicate подмножеству.</Scenario>
+      <Scenario id="S-EVAL-6">Калибратор подбирает GEO_WEIGHT по сетке и пороги SCORE_TAU, MARGIN_DELTA, CONFIDENCE_TEMPERATURE по F1 разделения верных и неверных ответов.</Scenario>
       <Marker>[M-EVAL][POST_IMAGE][MULTIPART]</Marker>
       <Marker>[M-EVAL][METRICS][F1]</Marker>
       <Marker>[M-EVAL][MAIN][REPORT]</Marker>
       <Marker>[M-EVAL][baseline][START]</Marker>
       <Marker>[M-EVAL][baseline][DONE]</Marker>
+      <Marker>[M-EVAL][calibrate][DONE]</Marker>
       <Marker>[M-EVAL][synthetic_pairs][DONE]</Marker>
+      <Evidence note="c003">Проблема singleton-macro-F1 исправлена: отчёт содержит f1_macro_group,
+        group_accuracy@1 и отдельный блок near_duplicate (21 сэмпл, acc@1 0.7143). Замер C-003:
+        acc@1 0.685, acc@5 0.790, f1_macro_singleton 0.5387, f1_macro_group 0.5439.</Evidence>
       <Evidence note="c009">C-009: baseline_report получил поддержку --only-indexed (честное сравнение энкодеров)
         и применения проекционной головы к запросу; synthetic_pairs построил 2100 эмбеддингов,
         700 пар и 5486 hard negatives за 355 с на MPS.</Evidence>
@@ -70,11 +78,20 @@
       <Scenario id="S-GATEWAY-3">POST /v1/scan → 200, path retrieval, top5 и card из каталога.</Scenario>
       <Scenario id="S-GATEWAY-4">POST без файла → 422; недоступный retrieval → 503 с detail.</Scenario>
       <Scenario id="S-GATEWAY-5">При недоступном normalize пайплайн деградирует к исходному изображению.</Scenario>
+      <Scenario id="S-GATEWAY-6">confidence калиброван: softmax по top-K с температурой из конфigа, а не сырой косинус; margin — отрыв top1 от top2; confident отражает правило SCORE_TAU и MARGIN_DELTA.</Scenario>
+      <Scenario id="S-GATEWAY-7">POST /v1/warmup прогревает retrieval; при недоступном retrieval возвращает 503 с detail.</Scenario>
       <Marker>[M-GATEWAY][health][OK]</Marker>
       <Marker>[M-GATEWAY][run_scan][DECISION]</Marker>
+      <Marker>[M-GATEWAY][warmup][OK]</Marker>
       <Marker>[M-GATEWAY][post_image][CONN_ERROR]</Marker>
-      <Evidence note="e2e">Живой прогон: /v1/eval/predict вернул {"slug":"vinodelnya-begildeeva-kaberne-sovinon-merlo-krasnoe-suhoe-14"};
-        /v1/scan вернул slug, confidence 0.665, margin 0.0086, latency_ms 655.8, карточку (Покровская, Нижняя Волга).</Evidence>
+      <Evidence note="c003">Калиброванные значения зафиксированы в .env.example: SCORE_TAU 0.7171,
+        MARGIN_DELTA 0.0659, CONFIDENCE_TEMPERATURE 0.2. Живой ответ /v1/scan после C-003:
+        slug nebo-rossii-glera, confidence 0.2567 (softmax), margin 0.0415, confident false — правило
+        честно не считает ответ уверенным при данном margin.</Evidence>
+      <Evidence note="warmup-e2e">POST /v1/warmup вернул {"status":"ok","gateway":"ready","retrieval":{...,
+        "head":"yes","geo":"yes","latency_ms":115.1}}. Первый /v1/scan после старта 955.6 мс.</Evidence>
+      <Evidence note="e2e">Живой прогон: /v1/eval/predict вернул плоский {"slug": ...};
+        полевой прогон 31 фото: 0 ошибок, 0 пустых slug, p50 234.8 / p95 357.7 мс.</Evidence>
     </V-M-GATEWAY>
   </VD-M0-CODE>
 </GraceVerificationDocument>

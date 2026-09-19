@@ -1,4 +1,4 @@
-<GraceChangeSpec graceVersion="4.0" status="approved">
+<GraceChangeSpec graceVersion="4.0" status="applied">
   <C-003>
     <Summary>M2 — геометрическая верификация Top-K (SuperPoint + LightGlue + RANSAC), правило решения
       по score и margin, публикация confidence и f1 в ответе, контроль SLA.</Summary>

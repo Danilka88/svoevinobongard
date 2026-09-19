@@ -1,12 +1,13 @@
 # START_MODULE_CONTRACT
 # PURPOSE: Оркестрация пайплайна normalize → retrieval и сборка ScanResponse для /v1/scan и /v1/eval/predict
-# SCOPE: run_scan, build_card
+# SCOPE: calibrated_confidence, run_scan, build_card
 # DEPENDS: httpx, packages.common.catalog, packages.contracts.schemas, services.gateway.app.clients
 # LINKS: M-GATEWAY
 # ROLE: RUNTIME
 # MAP_MODE: EXPORTS
 # END_MODULE_CONTRACT
 # START_MODULE_MAP
+# calibrated_confidence - softmax-уверенность по top-K с калиброванной температурой
 # run_scan - полный проход пайплайна и сборка ScanResponse
 # build_card - карточка вина из метаданных каталога
 # END_MODULE_MAP
@@ -22,13 +23,15 @@ import base64
 import time
 from dataclasses import dataclass, field
 
+import numpy as np
+
 from packages.common.catalog import CatalogStore
 from packages.common.config import settings
 from packages.common.logging import log_marker
 from packages.contracts.schemas import Card, ScanResponse, TopKItem
 from services.gateway.app.clients import ServiceClients
 
-__all__ = ["run_scan", "build_card"]
+__all__ = ["calibrated_confidence", "run_scan", "build_card"]
 
 
 @dataclass
@@ -41,6 +44,25 @@ class PipelineTrace:
     top1_score: float = 0.0
     second_score: float = 0.0
     notes: list[str] = field(default_factory=list)
+
+
+def calibrated_confidence(scores: list[float], temperature: float | None = None) -> float:
+    """Считает уверенность top-1 как softmax-вероятность по top-K.
+
+    Раньше confidence был сырым косинусным скором: он не калиброван и плохо
+    отражает отрыв. Softmax с температурой, подобранной на proxy-наборе (C-003),
+    дает вероятность, которую можно трактовать как уверенность решения.
+    """
+    if not scores:
+        return 0.0
+    temp = temperature if temperature is not None else settings.confidence_temperature
+    scaled = np.asarray(scores, dtype=np.float64) / max(temp, 1e-6)
+    scaled -= scaled.max()
+    weights = np.exp(scaled)
+    total = float(weights.sum())
+    if total <= 0.0:
+        return 0.0
+    return float(weights[0] / total)
 
 
 def build_card(store: CatalogStore, slug: str) -> Card:
@@ -116,6 +138,8 @@ async def run_scan(
             score=float(item.get("score", 0.0)),
             name=item.get("name"),
             winery=item.get("winery"),
+            geo_score=float(item.get("geo_score", 0.0)),
+            inliers=int(item.get("inliers", 0)),
         )
         for item in items[:5]
         if item.get("slug")
@@ -131,14 +155,17 @@ async def run_scan(
     diagnostics.top1_score = best.score
     diagnostics.second_score = top5[1].score if len(top5) > 1 else 0.0
     margin = round(best.score - diagnostics.second_score, 6)
+    confidence = round(calibrated_confidence([item.score for item in top5]), 6)
     not_found = best.score < settings.score_tau
+    confident = (best.score >= settings.score_tau) and (margin >= settings.margin_delta)
 
     log_marker("M-GATEWAY", "run_scan", "DECISION", slug=best.slug if not not_found else "none",
-               score=round(best.score, 4), margin=margin, latency_ms=round(latency_ms, 1),
+               score=round(best.score, 4), margin=margin, confidence=confidence,
+               confident=str(confident), latency_ms=round(latency_ms, 1),
                normalize=diagnostics.normalize_method)
     return ScanResponse(
         slug=best.slug,
-        confidence=round(best.score, 6),
+        confidence=confidence,
         f1_top1=round(best.score, 6),
         f1_top5=round(best.score, 6),
         margin=margin,
@@ -146,5 +173,6 @@ async def run_scan(
         latency_ms=round(latency_ms, 1),
         top5=top5,
         not_found=not_found,
+        confident=confident,
         card=build_card(store, best.slug),
     )

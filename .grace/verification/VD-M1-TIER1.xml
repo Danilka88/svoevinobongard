@@ -46,23 +46,30 @@
       <TestFiles>
         <File>tests/test_retrieval_index.py</File>
         <File>tests/test_projection_head.py</File>
+        <File>tests/test_geo_verify.py</File>
         <File>services/retrieval/app/main.py</File>
         <File>services/retrieval/app/head.py</File>
+        <File>services/retrieval/app/geo.py</File>
       </TestFiles>
-      <Command>.venv/bin/python -m pytest tests/test_retrieval_index.py tests/test_projection_head.py -v</Command>
-      <Command>PYTHONPATH=. .venv/bin/python scripts/catalog/build_index.py --encoder siglip2 --model google/siglip2-so400m-patch16-naflex --head models/head.pt --out data/index</Command>
-      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --index data/index --samples 200 --seed 42 --normalize --out reports/baseline-c009-after.json</Command>
+      <Command>.venv/bin/python -m pytest tests/test_retrieval_index.py tests/test_projection_head.py tests/test_geo_verify.py -v</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/catalog/build_index.py --encoder siglip2 --model google/siglip2-so400m-patch16-naflex --head models/head.pt --features --out data/index</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/calibrate.py --index data/index --samples 200 --seed 42 --normalize --out reports/calibration.json</Command>
       <Scenario id="S-RETRIEVAL-1">Top-K отсортирован по убыванию косинусного скора; точный запрос дает скор 1.0.</Scenario>
       <Scenario id="S-RETRIEVAL-2">k ограничивает длину выдачи и не превышает размер индекса.</Scenario>
       <Scenario id="S-RETRIEVAL-3">save_index и load_index дают эквивалентный индекс (round-trip).</Scenario>
       <Scenario id="S-RETRIEVAL-4">numpy-бэкенд не поднимает faiss (на macOS arm64 libomp от faiss конфликтует с torch).</Scenario>
       <Scenario id="S-RETRIEVAL-5">Проекционная голова: выход L2-нормирован, веса восстанавливаются без потери результата, apply_head совпадает с прямым вызовом модуля.</Scenario>
       <Scenario id="S-RETRIEVAL-6">Энкодер запросов совпадает с энкодером индекса (meta.json авторитетен); naFlex-модель получает spatial_shapes из процессора.</Scenario>
+      <Scenario id="S-RETRIEVAL-7">Геоверификация: признаки извлекаются на текстуре, самопроверка дает инлайнеры, несвязанное изображение дает заметно меньший скор, пустые признаки не ломают верификацию.</Scenario>
+      <Scenario id="S-RETRIEVAL-8">GeoIndex сохраняется и загружается: features.npz выровнен по slugs.json, скор по slug доступен, а несовпадение размеров и поврежденный файл деградируют к отключению геоверификации.</Scenario>
+      <Scenario id="S-RETRIEVAL-9">Прогрев: warm_up загружает модель, голову и признаки и прогоняет пробный поиск; провал прогрева не валит сервис.</Scenario>
       <Marker>[M-RETRIEVAL][build_index][NUMPY]</Marker>
       <Marker>[M-RETRIEVAL][build_index][HEAD_APPLIED]</Marker>
-      <Marker>[M-RETRIEVAL][load_encoder][LOAD]</Marker>
+      <Marker>[M-RETRIEVAL][build_index][FEATURES_SAVED]</Marker>
+      <Marker>[M-RETRIEVAL][geo_load][READY]</Marker>
       <Marker>[M-RETRIEVAL][get_runtime][HEAD_LOADED]</Marker>
       <Marker>[M-RETRIEVAL][search][TOPK]</Marker>
+      <Marker>[M-RETRIEVAL][warmup][DONE]</Marker>
       <Marker>[M-RETRIEVAL][train_head][DONE]</Marker>
       <Evidence note="encoder-comparison">Сравнение на одном подмножестве (600 slug, 120 сэмплов, seed 42, с нормализацией):
         dinov2-small acc@1 0.1333 / acc@5 0.2833 / f1 0.0866; dinov2-base 0.1500 / 0.3333 / 0.1010;
@@ -71,11 +78,25 @@
       <Evidence note="domain-adaptation">Обучение головы 1152-512-256 (InfoNCE + hard negatives):
         700 пар, 1400 anchors, 5486 hard negatives; 12 эпох за 4.3 с на MPS; loss 7.3110 -> 1.5114;
         batch acc@1 0.160 -> 0.809. Энкодер заморожен, обучалась только голова.</Evidence>
-      <Evidence note="baseline-after">Полный индекс (2037, dim 256), 200 сэмплов, seed 42, с нормализацией:
-        acc@1 0.495, acc@5 0.745, f1_macro@1 0.3404, self-retrieval 0.985, latency p50 139.9 / p95 192.5 мс.
-        Без головы тот же энкодер даёт 0.440 / 0.675 / 0.3398.</Evidence>
+      <Evidence note="geo-verification">ORB (mean 227.7 ключевых точек на эталон, dim 32) + BFMatcher ratio-test +
+        RANSAC; features.npz 2037 изображений. Калибровка веса на proxy (200 сэмплов, seed 42):
+        weight 0.0 -> acc@1 0.495; 0.5 -> 0.600; 1.0 -> 0.645; 1.5 -> 0.670; 2.5 -> 0.680; 3.0 -> 0.680 (плато).
+        Выбран GEO_WEIGHT=2.5. Geo-скор разделяет ответы: средний top1 geo у верных 0.220, у неверных 0.056.</Evidence>
+      <Evidence note="thresholds">Калиброванные пороги: SCORE_TAU 0.7171 (F1 разделения 0.910),
+        MARGIN_DELTA 0.0659 (F1 0.896), CONFIDENCE_TEMPERATURE 0.2 (F1 0.909).
+        Файл: reports/calibration.json.</Evidence>
+      <Evidence note="head-40-micro">Микро-эксперимент 40 эпох + hard negatives same-series: batch acc@1 0.973,
+        loss 0.9975, 8.2 с. На proxy прироста НЕ дал: acc@1 0.685 (то же), acc@5 0.785 (хуже 0.790),
+        self-retrieval 0.975 (хуже 0.985). Оставлена 12-эпоховая голова — 40 эпох переобучают синтетику.</Evidence>
+      <Evidence note="baseline-after">Полный индекс (2037, dim 256) + голова + геоверификация, 200 сэмплов, seed 42,
+        с нормализацией: acc@1 0.685, acc@5 0.790, self-retrieval 0.985, latency p50 147.7 / p95 183.5 мс.
+        Групповые метрики: group acc@1 0.690, f1_macro_group 0.5439; near-duplicate подмножество (21 сэмпл)
+        acc@1 0.7143 — на near-duplicates геоверификация работает лучше среднего.</Evidence>
+      <Evidence note="warmup">Прогрев на старте: retrieval готов через 6.1 с после запуска процесса (модель, голова
+        и признаки загружены). Startup-прогрев 2827.9 мс (холодные ядра), явный POST /v1/warmup 115.1 мс.
+        Первый /v1/scan после старта 955.6 мс (в C-009 было 6137.9 мс).</Evidence>
       <Evidence note="e2e">Полевой прогон 31 изображение через gateway: 0 ошибок, 0 пустых slug,
-        latency p50 171.8 / p95 238.9 мс (max 358.2). Холодный старт первого запроса ~6.1 с — нужен прогрев.</Evidence>
+        latency p50 234.8 / p95 357.7 / max 502.5 мс (max ≈ p95 — всплеска холодного старта нет).</Evidence>
     </V-M-RETRIEVAL>
   </VD-M1-TIER1>
 </GraceVerificationDocument>

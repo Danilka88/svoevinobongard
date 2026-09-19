@@ -1,0 +1,132 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-003>
+    <IntentSummary>Переранжировать Top-K локально-признаковой геоверификацией (OpenCV SIFT/ORB + BFMatcher + RANSAC),
+      откалибровать пороги решения и метрики уверенности на proxy-наборе, обеспечить SLA прогревом сервиса.
+      Различать near-duplicates там, где эмбеддинг не различает год и сладость при похожей этикетке.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/retrieval/app/main.py</Value></MustExist>
+      <MustExist><Value>data/index/meta.json</Value></MustExist>
+      <MustExist><Value>scripts/eval/baseline_report.py</Value></MustExist>
+      <MustNotExist><Value>services/retrieval/app/geo.py</Value></MustNotExist>
+      <MustVerify><Module>M-RETRIEVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>services/retrieval/app/geo.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/calibrate.py</Value></MustExist>
+      <MustExist><Value>data/index/features.npz</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-RETRIEVAL</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustLink><From>M-RETRIEVAL</From><To>M-CATALOG</To></MustLink>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-RETRIEVAL</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-RETRIEVAL/>
+      <M-GATEWAY/>
+      <M-COMMON/>
+      <M-CONTRACTS/>
+      <M-EVAL/>
+      <V-M-RETRIEVAL/>
+      <V-M-GATEWAY/>
+      <DF-001/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>services/retrieval/app/</Path>
+      <Path>services/gateway/app/</Path>
+      <Path>packages/common/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>scripts/catalog/</Path>
+      <Path>tests/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/verification/</Path>
+      <File>.env.example</File>
+      <File>README.md</File>
+      <File>ARCHITECTURE.md</File>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Геоверификация: локальные признаки OpenCV SIFT/ORB, BFMatcher, ratio-test и RANSAC, опционально Kornia</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Модуль geo.py извлекает ключевые точки и дескрипторы и считает скор верификации (inliers и inlier_ratio).</Criterion>
+          <Criterion>Kornia подключается опционально; при отсутствии весов используется OpenCV без падения.</Criterion>
+          <Criterion>Скор геоверификации вычисляется только для Top-K кандидатов, а не для всего каталога.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_geo_verify.py -v</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Предвычисление локальных признаков эталонов: features.npz рядом с индексом</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>build_index с флагом --features пишет features.npz, выровненный по slugs.json индекса.</Criterion>
+          <Criterion>Размер признаков укладывается в десятки мегабайт (ORB, ограничение числа точек на эталон).</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/catalog/build_index.py --encoder siglip2 --model google/siglip2-so400m-patch16-naflex --head models/head.pt --features --out data/index</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Фьюжн retrieval и geo и калибровка порогов SCORE_TAU, MARGIN_DELTA и веса геоверификации на proxy-наборе</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Сеточный поиск по весу геоверификации максимизирует acc@1, не ухудшая acc@5.</Criterion>
+          <Criterion>SCORE_TAU и MARGIN_DELTA выбраны по распределениям скора и margin (максимум F1 разделения верных и неверных).</Criterion>
+          <Criterion>Выбранные значения записаны в .env.example и отчёт calibration.json.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/calibrate.py --index data/index --samples 200 --seed 42 --normalize --out reports/calibration.json</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Калиброванные confidence и margin в /v1/scan и корректные групповые метрики вместо singleton-macro-F1</Title>
+        <DependsOn>T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>confidence — softmax по top-K с калиброванной температурой; margin — отрыв top1 минус top2 по фьюжн-скору.</Criterion>
+          <Criterion>baseline_report считает метрики группами (near-duplicate series), а не только по 200 singleton-классам.</Criterion>
+          <Criterion>Отчёт содержит отдельную метрику качества на near-duplicate подмножестве.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --index data/index --samples 200 --seed 42 --normalize --geo --out reports/baseline-c003-after.json</Command>
+        </Verification>
+      </T-004>
+
+      <T-005>
+        <Title>SLA и холодный старт: прогрев энкодера и головы при старте сервиса и эндпоинт /warmup</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Первый запрос после старта не платит загрузку модели: cold p95 сопоставим с warm p95.</Criterion>
+          <Criterion>Есть эндпоинт прогрева; провал прогрева не валит сервис.</Criterion>
+          <Criterion>Поведение зафиксировано в README и ARCHITECTURE.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>curl -s -X POST http://127.0.0.1:8082/warmup</Command>
+          <Command>curl -s -X POST http://127.0.0.1:8080/v1/warmup</Command>
+        </Verification>
+      </T-005>
+
+      <T-006>
+        <Title>Микро-эксперимент: 40 эпох головы и hard negatives same-series, замер before/after и полевой прогон</Title>
+        <DependsOn>T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Зафиксировано, даёт ли 40 эпох и same-series негативы прирост относительно 12 эпох.</Criterion>
+          <Criterion>Повторный замер тем же proxy-набором (seed 42) сопоставим before/after по acc@1, acc@5, self-retrieval и latency.</Criterion>
+          <Criterion>Полевой прогон 31 изображение через gateway без ошибок и пустых slug.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/train/synthetic_pairs.py --same-series --limit 700 --per-slug 2 --seed 42 --out data/train-40</Command>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/train/train_head.py --pairs data/train-40/pairs.jsonl --embeddings data/train-40/embeddings.npy --epochs 40 --out models/head-40.pt --report reports/train_head_40.json</Command>
+        </Verification>
+      </T-006>
+    </ImplementationPlan>
+  </C-003>
+</GraceChangePlan>

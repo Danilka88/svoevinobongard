@@ -12,6 +12,7 @@
 # test_run_scan_not_found - низкий скор помечается not_found
 # test_eval_predict_flat_contract - эндпоинт отдает ровно {"slug": "..."}
 # test_scan_endpoint_rich - эндпоинт отдает rich-ответ контракта
+# test_calibrated_confidence_monotonic - уверенность растет с отрывом и корректна на краях
 # test_retrieval_unavailable - недоступный retrieval дает HTTP 503, а не 5xx-падение
 # END_MODULE_MAP
 """V-M-GATEWAY: оркестрация пайплайна и контракт организатора."""
@@ -107,7 +108,9 @@ def test_run_scan_rich_response(tmp_path, monkeypatch) -> None:
     result = asyncio.run(run_scan(_png_bytes(), _store(tmp_path)))
     assert result.slug == "kokur-suhoe-2025"
     assert result.path == "retrieval"
-    assert result.confidence == pytest.approx(0.81, abs=1e-6)
+    # confidence — калиброванный softmax по top-K (C-003), а не сырой косинус
+    assert 0.0 < result.confidence <= 1.0
+    assert result.f1_top1 == pytest.approx(0.81, abs=1e-6)
     assert result.margin == pytest.approx(0.29, abs=1e-6)
     assert len(result.top5) == 2
     assert result.not_found is False
@@ -148,6 +151,17 @@ def test_scan_endpoint_rich(tmp_path, monkeypatch) -> None:
     assert body["path"] == "retrieval"
     assert len(body["top5"]) == 2
     assert body["card"]["winery"] == "Валерий Захарьин"
+
+
+def test_calibrated_confidence_monotonic() -> None:
+    """Калиброванная уверенность выше при большем отрыве и корректна на краях."""
+    from services.gateway.app.pipeline import calibrated_confidence
+
+    assert calibrated_confidence([]) == 0.0
+    assert calibrated_confidence([0.9, 0.1]) > calibrated_confidence([0.6, 0.55])
+    assert 0.0 < calibrated_confidence([0.9, 0.1], temperature=0.2) <= 1.0
+    # при одинаковых скорах вероятность делится поровну
+    assert abs(calibrated_confidence([0.5, 0.5], temperature=0.2) - 0.5) < 1e-9
 
 
 def test_retrieval_unavailable(tmp_path, monkeypatch) -> None:

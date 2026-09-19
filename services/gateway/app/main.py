@@ -1,6 +1,6 @@
 # START_MODULE_CONTRACT
 # PURPOSE: Публичный API gateway — health, контракт организатора /v1/eval/predict и rich-ответ /v1/scan
-# SCOPE: app, get_store, health, eval_predict, scan
+# SCOPE: app, get_store, health, warmup, eval_predict, scan
 # DEPENDS: fastapi, packages.common.catalog, packages.contracts.schemas, services.gateway.app.pipeline
 # LINKS: M-GATEWAY, M-CONTRACTS
 # ROLE: RUNTIME
@@ -12,6 +12,7 @@
 # ENCODER - имя image-энкодера из окружения
 # get_store - ленивая загрузка read-only каталога
 # health - GET /v1/health
+# warmup - POST /v1/warmup (прогрев retrieval)
 # eval_predict - POST /v1/eval/predict для скрипта организатора
 # scan - POST /v1/scan с rich-ответом
 # END_MODULE_MAP
@@ -31,6 +32,7 @@ from packages.common.catalog import CatalogStore
 from packages.common.config import settings
 from packages.common.logging import log_marker
 from packages.contracts.schemas import EvalPredictResponse, ScanResponse
+from services.gateway.app.clients import ServiceClients
 from services.gateway.app.pipeline import run_scan
 
 __all__ = [
@@ -39,11 +41,12 @@ __all__ = [
     "ENCODER",
     "get_store",
     "health",
+    "warmup",
     "eval_predict",
     "scan",
 ]
 
-app = FastAPI(title="Svoe Vino Scanner — Gateway", version="0.2.0")
+app = FastAPI(title="Svoe Vino Scanner — Gateway", version="0.3.0")
 
 VLM_MODEL = os.getenv("VLM_MODEL", "gemma4:12b")
 ENCODER = os.getenv("ENCODER", "siglip2")
@@ -79,6 +82,21 @@ def health() -> dict:
         "models": {"retrieval": ENCODER, "vlm": VLM_MODEL},
         "endpoints": ["/v1/health", "/v1/eval/predict", "/v1/scan"],
     }
+
+
+@app.post("/v1/warmup")
+async def warmup() -> dict:
+    """Прогревает retrieval, чтобы первый скан не платил за загрузку модели (SLA)."""
+    clients = ServiceClients()
+    try:
+        retrieval = await clients.warmup()
+    finally:
+        await clients.aclose()
+    if retrieval is None:
+        log_marker("M-GATEWAY", "warmup", "UNAVAILABLE")
+        raise HTTPException(status_code=503, detail="retrieval warmup unavailable")
+    log_marker("M-GATEWAY", "warmup", "OK", model=retrieval.get("model"))
+    return {"status": "ok", "gateway": "ready", "retrieval": retrieval}
 
 
 @app.post("/v1/eval/predict")

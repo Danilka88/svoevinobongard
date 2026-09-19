@@ -72,9 +72,18 @@ class AppSettings:
     vector_backend: str = field(default_factory=lambda: _env("VECTOR_BACKEND", "numpy"))
     top_k: int = field(default_factory=lambda: _env_int("TOP_K", 30))
 
-    # decision thresholds (used by C-003; kept here so env stays single-sourced)
-    score_tau: float = field(default_factory=lambda: _env_float("SCORE_TAU", 0.55))
-    margin_delta: float = field(default_factory=lambda: _env_float("MARGIN_DELTA", 0.12))
+    # decision thresholds (calibrated in C-003 on the synthetic proxy set, seed 42)
+    score_tau: float = field(default_factory=lambda: _env_float("SCORE_TAU", 0.7171))
+    margin_delta: float = field(default_factory=lambda: _env_float("MARGIN_DELTA", 0.0659))
+    confidence_temperature: float = field(
+        default_factory=lambda: _env_float("CONFIDENCE_TEMPERATURE", 0.2))
+
+    # geo-verification (C-003)
+    geo_weight: float = field(default_factory=lambda: _env_float("GEO_WEIGHT", 2.5))
+    geo_topk: int = field(default_factory=lambda: _env_int("GEO_TOPK", 10))
+    geo_min_matches: int = field(default_factory=lambda: _env_int("GEO_MIN_MATCHES", 8))
+    warmup_on_start: bool = field(
+        default_factory=lambda: _env("WARMUP_ON_START", "1") not in {"0", "false", "no"})
 
     # data paths (project-root relative)
     catalog_jsonl: str = field(default_factory=lambda: _env("CATALOG_JSONL", "data/catalog/catalog.jsonl"))

@@ -1,6 +1,6 @@
 # START_MODULE_CONTRACT
 # PURPOSE: FastAPI-сервис Tier-1 retrieval: POST /search (image) → Top-K slug со скорами и метаданными
-# SCOPE: read_index_meta, Runtime, get_meta, get_runtime, health, search_endpoint
+# SCOPE: read_index_meta, Runtime, get_meta, get_runtime, probe_image, warm_up, lifespan, health, warmup_endpoint, search_endpoint
 # DEPENDS: fastapi, numpy, packages.common.catalog, services.retrieval.app.encoder, services.retrieval.app.index, services.retrieval.app.search
 # LINKS: M-RETRIEVAL
 # ROLE: RUNTIME
@@ -12,7 +12,11 @@
 # Runtime - ленивый контейнер энкодера, индекса, каталога и метаданных
 # get_meta - кэшированные метаданные индекса
 # get_runtime - ленивая инициализация Runtime
+# probe_image - нейтральное изображение для прогрева
+# warm_up - прогрев модели, головы и индекса
+# lifespan - прогрев при старте сервиса
 # health - GET /health со статусом индекса
+# warmup_endpoint - POST /warmup
 # search_endpoint - POST /search (multipart image)
 # END_MODULE_MAP
 """Сервис retrieval (Tier-1).
@@ -25,6 +29,7 @@ from __future__ import annotations
 
 import json
 import time
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -37,6 +42,7 @@ from packages.common.images import load_bgr
 from packages.common.logging import log_marker
 from packages.common.catalog import CatalogStore
 from services.retrieval.app.encoder import ImageEncoder, load_encoder
+from services.retrieval.app.geo import GeoIndex
 from services.retrieval.app.head import describe_head, load_head, read_head_meta
 from services.retrieval.app.index import VectorIndex, load_index
 from services.retrieval.app.search import search_images
@@ -47,11 +53,60 @@ __all__ = [
     "Runtime",
     "get_meta",
     "get_runtime",
+    "probe_image",
+    "warm_up",
+    "lifespan",
     "health",
+    "warmup_endpoint",
     "search_endpoint",
 ]
 
-app = FastAPI(title="Svoe Vino Scanner — Retrieval", version="0.1.0")
+def probe_image() -> np.ndarray:
+    """Нейтральное изображение для прогрева инференса."""
+    return np.full((224, 224, 3), 200, dtype=np.uint8)
+
+
+def warm_up() -> dict:
+    """Загружает модель, голову и индекс и прогоняет пробный поиск.
+
+    Прогрев нужен, чтобы первый пользовательский запрос не платил за загрузку
+    весов (холодный старт ранее достигал 6 секунд при SLA 3 секунды).
+
+    Returns:
+        Описание прогретого состояния.
+    """
+    started = time.perf_counter()
+    runtime = get_runtime()
+    search_images(
+        runtime.encoder, runtime.index, runtime.store, [probe_image()], 5, runtime.head,
+        runtime.geo, settings.geo_weight, settings.geo_topk, settings.geo_min_matches,
+    )
+    elapsed_ms = (time.perf_counter() - started) * 1000.0
+    log_marker("M-RETRIEVAL", "warmup", "DONE", model=runtime.encoder.model_id,
+               head="yes" if runtime.head else "no", geo="yes" if runtime.geo else "no",
+               latency_ms=round(elapsed_ms, 1))
+    return {
+        "status": "ok",
+        "model": runtime.encoder.model_id,
+        "device": runtime.encoder.device,
+        "head": "yes" if runtime.head else "no",
+        "geo": "yes" if runtime.geo else "no",
+        "latency_ms": round(elapsed_ms, 1),
+    }
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Прогревает сервис при старте, если WARMUP_ON_START не отключен."""
+    if settings.warmup_on_start:
+        try:
+            await run_in_threadpool(warm_up)
+        except Exception as error:  # noqa: BLE001 - провал прогрева не валит сервис
+            log_marker("M-RETRIEVAL", "warmup", "FAILED", error=type(error).__name__)
+    yield
+
+
+app = FastAPI(title="Svoe Vino Scanner — Retrieval", version="0.1.0", lifespan=lifespan)
 
 
 def read_index_meta(directory: str | Path) -> dict:
@@ -79,6 +134,7 @@ class Runtime:
     store: CatalogStore
     meta: dict
     head: object | None = None
+    geo: GeoIndex | None = None
 
 
 _runtime: Runtime | None = None
@@ -120,12 +176,14 @@ def get_runtime() -> Runtime:
     if head_payload:
         head = load_head(Path(settings.index_dir) / head_payload["file"], device="cpu")
         log_marker("M-RETRIEVAL", "get_runtime", "HEAD_LOADED", shape=describe_head(meta))
+    geo = GeoIndex.load(settings.index_dir, meta)
     _runtime = Runtime(
         encoder=load_encoder(model_id=model_id, device=settings.encoder_device),
         index=index,
         store=CatalogStore.from_jsonl(settings.catalog_jsonl),
         meta=meta,
         head=head,
+        geo=geo,
     )
     log_marker("M-RETRIEVAL", "get_runtime", "READY", vectors=len(_runtime.index.slugs),
                catalog=len(_runtime.store), model=_runtime.encoder.model_id)
@@ -148,6 +206,18 @@ def health() -> dict:
     }
 
 
+@app.post("/warmup")
+async def warmup_endpoint() -> dict:
+    """Явный прогрев: загрузка модели, головы и индекса плюс пробный поиск."""
+    try:
+        return await run_in_threadpool(warm_up)
+    except HTTPException:
+        raise
+    except Exception as error:  # noqa: BLE001
+        log_marker("M-RETRIEVAL", "warmup", "ENDPOINT_FAILED", error=type(error).__name__)
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
+
 @app.post("/search")
 async def search_endpoint(image: UploadFile = File(...)) -> dict:
     """Ищет Top-K по каталогу для загруженного изображения."""
@@ -165,6 +235,7 @@ async def search_endpoint(image: UploadFile = File(...)) -> dict:
     hits = await run_in_threadpool(
         search_images, runtime.encoder, runtime.index, runtime.store,
         [np.asarray(array)], settings.top_k, runtime.head,
+        runtime.geo, settings.geo_weight, settings.geo_topk, settings.geo_min_matches,
     )
     latency_ms = (time.perf_counter() - started) * 1000.0
 
@@ -172,11 +243,14 @@ async def search_endpoint(image: UploadFile = File(...)) -> dict:
         "encoder": runtime.meta.get("encoder") or settings.encoder,
         "model": runtime.encoder.model_id,
         "device": runtime.encoder.device,
+        "geo_weight": settings.geo_weight if runtime.geo else 0.0,
         "latency_ms": round(latency_ms, 1),
         "top_k": [
             {
                 "slug": hit.slug,
                 "score": round(hit.score, 6),
+                "geo_score": round(hit.geo_score, 6),
+                "inliers": hit.inliers,
                 "name": hit.name,
                 "winery": hit.winery,
                 "region": hit.region,

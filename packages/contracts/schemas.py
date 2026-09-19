@@ -37,6 +37,8 @@ class TopKItem(BaseModel):
     score: float
     name: str | None = None
     winery: str | None = None
+    geo_score: float = 0.0
+    inliers: int = 0
 
 
 class Card(BaseModel):
@@ -67,6 +69,7 @@ class ScanResponse(BaseModel):
     latency_ms: float = 0.0
     top5: list[TopKItem] = Field(default_factory=list)
     not_found: bool = False
+    confident: bool = False
     card: Card | None = None
 
 

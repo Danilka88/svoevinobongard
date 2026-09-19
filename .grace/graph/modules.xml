@@ -53,20 +53,23 @@
       <Purpose>Дешёвый и быстрый Tier-1 — закрывает большинство лёгких запросов (вклад в 50 баллов за точность).</Purpose>
       <Scope>Энкодер-плагин siglip2 | dinov2 | clip (MPS, naFlex через spatial_shapes); индекс numpy (dev) /
         FAISS (там, где нет libomp-конфликта) / pgvector (prod); Top-K по косинусу; проекционная голова
-        домен-адаптации (change C-009, 1152→512→256); геоверификация SuperPoint + LightGlue + RANSAC → margin (C-003).</Scope>
+        домен-адаптации (C-009, 1152→512→256); геоверификация ORB/SIFT + BFMatcher + RANSAC с фьюжном
+        скоров (C-003); прогрев модели, головы и признаков при старте (SLA).</Scope>
       <Source>services/retrieval/</Source>
       <Test>tests/retrieval/</Test>
-      <Interface>POST /search (image | embeddings) → Top-K + скоры</Interface>
+      <Interface>POST /search (image) → Top-K + скоры; POST /warmup → прогрев</Interface>
       <Depends>
         <M-COMMON/>
       </Depends>
       <Reads>
         <M-CATALOG/>
       </Reads>
-      <Exports>ImageEncoder, load_encoder, VectorIndex, load_index, save_index, search_images,
-        ProjectionHead, load_head, apply_head</Exports>
-      <Boundary>Энкодер, kNN и голова — changes C-002 и C-009; геоверификация и margin — change C-003.</Boundary>
-      <Note>C-009: SigLIP 2 so400m naFlex (Apache-2.0, dim 1152) + обученная голова; proxy acc@1 0.175 → 0.495.</Note>
+      <Exports>ImageEncoder, load_encoder, VectorIndex, load_index, save_index, search_images, SearchHit,
+        ProjectionHead, load_head, apply_head, extract_features, verify, fuse_scores, GeoIndex,
+        warm_up, lifespan</Exports>
+      <Boundary>Энкодер, kNN, голова и геоверификация — changes C-002, C-009, C-003; VLM-арбитр — C-004.</Boundary>
+      <Note>C-009 + C-003: SigLIP 2 so400m + голова + геоверификация; proxy acc@1 0.175 → 0.495 → 0.685,
+        acc@5 0.300 → 0.745 → 0.790, self-retrieval 0.985.</Note>
       <Verification>V-M-RETRIEVAL</Verification>
     </M-RETRIEVAL>
 
