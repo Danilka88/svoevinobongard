@@ -10,6 +10,7 @@
 # app - FastAPI-приложение gateway
 # VLM_MODEL - имя VLM из окружения
 # ENCODER - имя image-энкодера из окружения
+# enotourism - GET /v1/enotourism/{slug}: регион, туры и статьи портала
 # get_official - ленивая загрузка официального обогащения v3 (C-017)
 # get_store - ленивая загрузка read-only каталога
 # health - GET /v1/health
@@ -38,6 +39,7 @@ from packages.common.llm.errors import LLMError
 from packages.common.llm.router import LLMRouter
 from packages.common.logging import log_marker
 from packages.contracts.schemas import (
+    EnotourismResponse,
     EvalPredictResponse,
     ScanResponse,
     SimilarItem,
@@ -47,6 +49,7 @@ from packages.contracts.schemas import (
     SommelierResponse,
 )
 from services.gateway.app.clients import ServiceClients
+from services.gateway.app.enotourism import enotourism_for
 from services.gateway.app.pipeline import run_scan
 from services.gateway.app.recommend import (
     build_sommelier_prompt,
@@ -60,6 +63,7 @@ from services.gateway.app.recommend import (
 
 __all__ = [
     "app",
+    "enotourism",
     "get_official",
     "VLM_MODEL",
     "ENCODER",
@@ -160,6 +164,26 @@ def similar(slug: str, limit: int = 6) -> SimilarResponse:
     log_marker("M-GATEWAY", "similar", "DONE", slug=slug, items=len(items), source=source)
     return SimilarResponse(base_slug=slug,
                            items=[SimilarItem(**item) for item in items])
+
+
+@app.get("/v1/enotourism/{slug}")
+def enotourism(slug: str) -> EnotourismResponse:
+    """Энотуризм и статьи для вина: регион с фактом, туры региона и подборка материалов.
+
+    Всё содержимое — из официального API портала (туры, регионы, статьи). Если кэш
+    пуст, возвращаются пустые списки: блок удержания не ломает основной сценарий.
+    """
+    store = get_store()
+    record = store.get(slug) or {}
+    payload = enotourism_for(
+        slug,
+        official=get_official().get(slug),
+        fallback_region=str(record.get("region") or ""),
+        fallback_winery=str(record.get("winery") or ""),
+    )
+    log_marker("M-GATEWAY", "enotourism", "DONE", slug=slug,
+               tours=len(payload["tours"]), articles=len(payload["articles"]))
+    return EnotourismResponse(**payload)
 
 
 @app.post("/v1/sommelier")

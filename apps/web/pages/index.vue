@@ -68,7 +68,7 @@ async function pick(slug: string) {
 
         <SommelierPanel v-if="current.slug && !current.not_found" :slug="current.slug" />
         <SimilarWines :items="similarItems" :loading="similarLoading" @pick="pick" />
-        <EnotourismBlock v-if="current.card && !current.not_found" :card="current.card" />
+        <EnotourismBlock v-if="current.card && !current.not_found" :card="current.card" :slug="current.slug || ''" />
       </template>
     </div>
   </div>

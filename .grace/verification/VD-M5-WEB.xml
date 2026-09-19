@@ -54,6 +54,16 @@
       <Evidence note="C018-build">bun install: 598 установок, 675 пакетов, изменений нет. bun run build: exit code 0,
         «Build complete!», суммарный размер 1.98 MB (493 kB gzip), артефакт .output/server/index.mjs собран.
         Новые поля реально попали в бандл: в .output/public/_nuxt/CSbu-pex.js есть строки «Гастросочетания», «°C» и «wineries/».</Evidence>
+      <Scenario id="S-WEB-6">Блок энотуризма показывает факт о регионе, туры с адресом и ценой, а также статьи с автором и датой.</Scenario>
+      <Scenario id="S-WEB-7">Пустые блоки не рисуются: при отсутствии данных заголовки не остаются.</Scenario>
+      <Evidence note="C019-ui">apps/web/components/EnotourismBlock.vue получает slug и запрашивает /v1/enotourism/{slug} через gateway
+        (единственная точка входа), показывает факт региона, события и туры с адресом и ценой. Новый
+        apps/web/components/ArticlesBlock.vue рисует «Истории в бокале» с категорией, автором и датой.
+        Оба блока скрываются, если данных нет. Найден собственный промах: проверка правки index.vue сработала
+        на строке WineCard (там тоже есть :slug) и EnotourismBlock остался без slug — блок был бы пустым;
+        исправлено точной заменой тега и пересборкой.</Evidence>
+      <Evidence note="C019-build">bun run build: exit code 0, «Build complete!», 2 MB (497 kB gzip).
+        В собранном бандле присутствуют строки «Винные туры», «Истории в бокале» и путь /v1/enotourism/.</Evidence>
     </V-M-WEB>
   </VD-M5-WEB>
 </GraceVerificationDocument>

@@ -302,5 +302,28 @@
       <Note>C-011: правило закреплено в AGENTS.md, constraints.xml (D-3) и requirements.xml (AN-3);
         архивные бандлы C-001/C-002/C-004/C-010 не редактировались (история).</Note>
     </M-DATA>
+    <M-ENOTOURISM>
+      <Name>Enotourism and Stories</Name>
+      <Type>CORE_LOGIC</Type>
+      <Status>built</Status>
+      <Purpose>Удержание после скана: факт о регионе вина, винные туры и «Истории в бокале» из официального API портала.</Purpose>
+      <Scope>Чтение закэшированных туров, регионов и статей; подбор туров по региону и винодельне; релевантность статей
+        по совпадению региона, категории и сорта без тяжёлого поиска; graceful деградация в пустые списки.</Scope>
+      <Source>services/gateway/app/enotourism.py</Source>
+      <Test>tests/test_enotourism.py</Test>
+      <Exports>load_collections, region_of, tours_for, articles_for, enotourism_for, tour_url</Exports>
+      <Invokes>
+        <M-COMMON/>
+      </Invokes>
+      <Feeds>
+        <M-WEB/>
+      </Feeds>
+      <Depends>
+        <M-CATALOG/>
+      </Depends>
+      <Verification>V-M-ENOTOURISM</Verification>
+      <Note>C-019: 9 туров, 11 регионов и 180 статей закэшированы из официального API. Только Кубань имеет туры,
+        поэтому у крымских вин список туров пуст — это данные портала, а не дефект.</Note>
+    </M-ENOTOURISM>
   </GD-001>
 </GraceGraphDocument>

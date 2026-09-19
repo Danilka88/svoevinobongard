@@ -155,3 +155,48 @@ class SommelierResponse(BaseModel):
     official_dishes: list[str] = Field(default_factory=list)
     source: str = "catalog"
     note: str = ""
+
+
+class EnotourismRegion(BaseModel):
+    """Факт о регионе вина из официального API."""
+
+    name: str = ""
+    fact: str = ""
+    events_count: int = 0
+    events_description: str = ""
+
+
+class EnotourismTour(BaseModel):
+    """Винный тур портала."""
+
+    slug: str
+    title: str = ""
+    address: str = ""
+    price: int | None = None
+    image_url: str = ""
+    url: str = ""
+    match: str = ""
+
+
+class EnotourismArticle(BaseModel):
+    """Статья портала для блока «Истории в бокале»."""
+
+    slug: str
+    title: str = ""
+    category: str = ""
+    author: str = ""
+    published_at: str = ""
+    image_url: str = ""
+    url: str = ""
+    relevance: str = "latest"
+
+
+class EnotourismResponse(BaseModel):
+    """Ответ GET /v1/enotourism/{slug}."""
+
+    slug: str
+    region: EnotourismRegion = Field(default_factory=EnotourismRegion)
+    tours: list[EnotourismTour] = Field(default_factory=list)
+    articles: list[EnotourismArticle] = Field(default_factory=list)
+    source: str = "official-api"
+    note: str = ""

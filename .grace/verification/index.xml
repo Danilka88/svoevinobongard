@@ -68,6 +68,12 @@
         <V-M-ACTIVE-LEARNING/>
       </Owns>
     </VD-M5-FLYWHEEL>
+    <VD-M7-ENOTOURISM>
+      <Path>verification/VD-M7-ENOTOURISM.xml</Path>
+      <Owns>
+        <V-M-ENOTOURISM/>
+      </Owns>
+    </VD-M7-ENOTOURISM>
     <VD-SHARED>
       <Path>verification/VD-SHARED.xml</Path>
       <Owns>

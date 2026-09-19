@@ -1,0 +1,99 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-019>
+    <IntentSummary>Закэшировать туры, регионы и статьи официального API, отдать их через
+      GET /v1/enotourism/{slug} с простой релевантностью, и показать блоки энотуризма и статей в UI.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>data/catalog/catalog_enriched_v3.jsonl</Value></MustExist>
+      <MustExist><Value>packages/common/official_api.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/main.py</Value></MustExist>
+      <MustExist><Value>apps/web/components/EnotourismBlock.vue</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>services/gateway/app/enotourism.py</Value></MustExist>
+      <MustExist><Value>data/api_cache/tours.json</Value></MustExist>
+      <MustExist><Value>data/api_cache/regions.json</Value></MustExist>
+      <MustExist><Value>data/api_cache/articles/page_001.json</Value></MustExist>
+      <MustExist><Value>reports/enotourism_sync.json</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-ENOTOURISM</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-ENOTOURISM</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-ENOTOURISM/>
+      <M-GATEWAY/>
+      <M-WEB/>
+      <V-M-ENOTOURISM/>
+      <V-M-WEB/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>scripts/kb/</Path>
+      <Path>services/gateway/app/</Path>
+      <Path>apps/web/</Path>
+      <Path>tests/</Path>
+      <Path>data/api_cache/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Синк коллекций: туры, регионы, статьи</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Туры и регионы сохраняются целиком, статьи — порциями по 30 с ограничением количества.</Criterion>
+          <Criterion>Повторный запуск с --resume не перекачивает уже сохранённые ответы.</Criterion>
+          <Criterion>Отчёт содержит реальные счётчики: сколько туров, регионов и статей закэшировано.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/kb/sync_official_api.py collections --resume --articles 180 --report reports/enotourism_sync.json</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Модуль M-ENOTOURISM и эндпоинт GET /v1/enotourism/{slug}</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Регион вина берётся из официального обогащения v3, факт о регионе и события — из синка регионов.</Criterion>
+          <Criterion>Туры фильтруются по региону и винодельне, отдаются с адресом и изображением.</Criterion>
+          <Criterion>Статьи подбираются простым совпадением региона, категории и сорта в заголовке/категории; лимит 3–5, без дублей.</Criterion>
+          <Criterion>При недоступных API и кэше возвращаются пустые списки без исключений.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>curl -s "http://127.0.0.1:8080/v1/enotourism/nebo-rossii-glera"</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>UI: блоки «Винные туры» и «Истории в бокале»</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>После скана UI запрашивает /v1/enotourism/{slug} через gateway и рисует туры с адресом и статьи с автором и датой.</Criterion>
+          <Criterion>Блоки скрываются, если данных нет: пустых заголовков не остаётся.</Criterion>
+          <Criterion>bun run build проходит; новые строки присутствуют в собранном бандле.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Верификация: модуль M-ENOTOURISM и блоки удержания</Title>
+        <DependsOn>T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>В графе появляется M-ENOTOURISM с источником services/gateway/app/enotourism.py.</Criterion>
+          <Criterion>V-M-ENOTOURISM описывает сценарии и содержит реальные доказательства синка и ответа эндпоинта.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path .</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-019>
+</GraceChangePlan>

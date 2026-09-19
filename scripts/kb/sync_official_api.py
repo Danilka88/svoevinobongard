@@ -309,7 +309,26 @@ def main(argv: list[str] | None = None) -> int:
         if args.command in {"details", "all"}:
             details_info = sync_details(args, items)
         if args.command in {"collections", "all"}:
-            sync_collections(args)
+            collections = sync_collections(args)
+            if args.report:
+                tours = (collections.get("tours") or {}).get("items", [])
+                regions = (collections.get("regions") or {}).get("items", [])
+                report = {
+                    "tours": len(tours),
+                    "regions": len(regions),
+                    "articles": len(collections.get("articles") or []),
+                    "manufacturer_groups": len(collections.get("manufacturers") or []),
+                    "tour_example": (tours[0] if tours else {}),
+                    "region_example": {k: (regions[0].get(k) if regions else None)
+                                       for k in ("name", "fact", "eventsCount", "eventsCountDescription")},
+                    "article_example": ({k: (collections.get("articles") or [{}])[0].get(k)
+                                         for k in ("title", "slug", "category", "author", "firstPublishedAt")}
+                                        if collections.get("articles") else {}),
+                }
+                target = _ROOT / args.report
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+                print(f"report: {target.relative_to(_ROOT)}")
         if args.command in {"build", "all"}:
             stats = build_v3(args, items)
             print("=== catalog_enriched_v3 ===")

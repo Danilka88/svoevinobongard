@@ -24,6 +24,20 @@ export interface SommelierResponse {
   slug: string; recommendations: SommelierItem[]; pairing: string[];
   official_dishes?: string[]; source: string; note: string;
 }
+// C-019: энотуризм и статьи — данные официального API портала через gateway
+export interface EnotourismRegion { name: string; fact: string; events_count: number; events_description: string }
+export interface EnotourismTour {
+  slug: string; title: string; address: string; price?: number | null;
+  image_url: string; url: string; match: string;
+}
+export interface EnotourismArticle {
+  slug: string; title: string; category: string; author: string;
+  published_at: string; image_url: string; url: string; relevance: string;
+}
+export interface EnotourismResponse {
+  slug: string; region: EnotourismRegion; tours: EnotourismTour[];
+  articles: EnotourismArticle[]; source: string; note: string;
+}
 
 export function useGateway() {
   const config = useRuntimeConfig();
@@ -47,5 +61,9 @@ export function useGateway() {
     });
   }
 
-  return { base, scan, similar, sommelier };
+  async function enotourism(slug: string): Promise<EnotourismResponse> {
+    return await $fetch<EnotourismResponse>(`${base}/v1/enotourism/${encodeURIComponent(slug)}`);
+  }
+
+  return { base, scan, similar, sommelier, enotourism };
 }

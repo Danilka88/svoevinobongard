@@ -1,0 +1,39 @@
+<GraceVerificationDocument graceVersion="4.0">
+  <VD-M7-ENOTOURISM>
+    <Purpose>Верификация фичи удержания (change C-019): региональный факт, винные туры и подборка статей
+      после сканирования, целиком на официальных данных портала.</Purpose>
+
+    <V-M-ENOTOURISM>
+      <Priority>high</Priority>
+      <Status>built</Status>
+      <Description>GET /v1/enotourism/{slug}: регион вина с фактом и событиями, туры региона или винодельни
+        с адресом и ценой, 3–5 статей портала с пометкой релевантности. Все данные из официального API
+        или его кэша; при пустом кэше возвращаются пустые списки без ошибок.</Description>
+      <TestFiles>
+        <File>services/gateway/app/enotourism.py</File>
+        <File>scripts/kb/sync_official_api.py</File>
+        <File>tests/test_enotourism.py</File>
+      </TestFiles>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/kb/sync_official_api.py collections --resume --articles 180 --report reports/enotourism_sync.json</Command>
+      <Command>curl -s "http://127.0.0.1:8080/v1/enotourism/aristov-anima-millesimato-beloe-bryut"</Command>
+      <Scenario id="S-ENO-1">Туры, регионы и статьи закэшированы; повторный запуск с --resume не перекачивает ответы.</Scenario>
+      <Scenario id="S-ENO-2">Эндпоинт отдаёт регион с фактом, туры с адресом и ценой и 3–5 статей с автором и датой.</Scenario>
+      <Scenario id="S-ENO-3">Релевантность статей помечается: matched при совпадении региона, категории или сорта, latest — для добора свежими материалами.</Scenario>
+      <Scenario id="S-ENO-4">При пустом кэше возвращаются пустые списки и note, а не ошибка.</Scenario>
+      <Scenario id="S-ENO-5">Дубликаты статей исключаются; ничего не генерируется моделью.</Scenario>
+      <Evidence note="sync-collections">C-019: официальные коллекции закэшированы за 3.3 с (туры и регионы уже были в кэше, статьи докачаны):
+        туры 9, регионы 11, статьи 180, группы производителей 41. Пример тура: «Мастер-класс Премиум…»,
+        адрес «Краснодарский край, Темрюкский район, ст. Тамань, ул. Карла Маркса, д. 1», цена 2500.
+        Пример региона: Крым, факт «Крым — один из древнейших винных регионов…», eventsCount 2,
+        «Дегустация, Концерт / музыкальный вечер». Пример статьи: «Зачем на винных бокалах делали стеклянные пупырышки»,
+        категория «Истории», автор «Александра Кожуханцева».</Evidence>
+      <Evidence note="endpoint-live">GET /v1/enotourism/aristov-anima-millesimato-beloe-bryut: регион Кубань с фактом,
+        туры 3 (match=winery — «Мастер-класс Премиум в Центре энологии», «Мастер-класс Элит», «Мастер-класс Премиум
+        в Центре классического виноделия», все с адресами в ст. Тамань), статьи 3 (matched),
+        включая «ARISTOV ROSSO: красное игристое, которое не…». GET /v1/enotourism/nebo-rossii-glera: регион Крым,
+        факт про креплёные вина, eventsCount 2, туров 0 — по данным портала все 9 туров кубанские, это не дефект кода.
+        Неизвестный slug: эндпоинт отвечает 200 с пустыми турами и статьями и note об отсутствии данных,
+        то есть фича деградирует, не ломая скан.</Evidence>
+    </V-M-ENOTOURISM>
+  </VD-M7-ENOTOURISM>
+</GraceVerificationDocument>
