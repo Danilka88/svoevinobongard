@@ -1,6 +1,6 @@
 # START_MODULE_CONTRACT
 # PURPOSE: Дешёвый OCR-сигнал: текст с кропа этикетки и нормализованные поля (год, сладость) с graceful fallback движка
-# SCOPE: OcrResult, resolve_engine, reset_engine, run_ocr, parse_fields
+# SCOPE: OcrResult, resolve_engine, reset_engine, run_ocr, parse_fields, roman_to_int, roman_year
 # DEPENDS: numpy, cv2, packages.common.logging
 # LINKS: M-OCR
 # ROLE: RUNTIME
@@ -12,6 +12,8 @@
 # reset_engine - сброс кэша движка (тесты, смена конфигурации)
 # run_ocr - распознавание текста и нормализация полей на кропе этикетки
 # parse_fields - извлечение года и сладости из строк OCR
+# roman_to_int - перевод корректной римской записи в число
+# roman_year - римский год из строки с мягкой нормализацией грязных вариантов
 # END_MODULE_MAP
 """OCR-сигнал для дизамбигуации near-duplicates.
 
@@ -34,7 +36,8 @@ import numpy as np
 
 from packages.common.logging import log_marker
 
-__all__ = ["OcrResult", "resolve_engine", "reset_engine", "run_ocr", "parse_fields"]
+__all__ = ["OcrResult", "resolve_engine", "reset_engine", "run_ocr", "parse_fields",
+           "roman_to_int", "roman_year"]
 
 ENGINE_NAMES = ("rapidocr", "easyocr", "tesseract")
 YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
@@ -153,6 +156,76 @@ def _delookalike(text: str) -> str:
     return text.translate(_LOOKALIKE)
 
 
+# --- римские годы (C-015) ---
+# На этикетках «Своё Вино» год часто выбит римскими цифрами, и без разбора римских
+# записей год не находится вовсе. Диапазон ограничен годами, встречающимися в каталоге,
+# чтобы «XIV» или «MMM» не превращались в ложный год.
+ROMAN_YEAR_MIN = 1990
+ROMAN_YEAR_MAX = 2035
+_ROMAN_VALUES = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
+_ROMAN_RUN_RE = re.compile(r"[IVXLCDM]{3,}")
+# Мягкая нормализация: OCR путает I с l, |, 1 и кириллицей, а C может оказаться потерянным M.
+_ROMAN_CONFUSE = str.maketrans({
+    "1": "I", "l": "I", "|": "I", "і": "I", "І": "I", "ⅰ": "I", "Ѵ": "V", "Ⅴ": "V",
+    "Ⅹ": "X", "с": "C", "С": "C", "м": "M", "М": "M", "х": "X", "Х": "X", "0": "O",
+})
+
+
+def roman_to_int(text: str) -> int:
+    """Переводит корректную римскую запись в число; 0 — если запись некорректна."""
+    total = 0
+    previous = 0
+    for char in reversed(text.upper()):
+        value = _ROMAN_VALUES.get(char)
+        if value is None:
+            return 0
+        total = total - value if value < previous else total + value
+        previous = max(previous, value)
+    return total if 0 < total < 4000 else 0
+
+
+def _int_to_roman(number: int) -> str:
+    """Каноническая римская запись числа (для проверки корректности разбора)."""
+    table = ((1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"),
+             (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I"))
+    result = ""
+    for value, symbol in table:
+        while number >= value:
+            result += symbol
+            number -= value
+    return result
+
+
+def roman_year(text: str) -> str:
+    """Ищет римский год в строке, включая грязные варианты вроде «cMXXIY» и «MMXXIl».
+
+    Returns:
+        Год строкой в диапазоне ROMAN_YEAR_MIN..ROMAN_YEAR_MAX или "".
+    """
+    # translate до upper: иначе "l" станет "L" (валидная римская) вместо "I"
+    folded = unicodedata.normalize("NFKC", text).translate(_ROMAN_CONFUSE).upper()
+    # Варианты собираются по контексту: регулярка режет Y (не римский символ), поэтому
+    # смотрим следующий символ вручную. Длинные варианты проверяются первыми: они
+    # «дочитывают» искажённый хвост, иначе короткий вариант даст год на единицу меньше.
+    for match in _ROMAN_RUN_RE.finditer(folded):
+        run = match.group(0)
+        variants = [run]
+        if run.startswith("C"):
+            # потерянная первая M часто читается как C: «cMXXIY» вместо «MMXXII»
+            variants.append("M" + run[1:])
+        if folded[match.end():match.end() + 1] == "Y":
+            # хвостовой Y — мусор вместо последней I: «MMXXIY» вместо «MMXXII»
+            variants.extend(variant + "I" for variant in list(variants))
+        for variant in sorted(set(variants), key=len, reverse=True):
+            for candidate in (variant, variant[:-1], variant[1:]):
+                if len(candidate) < 3:
+                    continue
+                year = roman_to_int(candidate)
+                if year and _int_to_roman(year) == candidate and ROMAN_YEAR_MIN <= year <= ROMAN_YEAR_MAX:
+                    return str(year)
+    return ""
+
+
 def parse_fields(lines: list[str]) -> dict:
     """Извлекает год и сладость из строк OCR.
 
@@ -169,6 +242,12 @@ def parse_fields(lines: list[str]) -> dict:
     match = re.search(r"\b((?:19|20)\d{2})\b", folded)
     if match:
         vintage = match.group(1)
+    else:
+        for line in lines:
+            roman = roman_year(line)
+            if roman:
+                vintage = roman
+                break
     sweetness = ""
     for candidate in (folded, _delookalike(folded)):
         for token in SWEETNESS:

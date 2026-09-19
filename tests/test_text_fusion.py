@@ -72,8 +72,8 @@ def test_fusion_on_uses_enriched_sweetness(monkeypatch: pytest.MonkeyPatch) -> N
     fields = {"winery": "Тест", "wine_name": "Альфа", "wine_type": "сухое"}
     candidates = [{"slug": "a-1", "score": 0.5}, {"slug": "a-2", "score": 0.5}]
 
-    off = rerank_candidates(candidates, fields, catalog, enriched=overlay)
-    assert all(candidate.sweetness_match is False for candidate in off), "без флага overlay не применяется"
+    off = rerank_candidates(candidates, fields, catalog, enriched=overlay, fusion="off")
+    assert all(candidate.sweetness_match is False for candidate in off), "в режиме off overlay не применяется"
 
     monkeypatch.setattr(textfusion, "fusion_mode", lambda: "always")
     on = rerank_candidates(candidates, fields, catalog, enriched=overlay)
@@ -89,7 +89,8 @@ def test_fusion_on_uses_grape_signal(monkeypatch: pytest.MonkeyPatch) -> None:
         "b": {"slug": "b", "name": "Вино", "winery": "Тест", "grape": "Мерло"},
     }
     ranked = rerank_candidates([{"slug": "a", "score": 0.0}, {"slug": "b", "score": 0.0}],
-                               {"winery": "Тест", "wine_name": "Вино", "grape": "Мерло"}, catalog)
+                               {"winery": "Тест", "wine_name": "Вино", "grape": "Мерло"}, catalog,
+                               fusion="always")
     assert ranked[0].slug == "b"
     assert ranked[0].text_score > ranked[1].text_score
 
@@ -166,3 +167,36 @@ def test_fusion_mode_parsing() -> None:
     finally:
         object.__setattr__(settings, "text_fusion_enabled", before_enabled)
         object.__setattr__(settings, "text_fusion_mode", before_mode)
+
+
+def test_default_fusion_mode_is_conditional(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Дефолт режима фьюжна — conditional: он не трогает запросы вне near-dup."""
+    monkeypatch.delenv("TEXT_FUSION_MODE", raising=False)
+    monkeypatch.delenv("TEXT_FUSION_ENABLED", raising=False)
+    from packages.common import config as cfg_module
+
+    fresh = type(cfg_module.settings)()
+    assert fresh.text_fusion_mode == "conditional"
+    assert fresh.text_fusion_enabled is False
+
+
+def test_conditional_default_does_not_touch_non_near_dup(monkeypatch: pytest.MonkeyPatch) -> None:
+    """С дефолтным conditional порядок вне near-dup совпадает с off."""
+    monkeypatch.delenv("TEXT_FUSION_MODE", raising=False)
+    monkeypatch.delenv("TEXT_FUSION_ENABLED", raising=False)
+    from packages.common import config as cfg_module
+
+    settings = textfusion.settings
+    before = (settings.text_fusion_enabled, settings.text_fusion_mode)
+    try:
+        object.__setattr__(settings, "text_fusion_enabled", False)
+        object.__setattr__(settings, "text_fusion_mode", type(cfg_module.settings)().text_fusion_mode)
+        fields = {"winery": "Другой", "wine_name": "Другое", "wine_type": "сухое"}
+        candidates = [{"slug": "other", "score": 0.9}, {"slug": "w-2021", "score": 0.3}]
+        default = rerank_candidates(candidates, fields, CATALOG_GROUPS, enriched=OVERLAY_GROUP)
+        off = rerank_candidates(candidates, fields, CATALOG_GROUPS, enriched=OVERLAY_GROUP, fusion="off")
+        assert [c.slug for c in default] == [c.slug for c in off]
+        assert [c.score for c in default] == [c.score for c in off]
+    finally:
+        object.__setattr__(settings, "text_fusion_enabled", before[0])
+        object.__setattr__(settings, "text_fusion_mode", before[1])

@@ -121,7 +121,7 @@ class AppSettings:
         default_factory=lambda: _env_float("TEXT_FUSION_SWEETNESS_BONUS", 0.25))
     catalog_enriched_jsonl: str = field(
         default_factory=lambda: _env("CATALOG_ENRICHED_JSONL", "data/catalog/catalog_enriched.jsonl"))
-    text_fusion_mode: str = field(default_factory=lambda: _env("TEXT_FUSION_MODE", "off"))
+    text_fusion_mode: str = field(default_factory=lambda: _env("TEXT_FUSION_MODE", "conditional"))
     text_fusion_trigger_max_gap: float = field(
         default_factory=lambda: _env_float("TEXT_FUSION_TRIGGER_MAX_GAP", 0.05))
 

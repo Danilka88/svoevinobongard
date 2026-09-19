@@ -1,0 +1,97 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-015>
+    <IntentSummary>Добавить римские годы в разбор полей OCR (арабский приоритетнее, диапазон 1990..2035),
+      перевести TEXT_FUSION_MODE в conditional по умолчанию, и заново измерить кириллический OCR и
+      трёхрежимный фьюжн, честно зафиксировав результат.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>packages/common/ocr.py</Value></MustExist>
+      <MustExist><Value>services/matcher/app/textfusion.py</Value></MustExist>
+      <MustExist><Value>reports/kb_pilot.json</Value></MustExist>
+      <MustVerify><Module>M-OCR</Module></MustVerify>
+      <MustVerify><Module>M-MATCHER</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>reports/kb_pilot_roman.json</Value></MustExist>
+      <MustExist><Value>reports/kb_pilot_cyrillic.json</Value></MustExist>
+      <MustExist><Value>reports/text_fusion.json</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-OCR</Module></MustVerify>
+      <MustVerify><Module>M-MATCHER</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-OCR</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-OCR/>
+      <M-MATCHER/>
+      <M-EVAL/>
+      <V-M-OCR/>
+      <V-M-TEXT/>
+      <V-M-MATCHER/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>tests/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/</Path>
+      <File>.env.example</File>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Римские годы в parse_fields с диапазоном и мягкой нормализацией</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>roman_to_int переводит корректную запись и отвергает мусор; roman_year ограничен диапазоном 1990..2035.</Criterion>
+          <Criterion>Мягкая нормализация делается ДО приведения к верхнему регистру, иначе «l» становится валидной «L» и правило I/l/1 не работает.</Criterion>
+          <Criterion>Грязные варианты cMXXIY и MMXXIl дают 2022; хвостовой Y учитывается отдельно, так как регулярка его отсекает.</Criterion>
+          <Criterion>Арабский год имеет приоритет, римский добавляется только при его отсутствии.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_ocr.py -v</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Ре-замер кириллического OCR после фикса римских</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Оба движка прогоняются на одном и том же пилоте 42 кадра, метрики сравниваются с состоянием до фикса.</Criterion>
+          <Criterion>Отдельно измеряется, сколько кадров содержат арабский и римский год, чтобы объяснить результат, а не догадываться.</Criterion>
+          <Criterion>Решение о дефолтном движке принимается по цифрам; отрицательный результат фиксируется прямо.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/kb/build_label_kb.py pilot --report reports/kb_pilot_roman.json --vlm-subset 0</Command>
+          <Command>PYTHONPATH=. OCR_REC_MODEL=data/models/ocr/cyrillic_PP-OCRv5_rec.onnx OCR_REC_KEYS=data/models/ocr/cyrillic_dict.txt .venv/bin/python scripts/kb/build_label_kb.py pilot --report reports/kb_pilot_cyrillic.json --vlm-subset 0</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>TEXT_FUSION_MODE=conditional по умолчанию</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Дефолт в config.py и в .env.example равен conditional; TEXT_FUSION_ENABLED=1 остаётся синонимом always.</Criterion>
+          <Criterion>Тест подтверждает дефолт и то, что на не-near-dup запросе порядок и скоры совпадают с режимом off.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_text_fusion.py -v</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Ре-замер фьюжна на 150 pseudo-запросах с conditional по умолчанию</Title>
+        <DependsOn>T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Отчёт содержит acc@1/@5 по трём режимам, долю срабатываний триггера и счётчики изменённых рангов.</Criterion>
+          <Criterion>Результат сопоставляется с замером C-014 на том же наборе и seed.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/text_fusion_eval.py --samples 150 --modes off,always,conditional --out reports/text_fusion.json</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-015>
+</GraceChangePlan>

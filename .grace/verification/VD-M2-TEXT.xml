@@ -42,6 +42,16 @@
         ещё 28 групп различаются только свободным color, который как признак не используется.
         Полное обогащение с 12b на каждый эталон ≈ 2.2 ч при p50 34 с — поэтому это офлайн-задача,
         и в change 12b вызывался только на пробелах (2-4 вызова). catalog.jsonl не изменён (проверка байт в main).</Evidence>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/text_fusion_eval.py --samples 150 --modes off,always,conditional --out reports/text_fusion.json</Command>
+      <Scenario id="S-TEXT-6">Режим фьюжна по умолчанию — conditional: он срабатывает только на near-dup пару в визуальном top-2.</Scenario>
+      <Scenario id="S-TEXT-7">На не-near-dup запросе режим по умолчанию даёт тот же порядок и те же скоры, что режим off.</Scenario>
+      <Evidence note="conditional-default">C-015: TEXT_FUSION_MODE по умолчанию равен conditional в config.py и .env.example;
+        TEXT_FUSION_ENABLED=1 остаётся синонимом always. Ре-замер на тех же 150 pseudo-запросах (seed 42) воспроизвёл C-014:
+        визуальный baseline acc@1 0.4333; off 0.42 / acc@5 0.74; always 0.42 / 0.74; conditional 0.42 / 0.74;
+        триггер сработал 32/150 (21.3%), улучшил ранг 2, ухудшил 0; rerank p50 0.2 мс.</Evidence>
+      <Evidence note="why-conditional-is-safe">Условный режим включается только при совпадении near-dup ключа top-1 и top-2 и разрыве
+        скоров не больше TEXT_FUSION_TRIGGER_MAX_GAP (0.05). В C-014 на 118 не-триггерных запросах он не изменил ни одного ранга,
+        тогда как безусловный режим переставил 9 рангов из 150, в том числе вне near-dup. Поэтому дефолт — conditional, а не always.</Evidence>
     </V-M-TEXT>
   </VD-M2-TEXT>
 </GraceVerificationDocument>
