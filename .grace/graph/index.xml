@@ -12,6 +12,7 @@
         <M-VLM/>
         <M-MATCHER/>
         <M-CATALOG/>
+        <M-OCR/>
         <M-ACTIVE-LEARNING/>
         <M-WEB/>
         <M-COMMON/>

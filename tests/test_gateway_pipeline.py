@@ -13,6 +13,7 @@
 # test_eval_predict_flat_contract - эндпоинт отдает ровно {"slug": "..."}
 # test_scan_endpoint_rich - эндпоинт отдает rich-ответ контракта
 # test_calibrated_confidence_monotonic - уверенность растет с отрывом и корректна на краях
+# test_ocr_branch_uses_matcher - неуверенный Tier-1 уходит в OCR и matcher с path=ocr_fallback
 # test_retrieval_unavailable - недоступный retrieval дает HTTP 503, а не 5xx-падение
 # END_MODULE_MAP
 """V-M-GATEWAY: оркестрация пайплайна и контракт организатора."""
@@ -162,6 +163,37 @@ def test_calibrated_confidence_monotonic() -> None:
     assert 0.0 < calibrated_confidence([0.9, 0.1], temperature=0.2) <= 1.0
     # при одинаковых скорах вероятность делится поровну
     assert abs(calibrated_confidence([0.5, 0.5], temperature=0.2) - 0.5) < 1e-9
+
+
+def test_ocr_branch_uses_matcher(tmp_path, monkeypatch) -> None:
+    """Неуверенный Tier-1 → OCR-поля → matcher → path=ocr_fallback."""
+    async def fake_search(self, data: bytes, filename: str = "image.jpg"):
+        return {"encoder": "test", "model": "test", "device": "cpu", "latency_ms": 1.0,
+                "top_k": [{"slug": "kokur-2025", "score": 0.40, "name": "Кокур, 2025",
+                           "winery": "Валерий Захарьин"},
+                          {"slug": "kokur-suhoe-2025", "score": 0.39,
+                           "name": "Кокур Сухое, 2025", "winery": "Валерий Захарьин"}]}
+
+    async def fake_ocr(self, data: bytes, filename: str = "query.png"):
+        return {"ok": True, "engine": "stub", "lines": ["КОКУР СУХОЕ 2025"],
+                "fields": {"winery": "Валерий Захарьин", "vintage": "2025",
+                           "wine_type": "сухое"}, "ocr_latency_ms": 12.0}
+
+    async def fake_rerank(self, candidates: list[dict], fields: dict):
+        return {"items": [{"slug": "kokur-suhoe-2025", "score": 0.95,
+                           "name": "Кокур Сухое, 2025", "winery": "Валерий Захарьин"},
+                          {"slug": "kokur-2025", "score": 0.50, "name": "Кокур, 2025",
+                           "winery": "Валерий Захарьин"}]}
+
+    monkeypatch.setattr(ServiceClients, "search", fake_search)
+    monkeypatch.setattr(ServiceClients, "ocr", fake_ocr)
+    monkeypatch.setattr(ServiceClients, "rerank", fake_rerank)
+
+    result = asyncio.run(run_scan(_png_bytes(), _store(tmp_path)))
+    assert result.path == "ocr_fallback"
+    assert result.ocr_used is True
+    assert result.slug == "kokur-suhoe-2025"
+    assert result.ocr_latency_ms >= 0.0
 
 
 def test_retrieval_unavailable(tmp_path, monkeypatch) -> None:

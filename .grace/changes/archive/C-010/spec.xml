@@ -1,0 +1,34 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-010>
+    <Summary>OCR text signal: читать с кропа этикетки год (винтаж) и сладость дешёвым OCR
+      (RapidOCR, Apache-2.0, ONNX) и кормить существующий matcher для дизамбигуации near-duplicates.
+      Правильный ответ обычно уже в top-5 (acc@5 0.790 против acc@1 0.685) — не хватает текстового сигнала.</Summary>
+    <Goals>Дать онлайн-пути дешёвый детерминированный текстовый сигнал вместо локального VLM, который
+      не читает этикетки (C-004). Поднять acc@1 на near-duplicate кейсах за счет согласования года и сладости
+      с метаданными каталога. Удержать бюджет OCR 100–500 мс и итоговый p95 ниже 3000 мс.</Goals>
+    <Constraints>Только permissive-лицензии: RapidOCR (Apache-2.0), EasyOCR (Apache-2.0), PaddleOCR (Apache-2.0),
+      Tesseract (Apache-2.0). Общий код OCR живет в packages/common/ocr.py, чтобы services/* не импортировали
+      друг друга. Движок выбирается автоматически с graceful fallback; если движок не установлен, пайплайн
+      деградирует к Tier-1 и это честно фиксируется.</Constraints>
+    <NonGoals>Обучение OCR-моделей. Кириллическая rec-модель PP-OCRv5 как отдельная поставка (зафиксировать
+      как ограничение). Распознавание полного названия вина. Выход в C-005 (UI), C-006 (flywheel), C-007 (deploy).
+      Повторное включение VLM-fallback.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>POST /ocr отдает список строк и нормализованные поля (vintage по regex, sweetness по словарю).</Criterion>
+      <Criterion>Движок выбирается автоматически: RapidOCR основной, EasyOCR опциональный, graceful fallback при отсутствии.</Criterion>
+      <Criterion>Замер на proxy (seed 42) показывает acc@1 Tier-1+geo против Tier-1+geo+OCR, отдельно по near-duplicate подвыборке.</Criterion>
+      <Criterion>Бюджет OCR укладывается в 100–500 мс; итоговый p95 полевого прогона ниже 3000 мс.</Criterion>
+      <Criterion>Полевой прогон 31 фото: показано, сколько раз OCR прочитал год правдоподобно.</Criterion>
+      <Criterion>Все зависимости permissive (Apache-2.0).</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-OCR/>
+      <M-MATCHER/>
+      <M-COMMON/>
+      <M-EVAL/>
+      <M-GATEWAY/>
+    </AffectedAreas>
+    <VerificationIntent>Создать V-M-OCR и обновить V-M-MATCHER реальными цифрами: точность чтения года,
+      прирост acc@1 на near-duplicates, latency p50/p95 OCR и полного пути, доля деградаций.</VerificationIntent>
+  </C-010>
+</GraceChangeSpec>

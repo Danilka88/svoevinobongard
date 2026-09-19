@@ -1,0 +1,47 @@
+<GraceVerificationDocument graceVersion="4.0">
+  <VD-M4-OCR>
+    <Purpose>Верификация OCR-сигнала (change C-010): чтение текста этикетки дешёвым движком,
+      нормализация полей, интеграция в gateway и честная оценка вклада в точность.</Purpose>
+
+    <V-M-OCR>
+      <Priority>high</Priority>
+      <Status>built</Status>
+      <Description>RapidOCR (Apache-2.0, ONNXRuntime) как основной движок, EasyOCR и Tesseract как fallback;
+        разбор года по regex и сладости по словарю с обратной заменой латиница→кириллица;
+        POST /ocr со строками и полями; graceful деградация при отсутствии движка.</Description>
+      <TestFiles>
+        <File>tests/test_ocr.py</File>
+        <File>packages/common/ocr.py</File>
+        <File>services/ocr/app/main.py</File>
+      </TestFiles>
+      <Command>.venv/bin/python -m pytest tests/test_ocr.py -v</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/ocr_signal_eval.py --samples 200 --seed 42 --out reports/ocr_signal.json</Command>
+      <Scenario id="S-OCR-1">Год извлекается из строк OCR, включая год внутри названия; пустой ввод не дает ложных полей.</Scenario>
+      <Scenario id="S-OCR-2">Сладость находится по словарю, включая латинские подмены кириллицы (cyxoe → сухое).</Scenario>
+      <Scenario id="S-OCR-3">Движок выбирается автоматически среди rapidocr, easyocr, tesseract; при отсутствии всех run_ocr возвращает ok=false без исключения.</Scenario>
+      <Scenario id="S-OCR-4">OCR читает год с синтетической этикетки и укладывается в бюджет времени.</Scenario>
+      <Scenario id="S-OCR-5">Результат конвертируется в поля, совместимые с matcher (vintage, wine_type, winery).</Scenario>
+      <Scenario id="S-OCR-6">Gateway: неуверенный Tier-1 уходит в OCR → matcher и получает path=ocr_fallback.</Scenario>
+      <Marker>[M-OCR][run_ocr][DONE]</Marker>
+      <Marker>[M-OCR][run_ocr][ENGINE_FAILED]</Marker>
+      <Marker>[M-OCR][ocr][RESPONSE]</Marker>
+      <Marker>[M-GATEWAY][run_scan][OCR_NO_SIGNAL]</Marker>
+      <Evidence note="engine-choice">Сравнение движков на реальных эталонах: RapidOCR (Apache-2.0, ONNX, без paddle)
+        прочитал год верно и работает 250-290 мс; easyocr (Apache-2.0) при инициализации 95 с НЕ прочитал год
+        на том же изображении и дал «Кож-иqна-ка» вместо «Коммуналка». Выбран RapidOCR.</Evidence>
+      <Evidence note="latency">Бюджет соблюден: OCR p50 100.6 мс, p95 250.6 мс, max 284.6 мс на proxy-кропах;
+        на 31 реальном полевом фото p50 141 мс, p95 241 мс.</Evidence>
+      <Evidence note="reading-quality">Чтение года: на чистых эталонах 7/11 верно; на 31 реальном полевом фото
+        7/31 правдоподобных годов (2009, 2013, 2022, 2023, 2024, 2024, 2025); сладость — 2/31.
+        На синтетических «полевых» фото 0/11 — текст этикетки уничтожается аугментацией и масштабом кропа.</Evidence>
+      <Evidence note="negative-result">Прирост точности НУЛЕВОЙ: Tier-1+geo acc@1 0.685 / acc@5 0.790
+        и +OCR acc@1 0.685 / acc@5 0.790 (200 сэмплов, seed 42); near-duplicate подвыборка (n=21)
+        0.7143 → 0.7143. OCR вызван в 79 случаях (40%). Причина не в OCR: год есть лишь у 116/2103 записей
+        каталога (5.5%), сладость у 318 (15%), то есть у сигнала почти нет опоры в метаданных.</Evidence>
+      <Evidence note="metadata-ceiling">Проверка покрытия каталога: year field 116 (5.5%), year в description
+        латентно ещё 49 (2.3% сверху) → потолок ~7.8%; sweetness 318 (15.1%), латентного запаса нет;
+        category (цвет) есть у 2103 (100%), но цвет near-duplicates не различает.
+        Вывод: узкое место дизамбигуации — метаданные каталога, а не качество OCR.</Evidence>
+    </V-M-OCR>
+  </VD-M4-OCR>
+</GraceVerificationDocument>

@@ -73,12 +73,14 @@ class ServiceClients:
         retrieval_url: str | None = None,
         vlm_url: str | None = None,
         matcher_url: str | None = None,
+        ocr_url: str | None = None,
         timeout: float | None = None,
     ) -> None:
         self.normalize_url = (normalize_url or settings.normalize_url).rstrip("/")
         self.retrieval_url = (retrieval_url or settings.retrieval_url).rstrip("/")
         self.vlm_url = (vlm_url or settings.vlm_url).rstrip("/")
         self.matcher_url = (matcher_url or settings.matcher_url).rstrip("/")
+        self.ocr_url = (ocr_url or settings.ocr_url).rstrip("/")
         self.timeout = timeout if timeout is not None else settings.service_timeout_s
         self._client: httpx.AsyncClient | None = None
 
@@ -111,6 +113,17 @@ class ServiceClients:
         return await post_image(
             self.client, f"{self.vlm_url}/extract", data, filename,
             timeout or settings.vlm_timeout_s + 1.0,
+        )
+
+    async def ocr(self, data: bytes, filename: str = "query.png") -> dict | None:
+        """Читает текст этикетки через OCR (POST /ocr) — дешёвый текстовый сигнал.
+
+        Таймаут короткий: OCR стоит сотни миллисекунд, и при превышении бюджета
+        выгоднее деградировать к Tier-1, чем сорвать SLA.
+        """
+        return await post_image(
+            self.client, f"{self.ocr_url}/ocr", data, filename,
+            settings.ocr_timeout_s + 0.5,
         )
 
     async def rerank(self, candidates: list[dict], fields: dict) -> dict | None:

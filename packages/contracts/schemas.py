@@ -72,6 +72,8 @@ class ScanResponse(BaseModel):
     confident: bool = False
     vlm_used: bool = False
     vlm_latency_ms: float = 0.0
+    ocr_used: bool = False
+    ocr_latency_ms: float = 0.0
     degraded: bool = False
     card: Card | None = None
 

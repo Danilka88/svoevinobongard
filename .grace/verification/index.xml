@@ -32,6 +32,12 @@
         <V-M-MATCHER/>
       </Owns>
     </VD-M3-VLM>
+    <VD-M4-OCR>
+      <Path>verification/VD-M4-OCR.xml</Path>
+      <Owns>
+        <V-M-OCR/>
+      </Owns>
+    </VD-M4-OCR>
     <VD-M1-M6-PLANNED>
       <Path>verification/VD-M1-M6-PLANNED.xml</Path>
       <Owns>

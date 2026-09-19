@@ -78,6 +78,13 @@ class AppSettings:
     vlm_reasoning_effort: str = field(
         default_factory=lambda: _env("VLM_REASONING_EFFORT", "none"))
 
+    # OCR text signal (C-010): дешёвая замена VLM-fallback в онлайн-пути
+    ocr_url: str = field(default_factory=lambda: _env("OCR_URL", "http://127.0.0.1:8085"))
+    ocr_enabled: bool = field(
+        default_factory=lambda: _env("OCR_ENABLED", "1") not in {"0", "false", "no"})
+    ocr_max_side: int = field(default_factory=lambda: _env_int("OCR_MAX_SIDE", 768))
+    ocr_timeout_s: float = field(default_factory=lambda: _env_float("OCR_TIMEOUT_S", 1.5))
+
     # matcher fusion (C-004)
     matcher_text_weight: float = field(default_factory=lambda: _env_float("MATCHER_TEXT_WEIGHT", 0.6))
     matcher_vintage_bonus: float = field(default_factory=lambda: _env_float("MATCHER_VINTAGE_BONUS", 0.3))

@@ -1,0 +1,100 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-010>
+    <IntentSummary>Добавить дешёвый OCR-сигнал: движок RapidOCR в packages/common/ocr.py, сервис
+      services/ocr с POST /ocr, интеграция в gateway (неуверенный Tier-1 → OCR кропа → matcher → rerank)
+      и замер Tier-1+geo против +OCR на proxy и near-duplicate подвыборке.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/matcher/app/merge.py</Value></MustExist>
+      <MustExist><Value>services/retrieval/app/geo.py</Value></MustExist>
+      <MustNotExist><Value>packages/common/ocr.py</Value></MustNotExist>
+      <MustNotExist><Value>services/ocr/app/main.py</Value></MustNotExist>
+      <MustVerify><Module>M-MATCHER</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>packages/common/ocr.py</Value></MustExist>
+      <MustExist><Value>services/ocr/app/main.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/ocr_signal_eval.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-OCR</Module></MustVerify>
+      <MustVerify><Module>M-MATCHER</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-OCR</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-OCR/>
+      <M-MATCHER/>
+      <M-COMMON/>
+      <M-EVAL/>
+      <M-GATEWAY/>
+      <V-M-OCR/>
+      <V-M-MATCHER/>
+      <DF-002/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>services/ocr/</Path>
+      <Path>services/gateway/app/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>tests/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/</Path>
+      <File>.env.example</File>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Пакет OCR: движок RapidOCR с graceful fallback и нормализация полей (год, сладость)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Движок выбирается автоматически среди RapidOCR, EasyOCR и Tesseract; при отсутствии всех возвращается ok=false без исключения.</Criterion>
+          <Criterion>parse_fields извлекает год по regex и сладость по словарю из строк OCR.</Criterion>
+          <Criterion>Код живет в packages/common/ocr.py и не требует импортов между сервисами.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_ocr.py -v</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Сервис services/ocr: POST /ocr отдает строки и нормализованные поля</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>POST /ocr (multipart image) возвращает ok, engine, lines, fields и latency.</Criterion>
+          <Criterion>GET /health отдает выбранный движок и бюджет времени.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>curl -s -X POST -F image=@data/samples/field/30272748.jpeg http://127.0.0.1:8085/ocr</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Интеграция в gateway: неуверенный Tier-1 → OCR кропа → matcher → переранжирование с path=ocr_fallback</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>OCR вызывается только при неуверенном Tier-1 и только когда включен флагом.</Criterion>
+          <Criterion>Поля OCR уходят в тот же matcher, что и поля VLM (единый фьюжн).</Criterion>
+          <Criterion>Недоступность или таймаут OCR деградирует к Tier-1 без падения, с флагом degraded.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>curl -s -X POST -F image=@data/samples/eval_queries/019c68d0.jpg http://127.0.0.1:8080/v1/scan</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Замер Tier-1+geo против Tier-1+geo+OCR на proxy и near-duplicate подвыборке, полевой прогон и SLA</Title>
+        <DependsOn>T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Proxy (seed 42) дает acc@1 и acc@5 для обоих вариантов, отдельно по near-duplicate подвыборке.</Criterion>
+          <Criterion>Показана точность чтения года на полевом прогоне и latency OCR p50/p95.</Criterion>
+          <Criterion>Итоговый p95 полевого прогона ниже 3000 мс.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/ocr_signal_eval.py --samples 200 --seed 42 --out reports/ocr_signal.json</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-010>
+</GraceChangePlan>

@@ -130,6 +130,32 @@
       <Verification>V-M-CATALOG</Verification>
     </M-CATALOG>
 
+    <M-OCR>
+      <Name>OCR Text Signal</Name>
+      <Type>CORE_LOGIC</Type>
+      <Status>built</Status>
+      <Purpose>Дешёвый текстовый сигнал с кропа этикетки: год и сладость вместо локального VLM,
+        который этикетку не читает (C-004).</Purpose>
+      <Scope>RapidOCR (Apache-2.0, ONNXRuntime) как основной движок, EasyOCR и Tesseract как fallback;
+        парсинг года по regex, сладости по словарю с обратной заменой латиница→кириллица;
+        сервис POST /ocr со строками и полями; graceful деградация при отсутствии движка.</Scope>
+      <Source>services/ocr/</Source>
+      <Test>tests/ocr/</Test>
+      <Interface>POST /ocr (image) → строки и поля (vintage, sweetness)</Interface>
+      <Depends>
+        <M-COMMON/>
+      </Depends>
+      <Consumes>
+        <M-NORMALIZE/>
+      </Consumes>
+      <Feeds>
+        <M-MATCHER/>
+      </Feeds>
+      <Note>C-010: замер показал, что RapidOCR надежно читает год (2024, 2022) за ~250-290 мс;
+        кириллические слова даются хуже (стандартная ch/en модель) — зафиксировано как ограничение.</Note>
+      <Verification>V-M-OCR</Verification>
+    </M-OCR>
+
     <M-ACTIVE-LEARNING>
       <Name>Active Learning Flywheel</Name>
       <Type>CORE_LOGIC</Type>

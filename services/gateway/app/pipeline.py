@@ -135,6 +135,8 @@ async def run_scan(
     reranked_items: list[dict] | None = None
     vlm_used = False
     vlm_latency_ms = 0.0
+    ocr_used = False
+    ocr_latency_ms = 0.0
     degraded = False
 
     top5 = [
@@ -162,8 +164,31 @@ async def run_scan(
     margin = round(best.score - diagnostics.second_score, 6)
     confident = (best.score >= settings.score_tau) and (margin >= settings.margin_delta)
 
+    # Ветвление C-010: сначала дешёвый OCR (сотни мс), затем VLM (C-004) при явном включении.
+    if not confident and settings.ocr_enabled:
+        ocr_started = time.perf_counter()
+        recognized = await active_clients.ocr(payload)
+        ocr_latency_ms = (time.perf_counter() - ocr_started) * 1000.0
+        fields = (recognized or {}).get("fields") or {}
+        if recognized and recognized.get("ok") and (fields.get("vintage") or fields.get("wine_type")):
+            reranked = await active_clients.rerank(
+                [{"slug": item.get("slug"), "score": float(item.get("score", 0.0))}
+                 for item in items if item.get("slug")],
+                fields,
+            )
+            if reranked and reranked.get("items"):
+                reranked_items = reranked["items"]
+                ocr_used = True
+            else:
+                degraded = True
+                diagnostics.notes.append("matcher unavailable; Tier-1 kept")
+        else:
+            reason = (recognized or {}).get("reason", "ocr gave no usable fields")
+            diagnostics.notes.append(f"ocr no signal: {reason}")
+            log_marker("M-GATEWAY", "run_scan", "OCR_NO_SIGNAL", reason=str(reason)[:120])
+
     # Ветвление C-004: неуверенный Tier-1 → VLM-поля → matcher → переранжирование.
-    if not confident and settings.vlm_fallback_enabled:
+    if not confident and reranked_items is None and settings.vlm_fallback_enabled:
         vlm_started = time.perf_counter()
         extracted = await active_clients.extract(payload, "query.png")
         vlm_latency_ms = (time.perf_counter() - vlm_started) * 1000.0
@@ -185,9 +210,9 @@ async def run_scan(
             reason = (extracted or {}).get("reason", "vlm unavailable")
             diagnostics.notes.append(f"vlm degraded: {reason}")
             log_marker("M-GATEWAY", "run_scan", "VLM_DEGRADED", reason=str(reason)[:120])
-    elif not confident:
+    elif not confident and reranked_items is None:
         degraded = True
-        diagnostics.notes.append("vlm fallback disabled")
+        diagnostics.notes.append("no fallback produced a signal")
 
     if reranked_items:
         by_slug = {item.get("slug"): item for item in items}
@@ -213,11 +238,12 @@ async def run_scan(
     confidence = round(calibrated_confidence([item.score for item in top5]), 6)
     not_found = best.score < settings.score_tau
     confident = (best.score >= settings.score_tau) and (margin >= settings.margin_delta)
-    path = "vlm_fallback" if vlm_used else "retrieval"
+    path = "vlm_fallback" if vlm_used else ("ocr_fallback" if ocr_used else "retrieval")
 
     log_marker("M-GATEWAY", "run_scan", "DECISION", slug=best.slug if not not_found else "none",
                score=round(best.score, 4), margin=margin, confidence=confidence,
                confident=str(confident), path=path, vlm_latency_ms=round(vlm_latency_ms, 1),
+               ocr_latency_ms=round(ocr_latency_ms, 1),
                latency_ms=round(latency_ms, 1), normalize=diagnostics.normalize_method)
     return ScanResponse(
         slug=best.slug,
@@ -232,6 +258,8 @@ async def run_scan(
         confident=confident,
         vlm_used=vlm_used,
         vlm_latency_ms=round(vlm_latency_ms, 1),
+        ocr_used=ocr_used,
+        ocr_latency_ms=round(ocr_latency_ms, 1),
         degraded=degraded,
         card=build_card(store, best.slug),
     )
