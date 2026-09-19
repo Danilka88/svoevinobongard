@@ -24,6 +24,25 @@
       <Marker>[M-CATALOG][ETL][DONE]</Marker>
       <Marker>[M-CATALOG][build_index][START]</Marker>
       <Evidence note="index">Индекс: 2037 векторов, dim 384, backend numpy, 0 пропущенных изображений, 82 s на MPS.</Evidence>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/kb/sync_official_api.py list --resume</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/kb/sync_official_api.py details --resume --time-budget-min 25</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/kb/sync_official_api.py build --resume --report reports/api_sync.json</Command>
+      <Scenario id="S-CAT-5">Список вин выгружается постранично; perPage больше 30 API отвергает (проверено: 100 и 1000 дают 400).</Scenario>
+      <Scenario id="S-CAT-6">Детали качаются только для совпадающих slug, каждый ответ кэшируется отдельным файлом, повторный запуск с --resume кэш не перекачивает.</Scenario>
+      <Scenario id="S-CAT-7">catalog_enriched_v3.jsonl несёт источник (official+csv | csv) и признак api_match; базовые catalog.jsonl и catalog_enriched*.jsonl побайтово не изменены (проверка в main возвращает код 3 при изменении).</Scenario>
+      <Evidence note="api-sync">C-017: публичный API api.vino-svoe.ru/v1 без ключа. Список: 2069 позиций за 69 страниц (perPage=30, больше API отвергает).
+        Пересечение с нашим каталогом: 2035 из 2103 slug; 68 slug в живом API отсутствуют (например abrau-dyurso-victor-dravigny-brut-shardone-beloe-bryut-12)
+        — подтверждает, что каталог-истина для оценки остаётся CSV/sitemap. Детали выгружены для всех 2035 совпавших slug
+        за ~18 минут при 517 мс/шт (пауза 0.15 с, таймаут 25 с, 3 попытки); кэш data/api_cache/ (~2035 файлов), прогон возобновляем.
+        Все 228 near-dup slug покрыты. Базовые файлы не изменены.</Evidence>
+      <Evidence note="v3-fields">catalog_enriched_v3.jsonl: 2103 записи (official+csv 2035, csv 68). Заполнено у 2035: alcohol 2035, dishes 2035, grapes 2035,
+        temperature 2035, region 2035, description 2035. Крепость нормализована: API хранит её целым процентом (12, 13, 11 — 2033 записи),
+        и лишь 2 записи в десятых долях (135 = 13.5), поэтому правило «&gt;= 40 делим на 10». Сорта приведены к списку названий,
+        регион и винодельня — к строкам, причём сохранён manufacturer_slug для ссылки /wineries/{slug} (нужно C-018),
+        image_url сделан абсолютным. Пример: a-gordienko-m-nikolaev-pino-nuar — alcohol 13.0, temperature 16-18,
+        dishes [Выпечка и десерты, Мясо и стейки, Сыры], grapes [Пино Нуар], region Кубань, manufacturer А. Гордиенко &amp; М. Николаев.</Evidence>
+      <Evidence note="similar-param">Найден правильный параметр эндпоинта похожих: /v1/wines/{slug}/similar?size=N (максимум 24).
+        Значения limit, perPage, itemsPerPage, take, count дают 400 «Значение должно быть меньше, либо равно 24». Используется в C-018.</Evidence>
     </V-M-CATALOG>
 
     <V-M-EVAL>

@@ -124,6 +124,13 @@ class AppSettings:
     text_fusion_mode: str = field(default_factory=lambda: _env("TEXT_FUSION_MODE", "conditional"))
     text_fusion_trigger_max_gap: float = field(
         default_factory=lambda: _env_float("TEXT_FUSION_TRIGGER_MAX_GAP", 0.05))
+    # C-017: гастросочетания и цифровые поля из официального API как опциональный сигнал
+    text_fusion_use_dishes: bool = field(
+        default_factory=lambda: _env("TEXT_FUSION_USE_DISHES", "0").lower() not in {"0", "false", "no", ""})
+    text_fusion_use_numbers: bool = field(
+        default_factory=lambda: _env("TEXT_FUSION_USE_NUMBERS", "0").lower() not in {"0", "false", "no", ""})
+    catalog_v3_jsonl: str = field(
+        default_factory=lambda: _env("CATALOG_V3_JSONL", "data/catalog/catalog_enriched_v3.jsonl"))
 
     # encoder / index
     encoder: str = field(default_factory=lambda: _env("ENCODER", "siglip2"))

@@ -1,0 +1,28 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-017>
+    <Summary>Синхронизация официального API vino-svoe.ru в локальный кэш и сборка обогащённого каталога
+      v3 (alcohol, temperature, dishes, grapes, region, manufacturer, color, description, image_url).</Summary>
+    <Goals>Получить официальные метаданные вин для карточки и сомелье, сохранить трассируемость источника
+      (official против csv) и добавить гастросочетания с цифровыми полями как опциональный текстовый сигнал.</Goals>
+    <Constraints>Каталог-истина для оценки — CSV/sitemap; API используется только как обогащение по совпадающим
+      slug (живой API не знает часть наших slug). Все ответы кэшируются в data/ (gitignored) по одному файлу
+      на запрос, любой шаг возобновляется флагом --resume; между запросами пауза, таймаут 25 с, три попытки.
+      Максимум страницы списка — 30 (проверено: 100 даёт 400). Базовые catalog.jsonl и catalog_enriched*.jsonl
+      не перезаписываются — проверка сравнением байт. Только permissive; old/, my/ и материалы не изменяются.</Constraints>
+    <NonGoals>Использование API как каталога-истины. Перезапись базовых файлов каталога. Тяжёлый RAG по статьям
+      (это C-019). Изменение онлайн-пути сканирования.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>Список вин выгружается целиком (2069 позиций) и пересекается с нашим каталогом; расхождения зафиксированы.</Criterion>
+      <Criterion>Детали выгружаются для совпадающих slug с кэшем и возобновлением; сбой одного slug не прерывает прогон.</Criterion>
+      <Criterion>catalog_enriched_v3.jsonl содержит официальные поля с источником (official|csv) и признаком api_match, базовые файлы побайтово не изменены.</Criterion>
+      <Criterion>Гастросочетания и цифровые поля доступны как текстовый сигнал, но выключены флагами по умолчанию и не меняют текущее поведение матчера.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-CATALOG/>
+      <M-TEXT/>
+      <M-MATCHER/>
+      <M-DEPLOY/>
+    </AffectedAreas>
+    <VerificationIntent>Обновить V-M-CATALOG синхронизацией официального API и V-M-TEXT полями v3.</VerificationIntent>
+  </C-017>
+</GraceChangeSpec>

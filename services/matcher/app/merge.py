@@ -133,7 +133,7 @@ def rerank_candidates(
     Returns:
         Список Candidate, отсортированный по убыванию итогового скора.
     """
-    from .textfusion import enriched_record, fusion_mode, fusion_weights, should_fuse
+    from .textfusion import enriched_record, fusion_mode, fusion_weights, should_fuse, text_signal
 
     mode = fusion_mode() if fusion is None else fusion
     if mode is True or mode == "always":
@@ -163,10 +163,15 @@ def rerank_candidates(
 
         winery_score = fuzz.token_set_ratio(winery_q, _normalize(record.get("winery"))) / 100.0 if winery_q else 0.0
         name_score = fuzz.token_set_ratio(name_q, _normalize(record.get("name"))) / 100.0 if name_q else 0.0
+        extra_notes: list[str] = []
         if fusion_on:
             grape_score = (fuzz.token_set_ratio(grape_q, _normalize(record.get("grape"))) / 100.0
                            if grape_q else 0.0)
             text_score = round(0.55 * winery_score + 0.35 * name_score + 0.10 * grape_score, 4)
+            # C-017: гастросочетания и цифровые поля официального API (флаги по умолчанию выключены)
+            extra, extra_notes = text_signal(fields, record)
+            if extra:
+                text_score = round(min(1.0, text_score + 0.1 * extra), 4)
         else:
             text_score = round(0.6 * winery_score + 0.4 * name_score, 4)
 
@@ -176,7 +181,7 @@ def rerank_candidates(
 
         final = base + weights["text_weight"] * text_score + (weights["year_bonus"] if v_hit else 0.0) \
             + (weights["sweetness_bonus"] if s_hit else 0.0)
-        notes = []
+        notes = list(extra_notes)
         if v_hit:
             notes.append("vintage")
         if s_hit:

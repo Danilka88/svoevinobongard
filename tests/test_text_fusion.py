@@ -200,3 +200,31 @@ def test_conditional_default_does_not_touch_non_near_dup(monkeypatch: pytest.Mon
     finally:
         object.__setattr__(settings, "text_fusion_enabled", before[0])
         object.__setattr__(settings, "text_fusion_mode", before[1])
+
+
+def test_text_signal_disabled_by_default() -> None:
+    """Дополнительный сигнал выключен по умолчанию и не влияет на скор."""
+    fields = {"dishes": ["сыр", "мясо"], "alcohol": "13.5"}
+    record = {"dishes": ["сыр", "рыба"], "alcohol_pct": 13.5}
+    score, matched = textfusion.text_signal(fields, record)
+    assert score == 0.0 and matched == []
+
+
+def test_text_signal_dishes_and_numbers_when_enabled() -> None:
+    """С включёнными флагами блюда и цифровые поля дают вклад в текстовый сигнал."""
+    settings = textfusion.settings
+    before = (settings.text_fusion_use_dishes, settings.text_fusion_use_numbers)
+    try:
+        object.__setattr__(settings, "text_fusion_use_dishes", True)
+        object.__setattr__(settings, "text_fusion_use_numbers", True)
+        score, matched = textfusion.text_signal(
+            {"dishes": ["сыр", "мясо"], "alcohol": "13.5", "temperature": "+16"},
+            {"dishes": ["сыр", "рыба"], "alcohol_pct": 13.5, "temperature": "+16C"})
+        assert "dishes" in matched and "alcohol" in matched and "temperature" in matched
+        assert 0.0 < score <= 1.0
+        # без совпадений — нулевой вклад
+        empty, none_matched = textfusion.text_signal({"dishes": ["устрицы"]}, {"dishes": ["сыр"]})
+        assert empty == 0.0 and none_matched == []
+    finally:
+        object.__setattr__(settings, "text_fusion_use_dishes", before[0])
+        object.__setattr__(settings, "text_fusion_use_numbers", before[1])

@@ -8,6 +8,8 @@
 # END_MODULE_CONTRACT
 # START_MODULE_MAP
 # ENRICH_KEYS - дозаполняемые поля обогащения
+# TEXT_KEYS - поля официального API, участвующие в текстовом сигнале
+# text_signal - дополнительный текстовый сигнал (блюда, крепость, температура)
 # fusion_mode - режим фьюжна: off, conditional или always
 # trigger_max_gap - максимальный разрыв top-1/top-2 для условного триггера
 # near_dup_key - ключ near-dup группы: винодельня + название без цифр
@@ -37,10 +39,14 @@ from packages.common.config import settings
 from packages.common.logging import log_marker
 
 ENRICH_KEYS = ("sweetness", "year", "grape")
+# C-017: поля официального API, пригодные для текстового матча
+TEXT_KEYS = ("dishes", "alcohol_pct", "temperature", "manufacturer", "region", "grapes")
 _COLOR_MAP = {"белое": "Белое", "красное": "Красное", "розовое": "Розовое", "оранжевое": "Оранжевое"}
 
 __all__ = [
     "ENRICH_KEYS",
+    "TEXT_KEYS",
+    "text_signal",
     "fusion_mode",
     "trigger_max_gap",
     "near_dup_key",
@@ -168,3 +174,32 @@ def should_fuse(candidates: list[dict], store, max_gap: float | None = None) -> 
     left = near_dup_key(dict(store.get(str(first["slug"])) or {}))
     right = near_dup_key(dict(store.get(str(second["slug"])) or {}))
     return bool(left) and left == right
+
+
+def text_signal(fields: dict, record: dict) -> tuple[float, list[str]]:
+    """Дополнительный текстовый сигнал из официальных полей (C-017).
+
+    Включается флагами TEXT_FUSION_USE_DISHES и TEXT_FUSION_USE_NUMBERS и по умолчанию
+    выключен: сигнал требует данных со стороны запроса, которых в OCR полевого фото
+    почти нет (см. C-016 — год в запросе встречается у 6 из 150 кадров).
+
+    Returns:
+        (скор 0..1, список совпавших компонентов)
+    """
+    matched: list[str] = []
+    score = 0.0
+    if getattr(settings, "text_fusion_use_dishes", False):
+        query_dishes = " ".join(str(part) for part in (fields.get("dishes") or [])).lower()
+        catalog_dishes = " ".join(str(part) for part in (record.get("dishes") or [])).lower()
+        if query_dishes and catalog_dishes:
+            overlap = set(query_dishes.split()) & set(catalog_dishes.split())
+            if overlap:
+                score += 0.5
+                matched.append("dishes")
+    if getattr(settings, "text_fusion_use_numbers", False):
+        for query_key, record_key in (("alcohol", "alcohol_pct"), ("temperature", "temperature")):
+            left, right = str(fields.get(query_key) or ""), str(record.get(record_key) or "")
+            if left and right and left[:3] == right[:3]:
+                score += 0.25
+                matched.append(query_key)
+    return min(score, 1.0), matched

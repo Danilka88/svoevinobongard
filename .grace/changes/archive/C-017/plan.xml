@@ -1,0 +1,88 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-017>
+    <IntentSummary>Выгрузить официальный API (список 2069 позиций + детали по совпадающим slug) в
+      кэш с возобновлением, собрать catalog_enriched_v3.jsonl с официальными полями и подключить
+      гастросочетания с цифровыми полями как выключенный по умолчанию текстовый сигнал.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>data/catalog/catalog.jsonl</Value></MustExist>
+      <MustExist><Value>services/matcher/app/textfusion.py</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog_enriched.jsonl</Value></MustExist>
+      <MustVerify><Module>M-CATALOG</Module></MustVerify>
+      <MustVerify><Module>M-TEXT</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>scripts/kb/sync_official_api.py</Value></MustExist>
+      <MustExist><Value>data/api_cache/wines_list/page_001.json</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog_enriched_v3.jsonl</Value></MustExist>
+      <MustExist><Value>reports/api_sync.json</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-CATALOG</Module></MustVerify>
+      <MustVerify><Module>M-MATCHER</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-CATALOG</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-CATALOG/>
+      <M-TEXT/>
+      <M-MATCHER/>
+      <V-M-CATALOG/>
+      <V-M-TEXT/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>scripts/kb/</Path>
+      <Path>services/matcher/app/</Path>
+      <Path>packages/common/config.py</Path>
+      <Path>tests/</Path>
+      <Path>data/api_cache/</Path>
+      <Path>data/catalog/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Синк официального API: список, детали, коллекции</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Список выгружается постранично с perPage не больше 30 (большие значения API отвергает).</Criterion>
+          <Criterion>Детали качаются только для slug, совпавших с нашим каталогом; каждый ответ кэшируется отдельным файлом.</Criterion>
+          <Criterion>Между запросами пауза, есть таймаут, ретраи и time-box; повторный запуск с --resume не перекачивает кэш.</Criterion>
+          <Criterion>Базовые catalog.jsonl и catalog_enriched*.jsonl проверяются сравнением байт.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/kb/sync_official_api.py list --resume</Command>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/kb/sync_official_api.py details --resume --time-budget-min 25</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Сборка catalog_enriched_v3.jsonl с официальными полями и источником</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Каждая запись получает source (official+csv, csv+official-list или csv) и api_match.</Criterion>
+          <Criterion>alcohol переводится из десятых долей (135 -&gt; 13.5), добавляются temperature, dishes, grapes, region, manufacturer, color, description, image_url.</Criterion>
+          <Criterion>Поля локального обогащения (OCR C-013 и VLM C-016) переносятся в enriched без потери.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/kb/sync_official_api.py build --report reports/api_sync.json</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Текстовый сигнал из официальных полей за флагами</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>text_signal учитывает совпадение блюд и цифровых полей (крепость, температура).</Criterion>
+          <Criterion>По умолчанию оба флага выключены: скор и порядок не меняются.</Criterion>
+          <Criterion>Тесты покрывают выключенное и включённое состояние.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_text_fusion.py -v</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-017>
+</GraceChangePlan>
