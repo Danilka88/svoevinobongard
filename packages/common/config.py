@@ -135,6 +135,11 @@ class AppSettings:
         default_factory=lambda: _env("TEXT_FUSION_USE_DISHES", "0").lower() not in {"0", "false", "no", ""})
     text_fusion_use_numbers: bool = field(
         default_factory=lambda: _env("TEXT_FUSION_USE_NUMBERS", "0").lower() not in {"0", "false", "no", ""})
+    # C-022: двухуровневый поиск по прототипам виноделен (по умолчанию выключен до подтверждённого выигрыша)
+    winery_proto_enabled: bool = field(
+        default_factory=lambda: _env("WINERY_PROTO_ENABLED", "0").lower() not in {"0", "false", "no", ""})
+    winery_proto_weight: float = field(default_factory=lambda: _env_float("WINERY_PROTO_WEIGHT", 0.15))
+    query_tta: int = field(default_factory=lambda: _env_int("QUERY_TTA", 1))
     catalog_v3_jsonl: str = field(
         default_factory=lambda: _env("CATALOG_V3_JSONL", "data/catalog/catalog_enriched_v3.jsonl"))
 
@@ -146,16 +151,16 @@ class AppSettings:
     top_k: int = field(default_factory=lambda: _env_int("TOP_K", 30))
 
     # decision thresholds: перекалиброваны в C-021 на текущем пайплайне (200 сэмплов, seed 42).
-# score_tau и margin_delta дали +1.25 и +1.53 п.п. separation F1, geo_weight выведен на плато
-# (2.5 -&gt; 3.0: acc@1 0.670 -&gt; 0.675, acc@5 без изменений), confidence_temperature
-# оставлена 0.2: выигрыш 0.14 п.п. в пределах шума.
-    score_tau: float = field(default_factory=lambda: _env_float("SCORE_TAU", 0.796))
-    margin_delta: float = field(default_factory=lambda: _env_float("MARGIN_DELTA", 0.0769))
+# C-022 пересчитал их на мультивью-галерее (4 вида): score_tau 0.7615 (+0.97 п.п. F1),
+# margin_delta 0.0058 (+13.45 п.п. F1), geo_weight 0.5 (лучшие кандидаты делают сильную
+# геоверификацию вредной: acc@1 0.720 -&gt; 0.730). confidence_temperature оставлена 0.2.
+    score_tau: float = field(default_factory=lambda: _env_float("SCORE_TAU", 0.7615))
+    margin_delta: float = field(default_factory=lambda: _env_float("MARGIN_DELTA", 0.0058))
     confidence_temperature: float = field(
         default_factory=lambda: _env_float("CONFIDENCE_TEMPERATURE", 0.2))
 
     # geo-verification (C-003)
-    geo_weight: float = field(default_factory=lambda: _env_float("GEO_WEIGHT", 3.0))
+    geo_weight: float = field(default_factory=lambda: _env_float("GEO_WEIGHT", 0.5))
     geo_topk: int = field(default_factory=lambda: _env_int("GEO_TOPK", 10))
     geo_min_matches: int = field(default_factory=lambda: _env_int("GEO_MIN_MATCHES", 8))
     warmup_on_start: bool = field(

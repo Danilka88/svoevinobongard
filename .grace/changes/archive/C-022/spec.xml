@@ -1,0 +1,31 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-022>
+    <Summary>Устойчивость retrieval к полевому домену без обучения моделей: мультивью-галерея,
+      query-TTA, прототипы виноделен и оценка SuperPoint+LightGlue против ORB.</Summary>
+    <Goals>Сократить домен-разрыв между эталонными фото каталога и полевыми снимками (углы, блики, полка)
+      детерминированными методами: больше видов в галерее, несколько вариантов запроса, двухуровневый поиск
+      по винодельням, более устойчивый матчер локальных признаков.</Goals>
+    <Constraints>Обучение моделей запрещено; платные онлайн-LLM/VLM не используются; VLM/LLM в этом change
+      не трогаются. Только Apache-2.0 и MIT (SuperPoint/LightGlue/Kornia допустимы, Surya нет). Галерея
+      остаётся малой: 2103 позиции × 4-6 видов ≈ 10k векторов. Онлайн-бюджет p95 &lt; 3000 мс. Дефолты
+      меняются только при подтверждённом выигрыше; иначе метод фиксируется как отклонённый. Базовый индекс
+      data/index не перезаписывается — новые сборки идут в отдельные каталоги. catalog*.jsonl не
+      перезаписываются; services/* не импортируют друг друга; old/, my/ и материалы конкурса не изменяются.</Constraints>
+    <NonGoals>Дообучение энкодера или головы. Тяжёлый ANN-поиск. Изменение VLM/OCR-путей. Новые фичи UI.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>build_index.py получает режим --views N и собирает индекс с синтетическими полевыми видами, сохраняя slug на каждый вектор.</Criterion>
+      <Criterion>Запрос умеет агрегировать несколько вариантов (query-TTA) с ограничением по бюджету времени.</Criterion>
+      <Criterion>Прототипы виноделен реализованы за флагом WINERY_PROTO_ENABLED (по умолчанию off) и измерены.</Criterion>
+      <Criterion>SuperPoint+LightGlue оценён в рамках time-box за флагом GEO_BACKEND; при недоступности или проигрыше остаётся ORB с честной фиксацией.</Criterion>
+      <Criterion>Таблица вклада baseline против +views(4/6), +query-TTA, +winery-proto, +lightglue с acc@1/@5, near-dup и latency p50/p95.</Criterion>
+      <Criterion>Пороги перекалиброваны под победившую конфигурацию; дефолты изменены только при выигрыше.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-RETRIEVAL/>
+      <M-NORMALIZE/>
+      <M-EVAL/>
+      <M-CATALOG/>
+    </AffectedAreas>
+    <VerificationIntent>Обновить V-M-RETRIEVAL вкладом методов и финальными метриками, V-M-NORMALIZE — query-TTA.</VerificationIntent>
+  </C-022>
+</GraceChangeSpec>

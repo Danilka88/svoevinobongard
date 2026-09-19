@@ -47,6 +47,7 @@ from services.retrieval.app.geo import (  # noqa: E402
     resolve_geo_method,
 )
 from services.retrieval.app.head import apply_head, head_meta, load_head  # noqa: E402
+from scripts.eval.augment import field_augment  # noqa: E402
 from services.retrieval.app.index import VectorIndex, save_index  # noqa: E402
 
 _DEFAULT_MATERIALS = (
@@ -89,6 +90,22 @@ def _load_reference(path: Path) -> np.ndarray | None:
     return flatten_alpha(array[:, :, [2, 1, 0, 3]])
 
 
+def _load_rgba(path: Path) -> np.ndarray | None:
+    """Читает эталон в RGBA — формат, нужный field_augment для синтетических видов."""
+    try:
+        with Image.open(path) as raw:
+            return np.asarray(raw.convert("RGBA"))
+    except (OSError, ValueError):
+        return None
+
+
+def _view_seed(slug: str, view: int) -> int:
+    """Детерминированный seed вида: crc32, потому что hash() в Python солится процессом."""
+    import zlib  # noqa: PLC0415
+
+    return zlib.crc32(f"{slug}:{view}".encode("utf-8")) % (2**31)
+
+
 def _resize(array: np.ndarray, max_side: int = _MAX_SIDE) -> np.ndarray:
     """Пропорционально уменьшает изображение по длинной стороне."""
     import cv2
@@ -120,6 +137,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--geo-method", default=os.getenv("GEO_METHOD", "orb"), choices=["orb", "sift", "auto"])
     parser.add_argument("--geo-max-keypoints", type=int, default=DEFAULT_MAX_KEYPOINTS)
     parser.add_argument("--limit", type=int, default=0, help="ограничить число позиций (0 = все)")
+    parser.add_argument("--views", type=int, default=1,
+                        help="видов на позицию: 1 = только эталон, до 6 с синтетическими полевыми видами")
     return parser.parse_args(argv)
 
 
@@ -130,7 +149,7 @@ def main(argv: list[str] | None = None) -> int:
     records = load_catalog(args.catalog)
     geo_method = resolve_geo_method(args.geo_method)
     log_marker("M-CATALOG", "build_index", "START", catalog=len(records), uploads=str(uploads),
-               features=args.features, geo_method=geo_method)
+               features=args.features, geo_method=geo_method, views=max(1, args.views))
 
     entries: list[tuple[str, Path]] = []
     missing = 0
@@ -164,20 +183,28 @@ def main(argv: list[str] | None = None) -> int:
         images = []
         chunk_slugs = []
         for slug, path in chunk:
-            array = _load_reference(path)
-            if array is None:
-                missing += 1
-                continue
-            resized = _resize(array)
-            images.append(resized)
-            chunk_slugs.append(slug)
-            if args.features:
-                features = extract_features(resized, method=geo_method,
-                                            max_keypoints=args.geo_max_keypoints)
-                feat_keypoints.append(_pad(features.keypoints, args.geo_max_keypoints, 2, np.float32))
-                feat_descriptors.append(_pad(features.descriptors, args.geo_max_keypoints,
-                                             descriptor_dim, descriptor_dtype))
-                feat_counts.append(int(len(features.keypoints)))
+            # C-022: мультивью-галерея — эталон плюс синтетические полевые виды.
+            # Признаки считаются для каждого вида, иначе arrays разъедутся с индексом.
+            rgba = _load_rgba(path) if args.views > 1 else None
+            for view in range(max(1, args.views)):
+                if view == 0 or rgba is None:
+                    array = _load_reference(path)
+                else:
+                    array = field_augment(rgba, np.random.default_rng(_view_seed(slug, view)))
+                if array is None:
+                    if view == 0:
+                        missing += 1
+                    continue
+                resized = _resize(array)
+                images.append(resized)
+                chunk_slugs.append(slug)
+                if args.features:
+                    features = extract_features(resized, method=geo_method,
+                                                max_keypoints=args.geo_max_keypoints)
+                    feat_keypoints.append(_pad(features.keypoints, args.geo_max_keypoints, 2, np.float32))
+                    feat_descriptors.append(_pad(features.descriptors, args.geo_max_keypoints,
+                                                 descriptor_dim, descriptor_dtype))
+                    feat_counts.append(int(len(features.keypoints)))
         if not images:
             continue
         encoded = encoder.encode_arrays(images)
@@ -204,6 +231,8 @@ def main(argv: list[str] | None = None) -> int:
         "device": encoder.device,
         "dim": index.dim,
         "count": len(slugs),
+        "views": max(1, args.views),
+        "gallery_positions": len(entries),
         "missing_images": missing,
         "max_side": _MAX_SIDE,
         "catalog": str(args.catalog),

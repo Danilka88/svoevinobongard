@@ -1,0 +1,115 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-022>
+    <IntentSummary>Добавить мультивью-галерею и query-TTA, проверить прототипы виноделен и LightGlue,
+      и оставить в дефолтах только то, что даёт подтверждённый выигрыш на proxy.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>scripts/catalog/build_index.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/baseline_report.py</Value></MustExist>
+      <MustExist><Value>services/retrieval/app/search.py</Value></MustExist>
+      <MustExist><Value>data/index/vectors.npy</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog_enriched_v3.jsonl</Value></MustExist>
+      <MustVerify><Module>M-RETRIEVAL</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>reports/retrieval_c022.json</Value></MustExist>
+      <MustExist><Value>services/retrieval/app/winery.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-RETRIEVAL</Module></MustVerify>
+      <MustVerify><Module>M-NORMALIZE</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-RETRIEVAL</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-RETRIEVAL/>
+      <M-NORMALIZE/>
+      <M-EVAL/>
+      <M-CATALOG/>
+      <V-M-RETRIEVAL/>
+      <V-M-NORMALIZE/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>scripts/catalog/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>services/retrieval/app/</Path>
+      <Path>packages/common/</Path>
+      <Path>tests/</Path>
+      <Path>data/index_v4/</Path>
+      <Path>data/index_v6/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/</Path>
+      <File>.env.example</File>
+      <File>packages/common/config.py</File>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Мультивью-галерея: build_index --views N</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Для каждой позиции индексируется эталон плюс N-1 синтетических полевых видов с фиксированным seed.</Criterion>
+          <Criterion>slug повторяется на каждый вектор, поэтому поиск возвращает позицию, а не вид.</Criterion>
+          <Criterion>Базовый порядок векторов и метаданных сохраняется; сборка идёт в отдельный каталог.</Criterion>
+          <Criterion>Замер: acc@1, acc@5, near-dup, latency и размер индекса для 1, 4 и 6 видов.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/catalog/build_index.py --views 4 --features --out data/index_v4</Command>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --index data/index_v4 --samples 200 --seed 42 --normalize --geo --out reports/retrieval_views4.json</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Query-TTA в пределах SLA</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Запрос подаётся несколькими вариантами предобработки, а выдача агрегируется существующим механизмом.</Criterion>
+          <Criterion>Число вариантов ограничено и замерено; p95 остаётся ниже 3000 мс.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --samples 200 --seed 42 --normalize --geo --tta 3 --out reports/retrieval_tta.json</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Прототипы виноделен за флагом</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Прототип винодельни — средний L2-нормированный эмбеддинг её позиций из официального обогащения v3.</Criterion>
+          <Criterion>Первый уровень отбирает top-M виноделен, второй ранжирует позиции внутри; результат смешивается с текущим скором.</Criterion>
+          <Criterion>Флаг WINERY_PROTO_ENABLED по умолчанию выключен, влияние замерено отдельно.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --samples 200 --seed 42 --normalize --geo --winery-proto --out reports/retrieval_winery.json</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>SuperPoint + LightGlue против ORB (time-box)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Kornia устанавливается, SuperPoint и LightGlue проверяются на паре реальных изображений в пределах time-box.</Criterion>
+          <Criterion>Если матчер работает — измеряется вклад в геоверификацию; если интеграция требует смены формата дескрипторов или выигрыша нет, это фиксируется честно и ORB остаётся дефолтом.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/pip install kornia</Command>
+        </Verification>
+      </T-004>
+
+      <T-005>
+        <Title>Сводный замер, калибровка и решение о дефолтах</Title>
+        <DependsOn>T-002, T-003, T-004</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Таблица вклада: baseline, +views 4, +views 6, +query-TTA, +winery-proto, комбинация победителя.</Criterion>
+          <Criterion>Пороги перекалиброваны на победившей конфигурации; дефолты меняются только при подтверждённом выигрыше.</Criterion>
+          <Criterion>Отчёт reports/retrieval_c022.json содержит все прогоны с latency p50/p95.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/calibrate.py --samples 200 --seed 42 --normalize --out reports/calibration.json</Command>
+        </Verification>
+      </T-005>
+    </ImplementationPlan>
+  </C-022>
+</GraceChangePlan>

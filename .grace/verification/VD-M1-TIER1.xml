@@ -52,6 +52,10 @@
         Цена — 1.5 п.п. acc@1 на синтетике (там детектор находил вставленную этикетку), выигрыш — скорость 26%
         и корректность на реальных фото, где детектор не срабатывает. Приглушение геоверификации проверено
         и ОТКЛОНЕНО: GEO_WEIGHT 0.8 даёт 0.620 acc@1 и near-dup 0.619 против 0.670/0.7143 при 2.5.</Evidence>
+          <Scenario id="S-NORM-6">Query-TTA: запрос подаётся несколькими вариантами предобработки, выдача агрегируется по вариантам.</Scenario>
+      <Evidence note="C022-query-tta">Query-TTA реализован (по умолчанию 1 вариант, флаг --tta до 3): вариант «полный кадр» плюс
+        letterbox-масштабы 896 и 1280 через build_variants. На proxy прироста не дал: acc@1 0.675 и acc@5 0.790
+        совпадают с одиночным вариантом, а p95 растёт с 204 до 288 мс. Отклонён как дефолт, флаг оставлен для полевой проверки.</Evidence>
     </V-M-NORMALIZE>
 
     <V-M-RETRIEVAL>
@@ -113,6 +117,28 @@
         Первый /v1/scan после старта 955.6 мс (в C-009 было 6137.9 мс).</Evidence>
       <Evidence note="e2e">Полевой прогон 31 изображение через gateway: 0 ошибок, 0 пустых slug,
         latency p50 234.8 / p95 357.7 / max 502.5 мс (max ≈ p95 — всплеска холодного старта нет).</Evidence>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/catalog/build_index.py --views 4 --features --encoder siglip2 --model google/siglip2-so400m-patch16-naflex --head models/head.pt --out data/index_v4</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --index data/index_v4 --samples 200 --seed 42 --normalize --geo --geo-weight 0.5 --out reports/baseline.json</Command>
+      <Scenario id="S-RET-6">Мультивью-галерея: для позиции индексируется эталон плюс N-1 синтетических полевых видов с детерминированным seed, slug повторяется на каждый вектор.</Scenario>
+      <Scenario id="S-RET-7">Прототипы виноделен строятся как нормированное среднее позиций и дают бонус кандидатам близких виноделен; флаг по умолчанию выключен.</Scenario>
+      <Scenario id="S-RET-8">Без данных о производителях прототипы пусты и выдача не меняется.</Scenario>
+      <Evidence note="C022-multiview-win">Мультивью-галерея — подтверждённый выигрыш (200 сэмплов, seed 42, full-frame, normalize+geo):
+        acc@1 0.675 -&gt; 0.730, acc@5 0.790 -&gt; 0.920, group acc@1 0.680 -&gt; 0.735,
+        near-dup acc@1 0.7143 -&gt; 0.9048, near-dup group acc@1 0.7619 -&gt; 0.9524,
+        self acc@1 0.955, latency p50 184 мс / p95 200 мс.
+        Индекс: 2037 позиций -&gt; 8148 векторов (4 вида), 8.3 МБ, сборка 29 минут.
+        Принято в дефолт: цель make index собирает с --views (по умолчанию 4), data/index обновлён на 4-видовой.</Evidence>
+      <Evidence note="C022-recalibration">Пороги перекалиброваны на мультивью-галерее: GEO_WEIGHT 3.0 -&gt; 0.5
+        (лучшие кандидаты делают сильную геоверификацию вредной: acc@1 0.720 при 3.0 против 0.730 при 0.5,
+        при 0.0 падает до 0.600), SCORE_TAU 0.796 -&gt; 0.7615 (+0.97 п.п. F1), MARGIN_DELTA 0.0769 -&gt; 0.0058
+        (+13.45 п.п. F1). CONFIDENCE_TEMPERATURE оставлена 0.2: альтернатива даёт +0.18 п.п., это шум.
+        Свип geo_weight подтверждён независимыми прогонами: 0.0/0.5/1.0/3.0 -&gt; 0.600/0.730/0.720/0.720.</Evidence>
+      <Evidence note="C022-rejected">Отклонено по цифрам: query-TTA из 3 вариантов (acc@1 и acc@5 без изменений, p95 288 мс против 204),
+        прототипы виноделен (acc@5 +1 сэмпл, то есть шум, p95 349 мс), 6 видов (не измерено: бюджет, сборка 4 видов заняла 29 минут).
+        LightGlue: в kornia 0.8.3 нет SuperPoint (есть DISK/DeDoDe), а веса DISK не скачались в отведённый time-box
+        (URLError: Operation timed out) — поэтому оценка обученного матчера не завершена, ORB остаётся дефолтом.
+        При этом измерена слабость ORB на домен-сдвинутой паре «эталон против полевого вида»: всего 10 инлайеров и geo-скор 0.072,
+        что объясняет, почему с хорошей галереей геоверификацию выгодно ослабить.</Evidence>
     </V-M-RETRIEVAL>
   </VD-M1-TIER1>
 </GraceVerificationDocument>

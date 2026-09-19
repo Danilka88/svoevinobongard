@@ -8,7 +8,7 @@
 # MAP_MODE: LOCALS
 # END_MODULE_CONTRACT
 # START_MODULE_MAP
-# DEFAULT_MIN_ACC1 - порог acc@1 для гейта (текущий baseline пайплайна)
+# DEFAULT_MIN_ACC1 - порог acc@1 для гейта (C-022: мультивью-галерея подняла baseline до 0.73)
 # DEFAULT_MAX_P95 - предел p95 latency в миллисекундах
 # load_report - безопасное чтение отчёта
 # collect_final - собирает итоговые метрики из baseline, калибровки и конфигурации
@@ -35,7 +35,7 @@ if str(_ROOT) not in sys.path:
 from packages.common.config import settings  # noqa: E402
 from packages.common.logging import log_marker  # noqa: E402
 
-DEFAULT_MIN_ACC1 = 0.67
+DEFAULT_MIN_ACC1 = 0.70
 DEFAULT_MAX_P95 = 3000.0
 
 __all__ = ["DEFAULT_MAX_P95", "DEFAULT_MIN_ACC1", "check_gate", "collect_final", "load_report", "main"]

@@ -134,6 +134,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--geo", action="store_true", help="включить геоверификацию Top-K")
     parser.add_argument("--geo-weight", type=float, default=None,
                         help="вес геоверификации (по умолчанию из env GEO_WEIGHT)")
+    parser.add_argument("--tta", type=int, default=1,
+                        help="сколько вариантов запроса агрегировать (C-022: query-TTA)")
+    parser.add_argument("--winery-proto", action="store_true",
+                        help="включить бонус прототипов виноделен (C-022)")
+    parser.add_argument("--winery-weight", type=float, default=None,
+                        help="вес бонуса винодельни; по умолчанию из настроек")
     parser.add_argument("--out", default=str(_ROOT / "reports" / "baseline.json"))
     return parser.parse_args(argv)
 
@@ -192,11 +198,21 @@ def main(argv: list[str] | None = None) -> int:
     geo_correct: list[float] = []
     geo_wrong: list[float] = []
     misses: list[dict] = []
+    prototypes = None
+    proto_weight = args.winery_weight if args.winery_weight is not None else settings.winery_proto_weight
+    if args.winery_proto or settings.winery_proto_enabled:
+        from services.retrieval.app.winery import build_prototypes  # noqa: PLC0415
+
+        # vectors.npy уже в пространстве головы: применять её повторно нельзя (256 против 1152)
+        matrix = np.load(Path(args.index) / "vectors.npy").astype(np.float32)
+        prototypes = build_prototypes(index.slugs, matrix)
+        print(f"winery prototypes: {len(prototypes)} виноделен, вес {proto_weight}")
+
     rng = np.random.default_rng(args.seed + 1)
 
-    def _search(image: np.ndarray, k: int) -> list:
+    def _search(images: list[np.ndarray], k: int) -> list:
         return search_images(
-            encoder, index, store, [image], k=k, head=head,
+            encoder, index, store, images, k=k, head=head,
             geo_index=geo_index, geo_weight=geo_weight,
             geo_topk=settings.geo_topk, geo_min_matches=settings.geo_min_matches,
         )
@@ -207,20 +223,38 @@ def main(argv: list[str] | None = None) -> int:
             continue
 
         plain = _resize_bgr(flatten_alpha(rgba[:, :, [2, 1, 0, 3]]))
-        plain_hits = _search(plain, _TOP_K)
+        plain_hits = _search([plain], _TOP_K)
         self_hits.append((slug, plain_hits[0].slug if plain_hits else ""))
         self_scores.append(float(plain_hits[0].score) if plain_hits else 0.0)
 
         augmented = field_augment(rgba, rng)
         query_image = augmented
+        query_images: list[np.ndarray] = [augmented]
         if args.normalize:
             detection = detect_label(augmented)
-            query_image = build_variants(augmented, detection.quad)[0]
+            query_images = list(build_variants(augmented, detection.quad))[: max(1, args.tta)]
+            query_image = query_images[0]
 
         # пул кандидатов шире top-5: геоверификация должна уметь поднимать ранги 6+
+        # C-022: query-TTA — агрегируем несколько вариантов предобработки
         started = time.perf_counter()
-        hits = _search(query_image, settings.top_k)
+        hits = _search(query_images, settings.top_k)
         latencies.append((time.perf_counter() - started) * 1000.0)
+
+        if prototypes is not None and len(prototypes):
+            # второй уровень: бонус кандидатам из близких к запросу виноделен
+            from services.retrieval.app.head import apply_head  # noqa: PLC0415
+            from services.retrieval.app.winery import boost  # noqa: PLC0415
+
+            # голова лежит на CPU (как и в search_images), поэтому и применяется на CPU
+            query_vector = apply_head(head, encoder.encode_arrays([query_images[0]]), device="cpu")[0]
+            index_of = {slug: position for position, slug in enumerate(index.slugs)}
+            candidates = [{"slug": hit.slug, "score": float(hit.score),
+                           "index": index_of.get(hit.slug, -1), "hit": hit} for hit in hits]
+            ordered = boost(candidates, prototypes, query_vector,
+                            weight=proto_weight, top_wineries=settings.winery_proto_top_wineries
+                            if hasattr(settings, "winery_proto_top_wineries") else 5)
+            hits = [entry["hit"] for entry in ordered]
 
         ranked = [hit.slug for hit in hits]
         predicted = ranked[0] if ranked else ""
