@@ -1,0 +1,117 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-012>
+    <IntentSummary>Перевести вход на полный кадр: неразрушающий препроцессинг (letterbox вместо squash,
+      multi-scale, pan-and-scan тайлы), multi-image запрос в VLM с корректным num_ctx и коротким JSON-промптом,
+      затем замер на gemma4:12b и решение об интеграции. Кроп этикетки — только опция.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/normalize/app/tta.py</Value></MustExist>
+      <MustExist><Value>services/vlm/app/prompt.py</Value></MustExist>
+      <MustNotExist><Value>scripts/eval/vlm_preprocess_eval.py</Value></MustNotExist>
+      <MustVerify><Module>M-NORMALIZE</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>scripts/eval/vlm_preprocess_eval.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-NORMALIZE</Module></MustVerify>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-NORMALIZE</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-NORMALIZE/>
+      <M-VLM/>
+      <M-EVAL/>
+      <M-GATEWAY/>
+      <M-COMMON/>
+      <M-CONTRACTS/>
+      <V-M-NORMALIZE/>
+      <V-M-VLM/>
+      <DF-001/>
+      <DF-002/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>services/normalize/app/</Path>
+      <Path>services/vlm/app/</Path>
+      <Path>services/gateway/app/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>tests/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/</Path>
+      <File>.env.example</File>
+      <File>docs/LIMITATIONS.md</File>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Утилиты неразрушающего препроцессинга: letterbox, multi-scale, pan-and-scan тайлы, CLAHE и баланс белого</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>letterbox сoхраняет пропорции и паддит до квадрата нейтральным фоном; искажения нет.</Criterion>
+          <Criterion>multi-scale отдаёт варианты по длинной стороне 896 и 1280.</Criterion>
+          <Criterion>P&amp;S-тайлы покрывают весь кадр с перекрытием; число тайлов равно заданному.</Criterion>
+          <Criterion>CLAHE и баланс белого включаются флагом и не применяются по умолчанию.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_preprocessing.py -v</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>normalize: full-frame варианты по умолчанию, кроп-варп за флагом NORMALIZE_CROP</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>При NORMALIZE_CROP=0 варианты не содержат кропа: полный кадр, letterbox, масштабы, тайлы.</Criterion>
+          <Criterion>При NORMALIZE_CROP=1 сохраняется прежнее поведение (детекция и выпрямление).</Criterion>
+          <Criterion>Ответ /normalize сообщает kind каждого варианта для диагностики.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_normalize_service.py -v</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>VLM: multi-image вход (letterbox-база + тайлы), num_ctx 8192, короткий промпт и расширенная схема</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Один запрос несёт letterbox-базу и до PAS_TILES тайлов; для uncertain — до 6.</Criterion>
+          <Criterion>Схема ответа: winery, wine_name, vintage, grape, sweetness, region, alcohol, volume, extra_text, confidence.</Criterion>
+          <Criterion>Запрос уходит с num_ctx 8192, temperature 0, reasoning_effort none и max_tokens 384-512.</Criterion>
+          <Criterion>response_format json_object и ремонт JSON сохранены; finish_reason учитывается.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_vlm_matcher.py -v</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Харнесс замера препроцессинга на gemma4:12b: поля, candidate-selection, latency</Title>
+        <DependsOn>T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Матрица сравнивает crop/squash/ctx2048/без P&amp;S с full-frame/letterbox/ctx8192/P&amp;S 4 и 6.</Criterion>
+          <Criterion>Печатаются прочитанные поля, доля осмысленных ответов и latency p50/p95.</Criterion>
+          <Criterion>Дано решение: интегрировать ветку или зафиксировать, что 12b не читает.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/vlm_preprocess_eval.py --samples 4 --configs A,B,C --out reports/vlm_preprocess.json</Command>
+        </Verification>
+      </T-004>
+
+      <T-005>
+        <Title>Retrieval full-frame и приглушённая геоверификация, замер proxy</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Основные варианты входа — полный кадр и letterbox; кроп только при включённом флаге.</Criterion>
+          <Criterion>На полном кадре геоверификация ограничена (меньший вес или ratio-тест), чтобы не прилипать к фону.</Criterion>
+          <Criterion>Proxy-метрики до/после зафиксированы в отчёте.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>make eval</Command>
+        </Verification>
+      </T-005>
+    </ImplementationPlan>
+  </C-012>
+</GraceChangePlan>

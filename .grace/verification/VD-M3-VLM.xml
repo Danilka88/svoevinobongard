@@ -31,6 +31,25 @@
         но ВСЕ поля пустые — даже на чистом эталоне 1536px (этикетка во весь кадр). gemma4:12b на том же
         эталоне 1024px прочитал «Altes Haus» вместо «Алиготе Баррель» при 13.2 c. Значит локальный VLM
         не является рабочим источником текстового сигнала в текущей конфигурации.</Evidence>
+    
+      <Scenario id="S-VLM-7">Full-frame вход (C-012): в одном запросе уходят letterbox-база полного кадра и до PAS_TILES тайлов (6 для uncertain); кроп этикетки не делается.</Scenario>
+      <Scenario id="S-VLM-8">Запрос несёт num_ctx 8192 (дефолт 2048 резал контекст с тайлами), temperature 0, reasoning_effort none, max_tokens 512, response_format json_object.</Scenario>
+      <Scenario id="S-VLM-9">Схема ответа расширена: winery, wine_name, vintage, grape, sweetness, region, alcohol, volume, extra_text, confidence; as_dict отдаёт алиас wine_type для matcher.</Scenario>
+      <Marker>[M-VLM][extract][DONE]</Marker>
+      <Evidence note="preprocess-harness">C-012, gemma4:12b, 3 эталона с известными полями (4 мин):
+        A_legacy (кроп+squash, ctx2048, длинный промпт) — поля 5.67, vintage 0.667, winery 0.0, p50 14.4 с;
+        B_full_letterbox (ctx8192, без тайлов) — поля 4.0, vintage 0.0, p50 18.2 с;
+        C_full_pas4 (ctx8192 + 4 тайла) — поля 5.67, vintage 0.667, winery 0.333, p50 34.1 с.
+        P&amp;S восстанавливает качество относительно letterbox без тайлов и лучше legacy по винодельне,
+        но латентность 34-50 с исключает онлайн-путь.</Evidence>
+      <Evidence note="vlm-reads-now">12b ЧИТАЕТ этикетку после исправления препроцессинга:
+        vintage='2024' совпал у aligote-barrel, '2022' у amelia; винодельня распознана близко
+        («Колмучанка» вместо «Коммуналка», «Winemelia» вместо «WINEMAFIA»). Ранее C-004 давал пустые поля
+        из-за squash неквадратного кадра и ctx 2048.</Evidence>
+      <Evidence note="verdict">Правило C-012: fields читаются осмысленно, candidate-selection растёт
+        (winery accuracy 0.0 → 0.333 у C против A) → full-frame + P&amp;S принят как КАНОНИЧЕСКИЙ вход для
+        офлайн-обогащения и разметки. Онлайн-ветка остаётся выключенной (VLM_FALLBACK_ENABLED=0):
+        при p50 34 с она не влезает ни в SLA 3 с, ни в лимит 10 с скрипта организатора.</Evidence>
     </V-M-VLM>
 
     <V-M-MATCHER>

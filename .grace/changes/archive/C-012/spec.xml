@@ -1,0 +1,35 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-012>
+    <Summary>Full-frame multimodal input и исправление препроцессинга Gemma: полный кадр как база для retrieval
+      и VLM, letterbox до квадрата вместо squash, pan-and-scan тайлы по всему кадру, корректный num_ctx,
+      короткий промпт со строгим JSON. Кроп этикетки остаётся опцией и по умолчанию выключен.</Summary>
+    <Goals>Устранить искажение неквадратных изображений (vision-энкодер Gemma работает на 896×896 и при
+      squash «ломает» текст) и вернуть модели контекст. Проверить на gemma4:12b, читаются ли поля этикетки
+      при full-frame + letterbox + P&amp;S + ctx 8192; измерить candidate-selection и latency. Перевести
+      retrieval на варианты полного кадра и приглушить геоверификацию, чтобы она не «прилипала» к фону.</Goals>
+    <Constraints>Полный кадр — база; кроп/гомография только за флагом NORMALIZE_CROP (по умолчанию 0).
+      P&amp;S-тайлинг идёт по всему кадру, без знания о положении этикетки. Модели не переобучаются.
+      VLM_FALLBACK_ENABLED остаётся 0 по умолчанию до замеров; при недоступности VLM — деградация к Tier-1.
+      Только permissive-лицензии. old/, my/ и материалы конкурса не изменяются.</Constraints>
+    <NonGoals>Текстовая KB/RAG (change C-013). Дообучение энкодера или VLM. Скачивание моделей 26b.
+      Изменение контракта организатора. Онлайн-путь с P&amp;S без подтверждённой выгоды по latency.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>normalize по умолчанию отдаёт full-frame варианты: полный кадр, letterbox до квадрата, multi-scale (896 и 1280) и перекрывающиеся тайлы; кроп-варп доступен только при NORMALIZE_CROP=1.</Criterion>
+      <Criterion>VLM-вход собирает letterbox-базу плюс до PAS_TILES (6 для uncertain) тайлов в один запрос, с num_ctx 8192, temperature 0 и коротким промптом строгого JSON.</Criterion>
+      <Criterion>Схема ответа расширена: winery, wine_name, vintage, grape, sweetness, region, alcohol, volume, extra_text, confidence.</Criterion>
+      <Criterion>Харнесс сравнения препроцессинга прогоняется на gemma4:12b и печатает реальные поля, candidate-selection и latency p50/p95.</Criterion>
+      <Criterion>Дано честное решающее заключение: читает ли 12b этикетку после исправления препроцессинга, и интегрировать ли ветку.</Criterion>
+      <Criterion>Proxy-метрики retrieval на full-frame замерены и сравнены с прежними (crop-first).</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-NORMALIZE/>
+      <M-VLM/>
+      <M-EVAL/>
+      <M-GATEWAY/>
+      <M-COMMON/>
+      <M-CONTRACTS/>
+    </AffectedAreas>
+    <VerificationIntent>Обновить V-M-NORMALIZE (full-frame варианты, letterbox, тайлы, кроп за флагом),
+      обновить V-M-VLM (multi-image вход, новая схема, num_ctx, деградация) и приложить реальные замеры харнесса.</VerificationIntent>
+  </C-012>
+</GraceChangeSpec>

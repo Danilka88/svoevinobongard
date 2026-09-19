@@ -85,6 +85,15 @@ class AppSettings:
     ocr_max_side: int = field(default_factory=lambda: _env_int("OCR_MAX_SIDE", 768))
     ocr_timeout_s: float = field(default_factory=lambda: _env_float("OCR_TIMEOUT_S", 1.5))
 
+    # full-frame preprocessing (C-012): полный кадр — база, кроп только за флагом
+    normalize_crop: bool = field(
+        default_factory=lambda: _env("NORMALIZE_CROP", "0") not in {"0", "false", "no"})
+    normalize_enhance: bool = field(
+        default_factory=lambda: _env("NORMALIZE_ENHANCE", "0") not in {"0", "false", "no"})
+    pas_tiles: int = field(default_factory=lambda: _env_int("PAS_TILES", 4))
+    pas_tiles_uncertain: int = field(default_factory=lambda: _env_int("PAS_TILES_UNCERTAIN", 6))
+    vlm_num_ctx: int = field(default_factory=lambda: _env_int("VLM_NUM_CTX", 8192))
+
     # flywheel / active-learning (C-006): логи запросов и human-in-the-loop
     flywheel_enabled: bool = field(
         default_factory=lambda: _env("FLYWHEEL_ENABLED", "1") not in {"0", "false", "no"})

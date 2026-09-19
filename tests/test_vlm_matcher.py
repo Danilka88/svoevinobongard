@@ -101,7 +101,7 @@ def _store() -> CatalogStore:
 
 def test_parse_fields_clean() -> None:
     fields = parse_fields('{"winery":"Кокур","wine_name":"Сухое","vintage":"2025",'
-                          '"wine_type":"белое сухое","region":"Крым","grape":"Кокур","confidence":0.8}')
+                          '"sweetness":"сухое","region":"Крым","grape":"Кокур","confidence":0.8}')
     assert fields["winery"] == "Кокур"
     assert fields["vintage"] == "2025"
     assert fields["confidence"] == pytest.approx(0.8)
@@ -125,14 +125,14 @@ def test_parse_fields_clamps_confidence() -> None:
 def test_extract_fields_degrades_on_error() -> None:
     router = _StubRouter(_StubLLM(error=ProviderError("stub", "m", "boom", retryable=True)))
     image = np.full((64, 64, 3), 200, dtype=np.uint8)
-    fields = extract_fields(image, router)
+    fields = extract_fields([image], router)
     assert fields.ok is False
     assert "ProviderError" in fields.reason
 
 
 def test_extract_fields_rejects_empty_content() -> None:
     router = _StubRouter(_StubLLM(text="", finish="length"))
-    fields = extract_fields(np.full((64, 64, 3), 200, dtype=np.uint8), router)
+    fields = extract_fields([np.full((64, 64, 3), 200, dtype=np.uint8)], router)
     assert fields.ok is False
     assert fields.reason == "empty content"
     assert fields.finish_reason == "length"
@@ -140,17 +140,18 @@ def test_extract_fields_rejects_empty_content() -> None:
 
 def test_extract_fields_ok_and_json_object() -> None:
     router = _StubRouter(_StubLLM(text='{"winery":"Захарьин","vintage":"2025","confidence":0.7}'))
-    fields = extract_fields(np.full((64, 64, 3), 200, dtype=np.uint8), router)
+    fields = extract_fields([np.full((64, 64, 3), 200, dtype=np.uint8)], router)
     assert fields.ok is True
     assert fields.vintage == "2025"
     assert fields.as_dict()["winery"] == "Захарьин"
-    assert router.adapter.last_extra == {"reasoning_effort": "none"}
+    assert router.adapter.last_extra["reasoning_effort"] == "none"
+    assert router.adapter.last_extra["options"]["num_ctx"] == 8192
 
 
 def test_prompt_encodes_image() -> None:
     url = encode_image_data_url(np.full((900, 600, 3), 128, dtype=np.uint8), max_side=384)
     assert url.startswith("data:image/jpeg;base64,")
-    messages = build_messages(np.full((64, 64, 3), 128, dtype=np.uint8))
+    messages = build_messages([np.full((64, 64, 3), 128, dtype=np.uint8)])
     assert messages[0]["content"][0]["type"] == "text"
     assert messages[0]["content"][1]["type"] == "image_url"
 

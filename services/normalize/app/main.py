@@ -24,8 +24,10 @@ import base64
 import cv2
 from fastapi import FastAPI, File, HTTPException, UploadFile
 
+from packages.common.config import settings
 from packages.common.images import encode_png
 from packages.common.logging import log_marker
+from packages.common.preprocess import PreprocessConfig
 from services.normalize.app.detect import detect_label
 from services.normalize.app.exif import load_image
 from services.normalize.app.tta import build_variants

@@ -31,11 +31,21 @@
       <Scenario id="S-NORMALIZE-2">detect_label находит четырехугольник или bbox на синтетической этикетке (area_ratio больше нуля).</Scenario>
       <Scenario id="S-NORMALIZE-3">normalize_bytes возвращает варианты, метод детекции и метрики, согласованные между собой.</Scenario>
       <Scenario id="S-NORMALIZE-4">load_bgr применяет декодирование и сохраняет порядок каналов BGR.</Scenario>
-      <Marker>[M-NORMALIZE][health][OK]</Marker>
+      <Scenario id="S-NORMALIZE-5">Full-frame (C-012): по умолчанию кадр не обрезается — варианты full, scale_896, scale_1280; кроп появляется только при NORMALIZE_CROP=1.</Scenario>
+      <Scenario id="S-NORMALIZE-6">Letterbox сохраняет пропорции (широкий кадр не сжимается в квадрат), P&amp;S-тайлы покрывают края кадра, enhance поднимает контраст.</Scenario>
       <Marker>[M-NORMALIZE][normalize][CROPS]</Marker>
-      <Marker>[M-NORMALIZE][normalize][DECODE_FAILED]</Marker>
-      <Evidence note="field-detection">На 31 полевом фото детектор дал largest_bbox 16, contour_quad 3, none 12
-        (mean area_ratio 0.125). Качество эвристики ограничено: нейросетевой детектор D-FINE вынесен за пределы C-002.</Evidence>
+      <Evidence note="field-detection">Эвристика детекции этикетки слабая (на архивном полевом наборе было largest_bbox 16,
+        contour_quad 3, none 12) — поэтому по решению C-011/C-012 детекция выключена по умолчанию и включена только
+        флагом NORMALIZE_CROP=1. Нейросетевой детектор D-FINE остаётся кандидатом на улучшение.</Evidence>
+      <Evidence note="full-frame">C-012: база — полный кадр. letterbox 896/1280 без искажения пропорций,
+        P&amp;S-тайлы (2x2=4 и 2x3=6) режут весь кадр с перекрытием 15%, CLAHE+WB за флагом.
+        Причина: vision-энкодер Gemma работает на 896x896 и при squash искажает текст; обрезка этикетки
+        (овальная форма, цилиндр, блики) теряет текст, поэтому кроп — только опция.</Evidence>
+      <Evidence note="retrieval-impact">Влияние full-frame на proxy (200 сэмплов, seed 42): acc@1 0.685 → 0.670,
+        acc@5 0.790 → 0.790, near-dup acc@1 0.7143 → 0.7143, latency p95 183.5 → 136.5 мс.
+        Цена — 1.5 п.п. acc@1 на синтетике (там детектор находил вставленную этикетку), выигрыш — скорость 26%
+        и корректность на реальных фото, где детектор не срабатывает. Приглушение геоверификации проверено
+        и ОТКЛОНЕНО: GEO_WEIGHT 0.8 даёт 0.620 acc@1 и near-dup 0.619 против 0.670/0.7143 при 2.5.</Evidence>
     </V-M-NORMALIZE>
 
     <V-M-RETRIEVAL>
