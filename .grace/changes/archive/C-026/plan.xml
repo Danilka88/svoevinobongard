@@ -1,0 +1,99 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-026>
+    <IntentSummary>Дедуплицировать выдачу по slug во всех ветках поиска над увеличенным пулом, затем
+      измерить глубину попаданий на реальных фото и проверить шесть гипотез улучшения.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/retrieval/app/search.py</Value></MustExist>
+      <MustExist><Value>data/index/meta.json</Value></MustExist>
+      <MustExist><Value>reports/real_field.json</Value></MustExist>
+      <MustExist><Value>data/samples/real_field/manifest.tsv</Value></MustExist>
+      <MustVerify><Module>M-RETRIEVAL</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>reports/real_field_probe.json</Value></MustExist>
+      <MustExist><Value>tests/test_search_dedupe.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-RETRIEVAL</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-RETRIEVAL</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-RETRIEVAL/>
+      <M-EVAL/>
+      <M-NORMALIZE/>
+      <V-M-RETRIEVAL/>
+      <V-M-EVAL/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>services/retrieval/app/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>tests/</Path>
+      <Path>reports/</Path>
+      <Path>docs/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Фикс дедупликации top-K по slug</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Баг подтверждён до фикса: доля фото с дубликатами slug в top-5 из отчёта C-025 (16 из 23).</Criterion>
+          <Criterion>Поиск берёт увеличенный пул строк, схлопывает их по slug с максимальным скором и только затем делает гео-фьюжн и обрезку до k.</Criterion>
+          <Criterion>Не-гео ветка также получает пул, поэтому агрегация вариантов не теряет позиции из-за обрезки.</Criterion>
+          <Criterion>Гарантия: top-5 содержит пять разных slug; тесты покрывают дедуп, максимум скора и порядок.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_search_dedupe.py -v</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Распределение попаданий по глубине top-K на реальных фото</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Для каждого из 23 фото измеряется ранг первой правильной идентичности по слабой GT.</Criterion>
+          <Criterion>Печатается доля фото с попаданием в top-1/5/10/30/50/100 — это разделяет проблемы ранжирования и представления.</Criterion>
+          <Criterion>Измерение идёт в процессе (без HTTP), чтобы можно было брать глубокие top-K.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/real_field_probe.py --mode containment --out reports/real_field_probe.json</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Шесть гипотез на реальных фото</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>H-dedupe: identity@1/@5 до и после фикса.</Criterion>
+          <Criterion>H-label: запрос как кроп этикетки по OCR-боксам против полного кадра; эталон как полный вырез против кропа.</Criterion>
+          <Criterion>H-bg: удаление фона у запроса (GrabCut) — приводит запрос к домену «вырез».</Criterion>
+          <Criterion>H-brand: прототипы виноделен (флаг по умолчанию выключен) на реальных данных.</Criterion>
+          <Criterion>H-res: кодирование запроса при max_side 512 против 768 и 1024.</Criterion>
+          <Criterion>H-norm: CLAHE и баланс белого на запросе.</Criterion>
+          <Criterion>Для каждой гипотезы приводится identity@1/@5 и latency; неэффективные отклоняются честно.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/real_field_probe.py --mode hypotheses --out reports/real_field_probe.json</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Документация и решение по дефолтам</Title>
+        <DependsOn>T-002, T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>docs/METRICS.md и docs/LIMITATIONS.md получают числа до/после фикса, распределение по глубине и итог по гипотезам.</Criterion>
+          <Criterion>Пороги не перекалибруются на 21 фото; дефолты меняются только при устойчивом выигрыше.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -c "C-026" docs/METRICS.md docs/LIMITATIONS.md</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-026>
+</GraceChangePlan>

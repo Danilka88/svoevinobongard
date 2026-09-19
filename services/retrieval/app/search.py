@@ -1,6 +1,6 @@
 # START_MODULE_CONTRACT
 # PURPOSE: Поиск Top-K с геоверификацией: kNN по эмбеддингам, RANSAC-верификация топ-кандидатов и фьюжн скоров
-# SCOPE: SearchHit, aggregate_variants, search_images
+# SCOPE: SearchHit, aggregate_variants, dedupe_by_slug, search_images
 # DEPENDS: numpy, packages.common.catalog, packages.common.logging, services.retrieval.app.encoder,
 #          services.retrieval.app.geo, services.retrieval.app.head, services.retrieval.app.index
 # LINKS: M-RETRIEVAL
@@ -9,7 +9,9 @@
 # END_MODULE_CONTRACT
 # START_MODULE_MAP
 # SearchHit - результат поиска: slug, скор, geo-скор, инлайеры и метаданные каталога
+# POOL_FACTOR - во сколько раз пул строк больше k (галерея даёт несколько видов на slug)
 # aggregate_variants - слияние выдач TTA-вариантов по максимальному скору
+# dedupe_by_slug - схлопывание строк-видов в один slug по максимальному скору
 # search_images - кодирование, Top-K и опциональная геоверификация с фьюжном
 # END_MODULE_MAP
 """Поиск Tier-1 с геоверификацией.
@@ -31,7 +33,7 @@ from services.retrieval.app.geo import GeoIndex, extract_features, fuse_scores
 from services.retrieval.app.head import apply_head
 from services.retrieval.app.index import VectorIndex
 
-__all__ = ["SearchHit", "aggregate_variants", "search_images"]
+__all__ = ["POOL_FACTOR", "SearchHit", "aggregate_variants", "dedupe_by_slug", "search_images"]
 
 
 @dataclass(frozen=True)
@@ -46,6 +48,25 @@ class SearchHit:
     year: int | None = None
     geo_score: float = 0.0
     inliers: int = 0
+
+
+POOL_FACTOR = 10
+
+
+def dedupe_by_slug(rows: list[tuple[str, float]], limit: int) -> list[tuple[str, float]]:
+    """Схлопывает строки галереи в один slug, сохраняя максимальный скор.
+
+    Мультивью-галерея хранит несколько векторов на позицию, поэтому k ближайших строк
+    могут содержать один и тот же slug несколько раз. Без схлопывания в top-K остаётся
+    мало разных вин, а гео-ветка ещё и фьюзит дубликаты как разные кандидаты.
+    """
+    best: dict[str, float] = {}
+    for slug, score in rows:
+        value = float(score)
+        if slug not in best or value > best[slug]:
+            best[slug] = value
+    ranked = sorted(best.items(), key=lambda item: item[1], reverse=True)
+    return ranked[:limit]
 
 
 def aggregate_variants(variant_hits: list[list[tuple[str, float]]], k: int) -> list[tuple[str, float]]:
@@ -115,15 +136,20 @@ def search_images(
 
     if geo_index is None or geo_weight <= 0.0:
         vectors = apply_head(head, encoder.encode_arrays(images))
-        merged = aggregate_variants([index.search(vector, k=k) for vector in vectors], k)
-        hits = _to_hits(merged, store)
+        # пул строк шире k: иначе после схлопывания видов до разных slug остаётся слишком мало позиций
+        pool = max(k * POOL_FACTOR, 200)
+        merged = aggregate_variants([index.search(vector, k=pool) for vector in vectors], pool)
+        hits = _to_hits(dedupe_by_slug(merged, k), store)
         log_marker("M-RETRIEVAL", "search", "TOPK", k=len(hits), geo="off",
                    top1=hits[0].slug if hits else "none")
         return hits
 
     primary = images[0]
     vector = apply_head(head, encoder.encode_arrays([primary]))[0]
-    candidates = index.search(vector, k=k)
+    pool = max(k * POOL_FACTOR, 200)
+    # сначала схлопываем виды в позиции, и только потом верифицируем и фьюзим:
+    # иначе дубликаты одного вина занимают весь top-K и гео считает их независимо
+    candidates = dedupe_by_slug(index.search(vector, k=pool), k)
     query_features = extract_features(primary, method=geo_index.method)
 
     fused: list[tuple[str, float]] = []

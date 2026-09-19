@@ -159,6 +159,21 @@
         между общей точностью и дизамбигуацией near-duplicates в пределах шума; для сценария, где важнее именно
         различение серий, предпочтительнее VIEWS=4 с GEO_WEIGHT=0.5. Порог гейта поднят по факту: 0.75 при измеренных 0.785.
         score_tau, margin_delta и confidence_temperature не менялись: прирост separation F1 нулевой (+0.0000 и +0.0007).</Evidence>
+          <Command>.venv/bin/python -m pytest tests/test_search_dedupe.py -v</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/real_field_probe.py containment --out reports/real_field_probe.json</Command>
+      <Scenario id="S-RET-11">Выдача поиска не содержит дубликатов slug: top-K это K разных позиций каталога.</Scenario>
+      <Scenario id="S-RET-12">Схлопывание строк-видов сохраняет максимальный скор и сортирует по убыванию.</Scenario>
+      <Scenario id="S-RET-13">Пул строк расширен так, что после схлопывания видов разных позиций хватает на top-K.</Scenario>
+      <Evidence note="C026-dedupe-fix">Баг подтверждён по отчёту C-025: 16 из 23 реальных фото имели дубликаты slug в top-5
+        (например abrau-dyurso-...-brut-rose-reserve трижды). Причина: гео-ветка search_images фьюзила k строк-видов без
+        схлопывания, а не-гео ветка агрегировала уже обрезанный до k пул. Фикс: пул k x POOL_FACTOR (минимум 200 строк),
+        dedupe_by_slug с максимальным скором, затем гео-фьюжн и обрезка до k. Результат на тех же 23 фото:
+        дубликатов в top-5 16 -&gt; 0, identity@1 0.5263 без изменений, latency p50 494 -&gt; 207 мс и p95 1397 -&gt; 868 мс
+        (гео перестала верифицировать дубликаты одного вина независимо). Покрыто пятью тестами.</Evidence>
+      <Evidence note="C026-containment">Распределение попаданий на 19 российских фото: top-1 0.526, top-5 0.579, top-10 0.579,
+        top-30 0.579, top-50 0.632, top-100 0.684; правильной идентичности нет даже в top-100 у 6 из 19 (32%).
+        От top-5 до top-30 прироста нет — значит система упирается в представление, а не в ранжирование:
+        там, где нужная позиция вообще попадает в пул, она в 10 из 13 случаев уже первая.</Evidence>
     </V-M-RETRIEVAL>
   </VD-M1-TIER1>
 </GraceVerificationDocument>
