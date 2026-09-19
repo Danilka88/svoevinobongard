@@ -152,15 +152,16 @@ class AppSettings:
 
     # decision thresholds: перекалиброваны в C-021 на текущем пайплайне (200 сэмплов, seed 42).
 # C-022 пересчитал их на мультивью-галерее (4 вида): score_tau 0.7615 (+0.97 п.п. F1),
-# margin_delta 0.0058 (+13.45 п.п. F1), geo_weight 0.5 (лучшие кандидаты делают сильную
-# геоверификацию вредной: acc@1 0.720 -&gt; 0.730). confidence_temperature оставлена 0.2.
+# margin_delta 0.0058 (+13.45 п.п. F1). C-023: на галерее 6 видов изменены только geo_weight
+# (0.5 -&gt; 0.7: acc@1 0.770 -&gt; 0.785); score_tau, margin_delta и confidence_temperature
+# оставлены прежними, потому что их прирост separation F1 оказался нулевым (+0.0000 / +0.0007).
     score_tau: float = field(default_factory=lambda: _env_float("SCORE_TAU", 0.7615))
     margin_delta: float = field(default_factory=lambda: _env_float("MARGIN_DELTA", 0.0058))
     confidence_temperature: float = field(
         default_factory=lambda: _env_float("CONFIDENCE_TEMPERATURE", 0.2))
 
     # geo-verification (C-003)
-    geo_weight: float = field(default_factory=lambda: _env_float("GEO_WEIGHT", 0.5))
+    geo_weight: float = field(default_factory=lambda: _env_float("GEO_WEIGHT", 0.7))
     geo_topk: int = field(default_factory=lambda: _env_int("GEO_TOPK", 10))
     geo_min_matches: int = field(default_factory=lambda: _env_int("GEO_MIN_MATCHES", 8))
     warmup_on_start: bool = field(

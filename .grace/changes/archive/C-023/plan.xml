@@ -1,0 +1,108 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-023>
+    <IntentSummary>Разделить train- и holdout-семейства аугментаций, измерить 1/4/6 видов на обоих и
+      честно ответить, обобщается ли выигрыш галереи на невиданные условия.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>scripts/eval/augment.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/baseline_report.py</Value></MustExist>
+      <MustExist><Value>data/index_backup_1view/meta.json</Value></MustExist>
+      <MustExist><Value>data/index/meta.json</Value></MustExist>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-RETRIEVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>reports/retrieval_c023.json</Value></MustExist>
+      <MustExist><Value>reports/ood_views1.json</Value></MustExist>
+      <MustExist><Value>reports/ood_views4.json</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-RETRIEVAL</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-EVAL/>
+      <M-RETRIEVAL/>
+      <M-CATALOG/>
+      <V-M-EVAL/>
+      <V-M-RETRIEVAL/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>scripts/eval/</Path>
+      <Path>tests/</Path>
+      <Path>reports/</Path>
+      <Path>data/index_v6/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Holdout-семейство аугментаций, зафиксированное до замеров</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>holdout_augment суровее train-семейства по всем осям: масштаб, ракурс, свет, блик, блюр, JPEG, шум.</Criterion>
+          <Criterion>Добавлено перекрытие этикетки соседними бутылками как новый стресс-фактор.</Criterion>
+          <Criterion>Параметры зафиксированы в коде и описаны в отчёте до начала замеров; результат не подкручивается.</Criterion>
+          <Criterion>baseline_report умеет выбирать семейство запроса флагом --augment train|holdout.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --index data/index_backup_1view --samples 200 --seed 42 --normalize --geo --geo-weight 0.5 --augment holdout --out reports/ood_views1.json</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Замер 1/4/6 видов на train и на OOD</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Для каждого размера галереи измерены acc@1, acc@5, near-dup и latency на обоих семействах.</Criterion>
+          <Criterion>Пороги при OOD-замере те же, что на train: ранговые метрики от порогов не зависят.</Criterion>
+          <Criterion>Сборка 6 видов идёт чекпоинт-совместимо (отдельный каталог); при нехватке времени это фиксируется честно.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/catalog/build_index.py --views 6 --features --encoder siglip2 --model google/siglip2-so400m-patch16-naflex --head models/head.pt --out data/index_v6</Command>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --index data/index --samples 200 --seed 42 --normalize --geo --geo-weight 0.5 --augment holdout --out reports/ood_views4.json</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Обученный матчер: повторная попытка и измерение вклада гео на OOD</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Проверены альтернативные пути получения SuperPoint/LightGlue (kornia 0.8.3 и 0.7.2, кэш весов DISK).</Criterion>
+          <Criterion>Вклад локальных признаков измерен на OOD-парах даже без обученного матчера.</Criterion>
+          <Criterion>Если матчер не поднялся, это фиксируется честно, ORB остаётся дефолтом.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/pip install "kornia==0.7.2"</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Ревизия text-fusion и решение по порогам на новой галерее</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Замер off/conditional/always на мультивью-галерее с числом срабатываний триггера и изменённых рангов.</Criterion>
+          <Criterion>Пороги перекалиброваны, если конфигурация изменилась; иначе значения сохраняются с обоснованием.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/text_fusion_eval.py --samples 150 --modes off,always,conditional --enriched data/catalog/catalog_enriched_v2.jsonl --out reports/text_fusion_c023.json</Command>
+        </Verification>
+      </T-004>
+
+      <T-005>
+        <Title>Вердикт об обобщении</Title>
+        <DependsOn>T-002, T-003, T-004</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Отчёт reports/retrieval_c023.json содержит таблицу train против OOD, описание обоих семейств и причины результата.</Criterion>
+          <Criterion>Вердикт сформулирован прямо: выигрыш обобщается или нет, и почему.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/final_report.py --out reports/final.json</Command>
+        </Verification>
+      </T-005>
+    </ImplementationPlan>
+  </C-023>
+</GraceChangePlan>

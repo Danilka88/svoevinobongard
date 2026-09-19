@@ -139,6 +139,26 @@
         (URLError: Operation timed out) — поэтому оценка обученного матчера не завершена, ORB остаётся дефолтом.
         При этом измерена слабость ORB на домен-сдвинутой паре «эталон против полевого вида»: всего 10 инлайеров и geo-скор 0.072,
         что объясняет, почему с хорошей галереей геоверификацию выгодно ослабить.</Evidence>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --index data/index_v6 --samples 200 --seed 42 --normalize --geo --geo-weight 0.7 --augment train --out reports/baseline.json</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/baseline_report.py --index data/index --samples 200 --seed 42 --normalize --geo --geo-weight 0.5 --augment holdout --out reports/ood_views4.json</Command>
+      <Scenario id="S-RET-9">Есть второе, более суровое семейство аугментаций для OOD-замера; его параметры зафиксированы до измерений.</Scenario>
+      <Scenario id="S-RET-10">Галерея и запрос на train-замере строятся одним семейством, а OOD-замер идёт другим — это разделение обязательно фиксируется в отчёте.</Scenario>
+      <Evidence note="C023-ood-verdict">ООД-проверка (200 сэмплов, seed 42, пороги те же, что на train; ранговые метрики от порогов не зависят):
+        1 вид: train acc@1 0.675 -&gt; OOD 0.005; 4 вида: train 0.720 (geo 0.5) -&gt; OOD 0.075; 6 видов: train 0.770 -&gt; OOD 0.050-0.070.
+        ВЫИГРЫШ ГАЛЕРЕИ НЕ ОБОБЩАЕТСЯ НА НЕВИДАННЫЕ УСЛОВИЯ: относительный прирост на OOD есть (0.005 -&gt; 0.075),
+        но абсолютный уровень около 7% против 77% на train, и после 4 видов OOD-прирост насыщается.
+        Причина: замер C-022 был in-distribution — галерея и train-запросы строятся одним семейством field_augment.
+        Holdout-семейство (зафиксировано до замеров): масштаб 0.30-0.60 против 0.45-0.9, ракурс sigma 0.18-0.30 против 0-0.12,
+        блик всегда x0.65 (иногда два), блюр всегда sigma 1.8-3.4, JPEG 25-55, шум sigma 8-18, плюс перекрытие соседними бутылками.</Evidence>
+      <Evidence note="C023-local-features-dead-on-ood">На 10 OOD-парах «эталон против сурового вида» ORB+RANSAC даёт в среднем 0.0 инлайеров и geo-скор 0.000 —
+        геоверификация на таких условиях не работает вовсе. Обученный матчер поднять не удалось: в kornia 0.8.3 и 0.7.2 нет SuperPoint,
+        веса DISK закэшированы, но LightGlue на OOD-парах находит около 2 совпадений и 0 инлайеров. ORB остаётся дефолтом.</Evidence>
+      <Evidence note="C023-tradeoff">Принята галерея 6 видов и GEO_WEIGHT 0.7: acc@1 0.785, acc@5 0.910, группа 0.800,
+        p50 144 мс, p95 166 мс, индекс 12222 вектора (12.4 МБ). Честный размен: на geo 0.5 near-dup выше
+        (0.8095 на 6 видах и 0.9048 на 4 видах) при acc@1 0.770/0.730 — то есть вес гео перераспределяет качество
+        между общей точностью и дизамбигуацией near-duplicates в пределах шума; для сценария, где важнее именно
+        различение серий, предпочтительнее VIEWS=4 с GEO_WEIGHT=0.5. Порог гейта поднят по факту: 0.75 при измеренных 0.785.
+        score_tau, margin_delta и confidence_temperature не менялись: прирост separation F1 нулевой (+0.0000 и +0.0007).</Evidence>
     </V-M-RETRIEVAL>
   </VD-M1-TIER1>
 </GraceVerificationDocument>

@@ -31,7 +31,7 @@ index: ## Собрать векторный индекс + признаки ге
 	PYTHONPATH=. $(PY) scripts/catalog/build_index.py \
 	  --encoder $(ENC) --model $(MODEL) \
 	  $(if $(wildcard models/head.pt),--head models/head.pt,) \
-	  --views $(or $(VIEWS),4) --features --out data/index
+	  --views $(or $(VIEWS),6) --features --out data/index
 
 warm: ## Прогреть retrieval до первого запроса
 	curl -fsS -X POST http://127.0.0.1:8082/warmup || true
@@ -115,11 +115,11 @@ clean: ## Убрать кеши и артефакты сборки
 	find . -name __pycache__ -type d -prune -exec rm -rf {} + 2>/dev/null || true
 
 gate: ## Финальный quality/SLA-гейт: lint + pytest + eval (acc@1/p95) + живой контракт
-	PYTHONPATH=. $(PY) scripts/eval/final_report.py --check --min-acc1 0.70 --max-p95 3000 --out reports/final.json
+	PYTHONPATH=. $(PY) scripts/eval/final_report.py --check --min-acc1 0.75 --max-p95 3000 --out reports/final.json
 	$(MAKE) lint
 	$(MAKE) test
 	$(MAKE) eval
-	PYTHONPATH=. $(PY) scripts/eval/final_report.py --check --min-acc1 0.70 --max-p95 3000 --out reports/final.json
+	PYTHONPATH=. $(PY) scripts/eval/final_report.py --check --min-acc1 0.75 --max-p95 3000 --out reports/final.json
 	PYTHONPATH=. $(PY) scripts/eval/check_contract.py
 
 final-report: ## Итоговые метрики в reports/final.json

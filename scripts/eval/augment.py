@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # START_MODULE_CONTRACT
 # PURPOSE: Синтетическая аугментация эталонов в «полевые» условия: фоны полки/стола/витрины, перспектива, блик, шум, JPEG
-# SCOPE: BACKGROUND_KINDS, random_background, field_augment
+# SCOPE: BACKGROUND_KINDS, random_background, field_augment, holdout_augment, _neighbour_occlusion
 # DEPENDS: numpy, cv2
 # LINKS: M-EVAL
 # ROLE: SCRIPT
@@ -11,6 +11,8 @@
 # BACKGROUND_KINDS - виды синтетических фонов: shelf, table, showcase, gradient
 # random_background - случайный фон выбранного вида с шумом и виньеткой
 # field_augment - эталон в полевое фото: фон, перспектива, блик, размытие, шум, цвет, JPEG
+# holdout_augment - суровое OOD-семейство: жёстче ракурс, блик, блюр, JPEG и перекрытие соседями
+# HOLDOUT_SEED_OFFSET - сдвиг seed для OOD-семейства
 # END_MODULE_MAP
 """Простые «полевые» аугментации для домен-адаптации и proxy-оценки.
 
@@ -23,7 +25,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-__all__ = ["BACKGROUND_KINDS", "random_background", "field_augment"]
+__all__ = ["BACKGROUND_KINDS", "random_background", "field_augment", "holdout_augment"]
 
 _CANVAS = (640, 480)
 BACKGROUND_KINDS = ("shelf", "table", "showcase", "gradient")
@@ -155,6 +157,109 @@ def field_augment(reference_rgba: np.ndarray, rng: np.random.Generator) -> np.nd
         canvas = cv2.GaussianBlur(canvas, (5, 5), float(rng.uniform(0.4, 1.6)))
 
     quality = int(rng.integers(45, 92))
+    ok, encoded = cv2.imencode(".jpg", canvas, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
+    if ok:
+        canvas = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
+    return canvas
+
+
+# --- OOD-семейство (C-023) ---
+# ВАЖНО: параметры этого семейства зафиксированы ДО замеров и не подстраиваются под результат.
+# Оно заметно суровее train-семейства (field_augment) по всем осям сразу, потому что реальные
+# тестовые фото неизвестны: бутылка дальше, ракурс сильнее, свет жёстче, фокус хуже,
+# а на полке этикетку частично закрывают соседние бутылки.
+HOLDOUT_SEED_OFFSET = 5000
+
+
+def _neighbour_occlusion(canvas: np.ndarray, rng: np.random.Generator,
+                         label_box: tuple[int, int, int, int]) -> np.ndarray:
+    """Имитирует соседние бутылки, частично закрывающие этикетку.
+
+    Рисуются тёмные вертикальные силуэты со сглаженным краем и лёгким градиентом — так выглядит
+    ряд бутылок на полке, когда целевая стоит не первой.
+    """
+    height, width = canvas.shape[:2]
+    x0, y0, label_w, label_h = label_box
+    out = canvas.astype(np.float32)
+    for _ in range(int(rng.integers(1, 3))):
+        side = rng.random() < 0.5
+        bar_w = int(rng.uniform(0.18, 0.42) * label_w)
+        left = int(x0 - bar_w * rng.uniform(0.1, 0.8)) if side else int(x0 + label_w * rng.uniform(0.5, 0.9))
+        left = max(0, min(width - bar_w, left))
+        top = max(0, y0 - int(0.15 * label_h))
+        bottom = min(height, y0 + label_h + int(0.15 * label_h))
+        shade = float(rng.uniform(0.25, 0.6))
+        bar = np.zeros((bottom - top, bar_w), dtype=np.float32)
+        ramp = np.linspace(1.0, 1.0 - float(rng.uniform(0.2, 0.45)), bar_w, dtype=np.float32)[None, :]
+        bar += shade * ramp
+        bar = bar[:, :, None]
+        region = out[top:bottom, left:left + bar_w, :]
+        out[top:bottom, left:left + bar_w, :] = region * (1.0 - np.clip(bar, 0.0, 0.85))
+    return out
+
+
+def holdout_augment(reference_rgba: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    """Строит суровый «полевой» вид для OOD-замера.
+
+    Отличия от train-семейства (field_augment) — все в сторону усложнения:
+    масштаб 0.30-0.60 против 0.45-0.9, ракурс sigma 0.18-0.30 против 0.0-0.12,
+    яркость 0.45-1.45 против 0.65-1.25, блик всегда (иногда два), блюр всегда sigma 1.8-3.4,
+    JPEG 25-55 против 45-92, шум sigma 8-18 и частичное перекрытие соседними бутылками.
+
+    Args:
+        reference_rgba: эталонное изображение RGBA.
+        rng: генератор случайных чисел (тот же объект, что и в замере).
+
+    Returns:
+        BGR-изображение полевого вида.
+    """
+    height, width = _CANVAS
+    canvas = random_background(rng, height, width).astype(np.float32)
+
+    target_scale = float(rng.uniform(0.30, 0.60))
+    label_h = max(32, int(height * target_scale))
+    aspect = reference_rgba.shape[1] / max(1, reference_rgba.shape[0])
+    label_w = max(32, int(label_h * aspect))
+    max_w, max_h = int(width * 0.92), int(height * 0.92)
+    if label_w > max_w:
+        scale = max_w / label_w
+        label_w, label_h = max(32, int(label_w * scale)), max(32, int(label_h * scale))
+    if label_h > max_h:
+        scale = max_h / label_h
+        label_w, label_h = max(32, int(label_w * scale)), max(32, int(label_h * scale))
+    label = cv2.resize(reference_rgba, (label_w, label_h), interpolation=cv2.INTER_AREA)
+    rgb = label[:, :, :3].astype(np.float32)
+    alpha_map = label[:, :, 3].astype(np.float32) / 255.0
+
+    jitter = float(rng.uniform(0.18, 0.30))
+    src = np.float32([[0, 0], [label_w - 1, 0], [label_w - 1, label_h - 1], [0, label_h - 1]])
+    dst = src + rng.normal(0.0, jitter * label_w, size=src.shape).astype(np.float32)
+    matrix = cv2.getPerspectiveTransform(src, dst)
+    rgb = cv2.warpPerspective(rgb, matrix, (label_w, label_h))
+    alpha_map = cv2.warpPerspective(alpha_map, matrix, (label_w, label_h))
+    alpha = alpha_map[:, :, None]
+
+    offset_x = int(rng.integers(0, max(1, width - label_w)))
+    offset_y = int(rng.integers(0, max(1, height - label_h)))
+    roi = canvas[offset_y:offset_y + label_h, offset_x:offset_x + label_w]
+    canvas[offset_y:offset_y + label_h, offset_x:offset_x + label_w] = rgb * alpha + roi * (1.0 - alpha)
+
+    canvas *= float(rng.uniform(0.45, 1.45))
+    canvas[:, :, 0] *= float(rng.uniform(0.85, 1.15))
+    canvas[:, :, 2] *= float(rng.uniform(0.85, 1.15))
+    for _ in range(2 if rng.random() < 0.5 else 1):
+        center = (int(rng.integers(0, width)), int(rng.integers(0, height)))
+        axes = (int(rng.integers(60, 200)), int(rng.integers(60, 200)))
+        glare = np.zeros((height, width), dtype=np.float32)
+        cv2.ellipse(glare, center, axes, 0, 0, 360, 255.0, -1)
+        glare = cv2.GaussianBlur(glare, (0, 0), 35)[:, :, None] / 255.0
+        canvas = canvas * (1.0 - 0.65 * glare) + 255.0 * (0.65 * glare)
+
+    canvas = _neighbour_occlusion(canvas, rng, (offset_x, offset_y, label_w, label_h))
+    canvas += rng.normal(0.0, float(rng.uniform(8.0, 18.0)), size=canvas.shape)
+    canvas = np.clip(canvas, 0, 255).astype(np.uint8)
+    canvas = cv2.GaussianBlur(canvas, (7, 7), float(rng.uniform(1.8, 3.4)))
+    quality = int(rng.integers(25, 56))
     ok, encoded = cv2.imencode(".jpg", canvas, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
     if ok:
         canvas = cv2.imdecode(encoded, cv2.IMREAD_COLOR)

@@ -48,7 +48,7 @@ from packages.common.catalog import CatalogStore, load_catalog  # noqa: E402
 from packages.common.config import settings  # noqa: E402
 from packages.common.images import flatten_alpha  # noqa: E402
 from packages.common.logging import log_marker  # noqa: E402
-from scripts.eval.augment import field_augment  # noqa: E402
+from scripts.eval.augment import field_augment, holdout_augment  # noqa: E402
 from services.normalize.app.detect import detect_label  # noqa: E402
 from services.normalize.app.tta import build_variants  # noqa: E402
 from services.retrieval.app.encoder import ImageEncoder  # noqa: E402
@@ -134,6 +134,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--geo", action="store_true", help="включить геоверификацию Top-K")
     parser.add_argument("--geo-weight", type=float, default=None,
                         help="вес геоверификации (по умолчанию из env GEO_WEIGHT)")
+    parser.add_argument("--augment", default="train", choices=["train", "holdout"],
+                        help="семейство аугментаций запроса: train (галерея) или OOD holdout")
     parser.add_argument("--tta", type=int, default=1,
                         help="сколько вариантов запроса агрегировать (C-022: query-TTA)")
     parser.add_argument("--winery-proto", action="store_true",
@@ -227,7 +229,8 @@ def main(argv: list[str] | None = None) -> int:
         self_hits.append((slug, plain_hits[0].slug if plain_hits else ""))
         self_scores.append(float(plain_hits[0].score) if plain_hits else 0.0)
 
-        augmented = field_augment(rgba, rng)
+        augment_fn = holdout_augment if args.augment == "holdout" else field_augment
+        augmented = augment_fn(rgba, rng)
         query_image = augmented
         query_images: list[np.ndarray] = [augmented]
         if args.normalize:
@@ -305,6 +308,7 @@ def main(argv: list[str] | None = None) -> int:
         "samples": total,
         "seed": args.seed,
         "normalize_applied": bool(args.normalize),
+        "augment_family": args.augment,
         "self_retrieval": {
             "accuracy@1": self_acc1,
             "mean_top1_score": round(float(np.mean(self_scores)), 4) if self_scores else 0.0,
