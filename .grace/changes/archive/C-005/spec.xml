@@ -1,4 +1,4 @@
-<GraceChangeSpec graceVersion="4.0" status="approved">
+<GraceChangeSpec graceVersion="4.0" status="applied">
   <C-005>
     <Summary>M4 — Nuxt 3 mobile-first: карточка вина в стилистике портала и retention-фичи: цифровой
       сомелье, аналоги из других виноделен, энотуризм.</Summary>

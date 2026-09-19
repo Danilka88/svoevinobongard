@@ -178,20 +178,21 @@
     <M-WEB>
       <Name>Nuxt Web UI</Name>
       <Type>UI_COMPONENT</Type>
-      <Status>skeleton</Status>
+      <Status>built</Status>
       <Purpose>Mobile-first карточка вина в стилистике портала + retention-фичи.</Purpose>
-      <Scope>Загрузка фото (камера/галерея), карточка вина, цифровой сомелье, аналоги, энотуризм.
-        Общается только с gateway.</Scope>
+      <Scope>Загрузка фото (камера/галерея) → POST /v1/scan; карточка вина; цифровой сомелье;
+        аналоги из других виноделен; энотуризм; блок «вино не найдено» с ближайшими кандидатами.
+        Единственный HTTP-клиент — composables/useGateway.ts с базой NUXT_PUBLIC_API_BASE.</Scope>
       <Source>apps/web/</Source>
       <Test>apps/web/tests/</Test>
-      <Consumes>
+      <Depends>
         <M-GATEWAY/>
-      </Consumes>
+      </Depends>
       <Depends>
         <M-CONTRACTS/>
       </Depends>
       <Verification>V-M-WEB</Verification>
-      <Note>Реализация — change C-005. UI удаляем без влияния на ML.</Note>
+      <Note>C-005: собрано (bun build, .output 1.98 МБ) и проверено живьем; UI удаляется без влияния на ML.</Note>
     </M-WEB>
 
     <M-COMMON>

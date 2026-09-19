@@ -1,0 +1,49 @@
+<GraceVerificationDocument graceVersion="4.0">
+  <VD-M5-WEB>
+    <Purpose>Верификация UI и retention-фич (change C-005): карточка вина, цифровой сомелье, аналоги
+      из других виноделен, энотуризм, обработка «не найдено» и граница «только gateway».</Purpose>
+
+    <V-M-WEB>
+      <Priority>high</Priority>
+      <Status>built</Status>
+      <Description>Nuxt 3 mobile-first в стилистике портала: загрузка фото → карточка вина, цифровой сомелье
+        с вопросами и подбором, аналоги из других виноделен, энотуризм, блок «вино не найдено» с ближайшими
+        кандидатами. UI общается только с gateway по HTTP; метрики F1/confidence в UI не показываются.</Description>
+      <TestFiles>
+        <File>tests/test_recommend.py</File>
+        <File>services/gateway/app/recommend.py</File>
+        <File>apps/web/package.json</File>
+        <File>apps/web/nuxt.config.ts</File>
+      </TestFiles>
+      <Command>.venv/bin/python -m pytest tests/test_recommend.py -v</Command>
+      <Command>cd apps/web &amp;&amp; bun install &amp;&amp; bun run build</Command>
+      <Command>curl -s http://127.0.0.1:3000/ | grep -o "&lt;title&gt;[^&lt;]*&lt;/title&gt;"</Command>
+      <Command>curl -s http://127.0.0.1:8080/v1/similar/&lt;slug&gt;</Command>
+      <Command>curl -s -X POST http://127.0.0.1:8080/v1/sommelier -H 'Content-Type: application/json' -d '{"slug":"&lt;slug&gt;","answers":{"dish":"рыба","style":"сухое"}}'</Command>
+      <Scenario id="S-WEB-1">Загрузка фото (камера/галерея) уходит в POST /v1/scan и открывает карточку вина.</Scenario>
+      <Scenario id="S-WEB-2">Карточка показывает название, винодельню, регион, сорт, цвет, сладость, год и описание; метрики уверенности не выводятся.</Scenario>
+      <Scenario id="S-WEB-3">Цифровой сомелье: ответы на вопросы → рекомендации и гастрономические пары; при недоступном LLM работает детерминированный подбор по каталогу.</Scenario>
+      <Scenario id="S-WEB-4">Аналоги: GET /v1/similar/{slug} возвращает вина других виноделен с объяснением совпадения.</Scenario>
+      <Scenario id="S-WEB-5">«Вино не найдено»: показываются ближайшие кандидаты с кнопкой перехода, а не пустой экран.</Scenario>
+      <Scenario id="S-WEB-6">Граница: composables/useGateway.ts — единственный HTTP-клиент; обращений к retrieval/ocr/vlm/matcher нет.</Scenario>
+      <Marker>[M-GATEWAY][similar][DONE]</Marker>
+      <Marker>[M-GATEWAY][sommelier][LLM_OK]</Marker>
+      <Marker>[M-GATEWAY][sommelier][LLM_FAILED]</Marker>
+      <Marker>[M-GATEWAY][sommelier][CATALOG_FALLBACK]</Marker>
+      <Evidence note="build">bun install: 569 packages за 11.46 с (nuxt 3.21.11, vue 3.5.43). bun run build: успешно,
+        .output 1.98 МБ (492 кБ gzip), сервер собирается в .output/server/index.mjs. Реальный вывод сборки получен.</Evidence>
+      <Evidence note="serve">Собранный сервер поднят на :3000 с NUXT_PUBLIC_API_BASE=http://127.0.0.1:8080:
+        gateway=200, ui=200; страница отдает title «Своё Вино — сканер этикеток» и кнопку «Снять или выбрать фото».</Evidence>
+      <Evidence note="similar">GET /v1/similar/a-gordienko-m-nikolaev-pino-nuar-krasnoe-suhoe-135 вернул 6 аналогов,
+        все из ДРУГИХ виноделен (Фанагория, Olymp Winery), с объяснением «тот же сорт, тот же цвет, тот же регион», score 0.85.</Evidence>
+      <Evidence note="sommelier">POST /v1/sommelier вернул source=catalog, note=«llm unavailable: AllProvidersExhausted»,
+        pairing ['Мясо на гриле','Выдержанные сыры','Тушёные блюда'] и 3 рекомендации по каталогу.
+        То есть при недоступной/медленной локальной LLM фича сохраняет работоспособность — деградация сработала как задумано.</Evidence>
+      <Evidence note="unit-tests">7 тестов retention-логики: аналоги исключают свою винодельню и ранжируют по сорту,
+        пары подбираются по цвету и сладости, ответ модели фильтруется по существующим slug, мусор вместо JSON отбрасывается.
+        Итог: pytest 79 passed по всему проекту.</Evidence>
+      <Evidence note="boundary">apps/web использует единственный HTTP-клиент composables/useGateway.ts с базой
+        NUXT_PUBLIC_API_BASE; прямых обращений к retrieval/ocr/vlm/matcher в коде нет — UI удаляется без влияния на ML.</Evidence>
+    </V-M-WEB>
+  </VD-M5-WEB>
+</GraceVerificationDocument>

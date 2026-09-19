@@ -38,11 +38,16 @@
         <V-M-OCR/>
       </Owns>
     </VD-M4-OCR>
+    <VD-M5-WEB>
+      <Path>verification/VD-M5-WEB.xml</Path>
+      <Owns>
+        <V-M-WEB/>
+      </Owns>
+    </VD-M5-WEB>
     <VD-M1-M6-PLANNED>
       <Path>verification/VD-M1-M6-PLANNED.xml</Path>
       <Owns>
         <V-M-ACTIVE-LEARNING/>
-        <V-M-WEB/>
       </Owns>
     </VD-M1-M6-PLANNED>
     <VD-SHARED>

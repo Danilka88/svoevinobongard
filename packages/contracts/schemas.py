@@ -12,6 +12,11 @@
 # ScanResponse - rich-ответ POST /v1/scan
 # EvalPredictResponse - плоский ответ POST /v1/eval/predict для скрипта организатора
 # ErrorResponse - контракт ошибки: error, detail
+# SimilarItem - похожее вино из другой винодельни с причиной совпадения
+# SimilarResponse - ответ GET /v1/similar/{slug}
+# SommelierRequest - запрос сомелье: slug и ответы пользователя
+# SommelierItem - рекомендация сомелье со объяснением
+# SommelierResponse - ответ POST /v1/sommelier: рекомендации, пары, источник
 # END_MODULE_MAP
 """API-контракты сканера «Своё Вино».
 
@@ -27,6 +32,11 @@ __all__ = [
     "ScanResponse",
     "EvalPredictResponse",
     "ErrorResponse",
+    "SimilarItem",
+    "SimilarResponse",
+    "SommelierRequest",
+    "SommelierItem",
+    "SommelierResponse",
 ]
 
 
@@ -89,3 +99,49 @@ class ErrorResponse(BaseModel):
 
     error: str
     detail: str = ""
+
+
+class SimilarItem(BaseModel):
+    """Похожее вино из другой винодельни."""
+
+    slug: str
+    name: str = ""
+    winery: str = ""
+    region: str = ""
+    category: str = ""
+    grape: str = ""
+    score: float = 0.0
+    reason: str = ""
+
+
+class SimilarResponse(BaseModel):
+    """Ответ GET /v1/similar/{slug}."""
+
+    base_slug: str
+    items: list[SimilarItem] = Field(default_factory=list)
+
+
+class SommelierRequest(BaseModel):
+    """Ответы пользователя на вопросы цифрового сомелье."""
+
+    slug: str
+    answers: dict[str, str] = Field(default_factory=dict)
+
+
+class SommelierItem(BaseModel):
+    """Рекомендация сомелье."""
+
+    slug: str
+    name: str = ""
+    winery: str = ""
+    why: str = ""
+
+
+class SommelierResponse(BaseModel):
+    """Ответ POST /v1/sommelier."""
+
+    slug: str
+    recommendations: list[SommelierItem] = Field(default_factory=list)
+    pairing: list[str] = Field(default_factory=list)
+    source: str = "catalog"
+    note: str = ""

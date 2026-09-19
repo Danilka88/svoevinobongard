@@ -1,9 +1,9 @@
 <GraceVerificationDocument graceVersion="4.0">
   <VD-M1-M6-PLANNED>
-    <Purpose>Целевые условия приёмки для модулей, реализуемых в changes C-005 и C-006. Заполняются
-      доказательствами (TestFiles, Command) по мере реализации.
-      V-M-NORMALIZE, V-M-RETRIEVAL, V-M-CONTRACTS перенесены в VD-M1-TIER1 (C-002, C-009, C-003),
-      V-M-VLM и V-M-MATCHER — в VD-M3-VLM (C-004).</Purpose>
+    <Purpose>Целевые условия приёмки для модуля, реализуемого в change C-006. Заполняются доказательствами
+      (TestFiles, Command) по мере реализации.
+      V-M-NORMALIZE, V-M-RETRIEVAL, V-M-CONTRACTS — VD-M1-TIER1; V-M-VLM, V-M-MATCHER — VD-M3-VLM;
+      V-M-OCR — VD-M4-OCR; V-M-WEB — VD-M5-WEB; V-M-COMMON — VD-SHARED.</Purpose>
 
     <V-M-ACTIVE-LEARNING>
       <Priority>medium</Priority>
@@ -14,15 +14,5 @@
       <Scenario id="S-ACTIVE-LEARNING-1">Лог содержит image_hash, скоры, path, latency.</Scenario>
       <Scenario id="S-ACTIVE-LEARNING-2">F1 после дообучения не ниже дообучения на отложенной выборке.</Scenario>
     </V-M-ACTIVE-LEARNING>
-
-    <V-M-WEB>
-      <Priority>high</Priority>
-      <Status>planned</Status>
-      <PlannedIn>C-005</PlannedIn>
-      <Description>Мобильная карточка вина, сомелье, аналоги, энотуризм; UI обращается только к gateway;
-        удаление UI не влияет на ML.</Description>
-      <Scenario id="S-WEB-1">Сценарий фото → карточка проходит в браузерном smoke-тесте.</Scenario>
-      <Scenario id="S-WEB-2">В apps/web нет обращений к retrieval, vlm или matcher напрямую.</Scenario>
-    </V-M-WEB>
   </VD-M1-M6-PLANNED>
 </GraceVerificationDocument>

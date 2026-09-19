@@ -94,3 +94,7 @@ class CatalogStore:
     def slugs_with_image(self) -> list[str]:
         """Список slug, у которых есть эталонное фото."""
         return [slug for slug, record in self._records.items() if record.get("image")]
+
+    def slug_to_record(self) -> dict[str, dict]:
+        """Отображение slug → запись (read-only, без копирования)."""
+        return self._records

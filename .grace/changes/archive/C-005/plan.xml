@@ -1,4 +1,4 @@
-<GraceChangePlan graceVersion="4.0" status="draft">
+<GraceChangePlan graceVersion="4.0" status="applied">
   <C-005>
     <IntentSummary>Retention-слой: эндпоинты аналогов и сомелье в gateway плюс мобильный UI,
       который обращается только к gateway.</IntentSummary>
