@@ -76,6 +76,17 @@
         покрыто двумя тестами (выключенное и включённое состояние). Оговорка: сигнал требует данных со стороны запроса,
         которых в OCR полевого фото почти нет (в C-016 год встречался у 6 из 150 кадров), поэтому включение флагов осмысленно
         только после появления запросного текста (блюдо/крепость вводит пользователь либо читает VLM).</Evidence>
+          <Command>PYTHONPATH=. OCR_ENGINE=rapidocr .venv/bin/python scripts/eval/text_fusion_eval.py --samples 150 --enriched data/catalog/catalog_enriched_v2.jsonl --out reports/text_fusion_before.json</Command>
+      <Command>PYTHONPATH=. OCR_ENGINE=fusion OCR_REC_MODEL=data/models/ocr/cyrillic_PP-OCRv5_rec.onnx OCR_REC_KEYS=data/models/ocr/cyrillic_dict.txt .venv/bin/python scripts/eval/text_fusion_eval.py --samples 150 --enriched data/catalog/catalog_enriched_v2.jsonl --out reports/text_fusion_c020.json</Command>
+      <Evidence note="C020-fusion-before-after">Повторный замер text-fusion с лучшим OCR-движком (150 pseudo-запросов, seed 42,
+        обогащение catalog_enriched_v2): off acc@1 0.3933 -&gt; 0.3933, off acc@5 0.7067 -&gt; 0.7000,
+        always acc@1 0.4133 -&gt; 0.4067, conditional acc@1 0.3933 -&gt; 0.3933, триггер 32/150 в обоих прогонах,
+        ухудшений 0. OCR p50 146.4 -&gt; 334.6 мс.
+        ЧЕСТНЫЙ НЕГАТИВНЫЙ РЕЗУЛЬТАТ: прироста нет, разница в один запрос (0.7067·150 = 106 против 0.7000·150 = 105),
+        то есть в пределах шума выборки, при удвоении latency. Причина та же, что в C-016: синтетический proxy
+        разрушает текст запроса аугментацией, поэтому лучший читатель не помогает ранжированию на этом стенде.
+        Полевых фото нет (C-011), поэтому решение принято консервативно: дефолтный движок не меняется,
+        а fusion остаётся опцией для полевой проверки.</Evidence>
     </V-M-TEXT>
   </VD-M2-TEXT>
 </GraceVerificationDocument>

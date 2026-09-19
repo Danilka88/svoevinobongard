@@ -39,6 +39,11 @@ from packages.common.logging import log_marker
 
 _REC_IMG_SHAPE = (3, 48, 320)
 
+
+def _rec_shape() -> tuple[int, int, int]:
+    """Форма входа распознавателя: ширина берётся из настроек (узкая ширина склеивает слова)."""
+    return (3, 48, int(getattr(settings, "ocr_rec_width", 320) or 320))
+
 __all__ = [
     "CyrillicRecognizer",
     "ctc_decode",
@@ -93,7 +98,7 @@ class CyrillicRecognizer:
         import onnxruntime as ort  # noqa: PLC0415
 
         self.chars = _load_chars(dict_path)
-        self.img_shape = img_shape
+        self.img_shape = img_shape if img_shape != _REC_IMG_SHAPE else _rec_shape()
         options = ort.SessionOptions()
         options.log_severity_level = 3
         self.session = ort.InferenceSession(str(model_path), sess_options=options,
@@ -164,7 +169,9 @@ def run_cyrillic(image: np.ndarray, max_side: int = 768) -> list[tuple[list, str
     if "rec" not in _cache:
         _cache["rec"] = CyrillicRecognizer(resolve[0], resolve[1])
 
-    prepared = resize_max_side(image, max_side)
+    # Детекция на большем разрешении: на 768 px мелкие строки терялись целиком.
+    det_side = max(int(max_side), int(getattr(settings, "ocr_det_side", max_side) or max_side))
+    prepared = resize_max_side(image, det_side)
     boxes, _ = _cache["det"](prepared)  # type: ignore[operator]
     if boxes is None or len(boxes) < 1:
         return []

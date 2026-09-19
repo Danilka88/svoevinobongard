@@ -1,7 +1,8 @@
 # START_MODULE_CONTRACT
 # PURPOSE: Дешёвый OCR-сигнал: текст с кропа этикетки и нормализованные поля (год, сладость) с graceful fallback движка
-# SCOPE: OcrResult, resolve_engine, reset_engine, run_ocr, parse_fields, roman_to_int, roman_year
-# DEPENDS: numpy, cv2, packages.common.logging
+# SCOPE: OcrResult, resolve_engine, reset_engine, run_ocr, parse_fields, roman_to_int, roman_year,
+#        fusion_lines (_rapid_lines, _cyrillic_lines)
+# DEPENDS: numpy, cv2, packages.common.config, packages.common.logging
 # LINKS: M-OCR
 # ROLE: RUNTIME
 # MAP_MODE: EXPORTS
@@ -11,6 +12,7 @@
 # resolve_engine - выбор доступного OCR-движка (rapidocr, easyocr, tesseract или none)
 # reset_engine - сброс кэша движка (тесты, смена конфигурации)
 # run_ocr - распознавание текста и нормализация полей на кропе этикетки
+# fusion_lines - слияние латинской и кириллической выдач построчно
 # parse_fields - извлечение года и сладости из строк OCR
 # roman_to_int - перевод корректной римской записи в число
 # roman_year - римский год из строки с мягкой нормализацией грязных вариантов
@@ -34,10 +36,11 @@ from dataclasses import dataclass, field
 import cv2
 import numpy as np
 
+from packages.common.config import settings
 from packages.common.logging import log_marker
 
 __all__ = ["OcrResult", "resolve_engine", "reset_engine", "run_ocr", "parse_fields",
-           "roman_to_int", "roman_year"]
+           "roman_to_int", "roman_year", "fusion_lines"]
 
 ENGINE_NAMES = ("rapidocr", "easyocr", "tesseract")
 YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
@@ -84,13 +87,33 @@ def resolve_engine() -> str:
     Returns:
         rapidocr | easyocr | tesseract | none.
     """
+    requested = str(getattr(settings, "ocr_engine", "") or "").strip().lower()
     try:
         from packages.common.ocr_cyrillic import resolve_cyrillic  # noqa: PLC0415
 
-        if resolve_cyrillic() is not None:
-            return "cyrillic"
+        has_cyrillic = resolve_cyrillic() is not None
     except Exception:  # noqa: BLE001 - кириллический движок опционален
-        pass
+        has_cyrillic = False
+    try:
+        from packages.common.ocr_vl import resolve_vl  # noqa: PLC0415
+
+        has_vl = resolve_vl() is not None
+    except Exception:  # noqa: BLE001 - VL-модель опциональна
+        has_vl = False
+
+    if requested in {"fusion", "paddleocr_vl", "cyrillic"}:
+        if requested == "fusion" and has_cyrillic:
+            return "fusion"
+        if requested == "paddleocr_vl" and has_vl:
+            return "paddleocr_vl"
+        if requested == "cyrillic" and has_cyrillic:
+            return "cyrillic"
+        # запрошенный движок недоступен — падаем на доступный, это и есть graceful fallback
+    if requested == "":
+        # C-020: дефолт прежний (RapidOCR). Слияние читает лучше (бенчмарк: год 1.0 на синтетике,
+        # winery 0.4 против 0.15 на эталонах), но на proxy-ранжировании прироста нет, а latency
+        # вдвое выше, поэтому fusion включается осознанно через OCR_ENGINE=fusion.
+        return "rapidocr"
     try:
         import rapidocr_onnxruntime  # noqa: F401
         return "rapidocr"
@@ -234,6 +257,48 @@ _SWEETNESS_EN = (
 )
 
 
+def _rapid_lines(image: np.ndarray, max_side: int = 768) -> list[str]:
+    """Строки от латинского движка (он несёт цифры). Пустой список при сбое."""
+    try:
+        active = _get_engine("rapidocr")
+        prepared = _resize(image, max_side)
+        result, _ = active(prepared)
+        return [str(item[1]).strip() for item in (result or []) if len(item) > 1]
+    except Exception as error:  # noqa: BLE001 - половина слияния опциональна
+        log_marker("M-OCR", "fusion", "RAPID_FAILED", error=type(error).__name__,
+                   detail=str(error)[:100])
+        return []
+
+
+def _cyrillic_lines(image: np.ndarray, max_side: int = 768) -> list[str]:
+    """Строки от кириллического движка (он несёт русские слова). Пустой список при сбое."""
+    try:
+        from packages.common.ocr_cyrillic import run_cyrillic  # noqa: PLC0415
+
+        return [str(text).strip() for _, text, _ in run_cyrillic(image, max_side=max_side)]
+    except Exception as error:  # noqa: BLE001 - половина слияния опциональна
+        log_marker("M-OCR", "fusion", "CYRILLIC_FAILED", error=type(error).__name__,
+                   detail=str(error)[:100])
+        return []
+
+
+def fusion_lines(image: np.ndarray, max_side: int = 768) -> list[str]:
+    """Слияние двух движков: латиница+цифры (RapidOCR) и кириллица (PP-OCRv5 cyrillic).
+
+    Бенчмарк C-020 показал, что цифры читает латинский движок, а кириллицу — cyrillic:
+    по отдельности каждый теряет половину сигнала. Строки склеиваются построчно без дублей.
+    """
+    merged: list[str] = []
+    seen: set[str] = set()
+    for line in _rapid_lines(image, max_side) + _cyrillic_lines(image, max_side):
+        key = " ".join(line.lower().split())
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        merged.append(line)
+    return merged
+
+
 def parse_fields(lines: list[str]) -> dict:
     """Извлекает год и сладость из строк OCR.
 
@@ -289,8 +354,18 @@ def run_ocr(image: np.ndarray, max_side: int = 768, engine: str | None = None) -
     started = time.perf_counter()
     prepared = _resize(image, max_side)
     try:
-        active = None if name == "cyrillic" else _get_engine(name)
-        if name == "cyrillic":
+        active = None if name in {"cyrillic", "fusion", "paddleocr_vl"} else _get_engine(name)
+        if name == "fusion":
+            lines = fusion_lines(prepared, max_side=max_side)
+        elif name == "paddleocr_vl":
+            from packages.common.ocr_vl import run_vl  # noqa: PLC0415
+
+            lines, _ = run_vl(image)
+            if not lines:
+                # VL недоступен или упал — отдаём выдачу слияния, фича не ломается
+                lines = fusion_lines(prepared, max_side=max_side)
+                name = "fusion-fallback"
+        elif name == "cyrillic":
             from packages.common.ocr_cyrillic import run_cyrillic  # noqa: PLC0415
 
             lines = [str(text).strip() for _, text, _ in run_cyrillic(prepared, max_side=max_side)]

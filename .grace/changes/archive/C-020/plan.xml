@@ -1,0 +1,110 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-020>
+    <IntentSummary>Проверить лицензию PaddleOCR-VL, измерить движки OCR микробенчмарком с ground truth,
+      подключить лучший как экстрактор со стороны запроса и заново замерить text-fusion.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>packages/common/ocr.py</Value></MustExist>
+      <MustExist><Value>packages/common/ocr_cyrillic.py</Value></MustExist>
+      <MustExist><Value>data/models/ocr/cyrillic_PP-OCRv5_rec.onnx</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog_enriched_v3.jsonl</Value></MustExist>
+      <MustVerify><Module>M-OCR</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>scripts/eval/ocr_benchmark.py</Value></MustExist>
+      <MustExist><Value>reports/ocr_benchmark.json</Value></MustExist>
+      <MustExist><Value>packages/common/ocr_vl.py</Value></MustExist>
+      <MustExist><Value>reports/text_fusion_c020.json</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-OCR</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-OCR</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-OCR/>
+      <M-EVAL/>
+      <M-COMMON/>
+      <V-M-OCR/>
+      <V-M-TEXT/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>scripts/eval/</Path>
+      <Path>packages/common/</Path>
+      <Path>tests/</Path>
+      <Path>data/models/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/</Path>
+      <File>.env.example</File>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Лицензионный гейт PaddleOCR-VL</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Лицензия берётся из карточки HF и фиксируется в отчёте; при отличии от Apache-2.0 работа останавливается.</Criterion>
+          <Criterion>Проверяется поддержка архитектуры установленным transformers, чтобы не тащить paddlepaddle на arm64.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>curl -s "https://huggingface.co/api/models/PaddlePaddle/PaddleOCR-VL"</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Микробенчмарк OCR с ground truth</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Синтетические линии из шрифтов: кириллица, арабские цифры и «грязные» варианты с известным текстом.</Criterion>
+          <Criterion>Эталоны каталога с ground truth из v3: год, сладость, винодельня, сорт.</Criterion>
+          <Criterion>Метрики по движкам: точность года, совпадение кириллических слов, сладость, latency p50/p95.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/ocr_benchmark.py --synthetic 60 --catalog 40 --out reports/ocr_benchmark.json</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>PaddleOCR-VL через transformers + флаг OCR_ENGINE</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Веса качаются однократно в data/ и грузятся на MPS с откатом на CPU.</Criterion>
+          <Criterion>Вход — полный кадр; выход — структурные поля (год, сладость, сорт, винодельня, название, extra_text).</Criterion>
+          <Criterion>При недоступных весах или ошибке инференса run_ocr возвращает ok=false и падает на текущий движок.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. OCR_ENGINE=paddleocr_vl .venv/bin/python scripts/eval/ocr_benchmark.py --synthetic 20 --catalog 10 --out reports/ocr_benchmark.json</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Фикс кириллического пайплайна и слияние двух движков</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Детекция идёт на большем разрешении, rec-ширина увеличена, доступен server-вариант rec-модели.</Criterion>
+          <Criterion>Слияние построчно объединяет выдачу движка с цифрами и движка с кириллицей без дублей.</Criterion>
+          <Criterion>Слияние измерено бенчмарком и доступно как значение OCR_ENGINE.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/ocr_benchmark.py --engines rapid,fusion,cyrillic --out reports/ocr_benchmark.json</Command>
+        </Verification>
+      </T-004>
+
+      <T-005>
+        <Title>Выбор движка и повторный замер text-fusion</Title>
+        <DependsOn>T-003, T-004</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Движок по умолчанию выбирается по «точность цифр и кириллицы плюс latency», решение обосновано цифрами.</Criterion>
+          <Criterion>Повторный замер на 150 pseudo-запросах сравнивает text-fusion до и после смены движка.</Criterion>
+          <Criterion>Прямо указано, что синтетический proxy не отражает полевые условия.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/text_fusion_eval.py --samples 150 --out reports/text_fusion_c020.json</Command>
+        </Verification>
+      </T-005>
+    </ImplementationPlan>
+  </C-020>
+</GraceChangePlan>

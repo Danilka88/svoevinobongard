@@ -80,6 +80,12 @@ class AppSettings:
 
     # OCR text signal (C-010): дешёвая замена VLM-fallback в онлайн-пути
     ocr_rec_model: str = field(default_factory=lambda: _env("OCR_REC_MODEL", ""))
+    # C-020: выбор движка OCR со стороны запроса и параметры PaddleOCR-VL
+    ocr_engine: str = field(default_factory=lambda: _env("OCR_ENGINE", ""))
+    ocr_vl_model: str = field(default_factory=lambda: _env("OCR_VL_MODEL", "data/models/paddleocr_vl"))
+    ocr_vl_max_tokens: int = field(default_factory=lambda: _env_int("OCR_VL_MAX_TOKENS", 1024))
+    ocr_det_side: int = field(default_factory=lambda: _env_int("OCR_DET_SIDE", 1280))
+    ocr_rec_width: int = field(default_factory=lambda: _env_int("OCR_REC_WIDTH", 640))
     ocr_rec_keys: str = field(default_factory=lambda: _env("OCR_REC_KEYS", ""))
     ocr_url: str = field(default_factory=lambda: _env("OCR_URL", "http://127.0.0.1:8085"))
     ocr_enabled: bool = field(

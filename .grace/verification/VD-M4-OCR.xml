@@ -76,6 +76,39 @@
         ch/en 0.619/0.333 против cyrillic 0.214/0.119 (sweetness 0.119 против 0.143, grape 0.0 против 0.024).
         Решение: кириллический движок остаётся ОПЦИЕЙ и выключен по умолчанию; для его включения нужен rec, читающий цифры,
         а не разбор римских годов.</Evidence>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/ocr_benchmark.py --engines rapidocr,cyrillic,fusion --synthetic 60 --catalog 40 --out reports/ocr_benchmark.json</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/ocr_benchmark.py --engines paddleocr_vl --vl-cases 3 --out reports/ocr_benchmark_vl.json</Command>
+      <Scenario id="S-OCR-11">Микробенчмарк сравнивает движки на синтетике с известным текстом и на эталонах каталога с ground truth из v3.</Scenario>
+      <Scenario id="S-OCR-12">Слияние двух движков объединяет латинскую выдачу (цифры) и кириллическую (слова) построчно без дублей.</Scenario>
+      <Scenario id="S-OCR-13">OCR_ENGINE выбирает движок, а недоступный запрошенный движок не ломает вызов: идёт откат на доступный.</Scenario>
+      <Scenario id="S-OCR-14">PaddleOCR-VL читает полный кадр и при сбое модели вызов деградирует в слияние (engine=fusion-fallback).</Scenario>
+      <Evidence note="C020-license">Лицензионный гейт пройден: карточка HF PaddlePaddle/PaddleOCR-VL отдаёт license=apache-2.0 (теги license:apache-2.0);
+        у версий 1.5 и 1.6 то же самое. Surya не берём (веса OpenRAIL-M). Дополнительно выяснилось, что установленный transformers 5.17.0
+        знает архитектуру PaddleOCRVLForConditionalGeneration нативно, поэтому paddlepaddle на arm64 не нужен.</Evidence>
+      <Evidence note="C020-benchmark">Микробенчмарк (синтетика 60, эталоны 40; год — верный ответ, «год из изв.» — доля верных среди кадров
+        с известным годом):
+        rapidocr: синт. год 1.0, сладость 0.083, winery≥60 0.0, кир. слов 0.1, p50 145 мс; эталоны год 0.55 (из изв. 0.5), winery≥60 0.15.
+        cyrillic: синт. год 0.0 (склеивает «2022сухое»), сладость 1.0, winery≥60 0.7, кир. слов 4.0, p50 155 мс; эталоны winery≥60 0.4.
+        fusion:    синт. год 1.0, сладость 1.0, winery≥60 0.7, кир. слов 4.2, p50 476 мс; эталоны год 0.525, winery≥60 0.4.
+        paddleocr_vl (подвыборка 3 синт. + 2 эталона, ~3 минуты на кадр): синт. год 1.0, сладость 1.0, winery≥60 1.0, кир. слов 5.0,
+        p50 228 017 мс; эталоны год 0.5, winery≥60 0.5.
+        Вывод: цифры читает латинский движок, кириллицу — cyrillic, поэтому слияние выигрывает по всем осям качества сразу
+        и стоит приемлемые 476 мс; VL читает лучше всех, но ~228 с на кадр делает его офлайн-инструментом.</Evidence>
+      <Evidence note="C020-reading-examples">Реальные выдачи на одной синтетической этикетке («Коммуналка / Пино Нуар / Рислинг / 2022 сухое»):
+        rapidocr — «KoMMyHaJka | wHo Hyap | 2022 cyxoe» (год есть, кириллица латиницей);
+        cyrillic — «2022сухое | Рислинг | ПиноНуар | Коммуналка» (кириллица есть, год склеен и не читается);
+        fusion — объединение обеих выдач, vintage=2022 и кириллические названия одновременно;
+        paddleocr_vl — «Коммуналка | Пино Нуар | Рислинг | 2022 сухое» без ошибок.
+        На эталонах VL: «ALMAVALLEY | RESERVE | 2020», «KOFFMANN BROTHERS | Arie | CABERNET SAUVIGNON».</Evidence>
+      <Evidence note="C020-pipeline-fixes">Пайплайн кириллицы поправлен: ширина входа rec 320 -&gt; 640 (исчез мусорный хвост «wb»),
+        разрешение детекции поднято до 1280 (на 768 мелкие строки терялись). Server-варианта cyrillic rec в природе нет:
+        на HF для кириллицы есть только mobile (cyrillic_PP-OCRv5_mobile_rec_onnx), это зафиксировано.
+        Найден и исправлен собственный дефект окружения: einops не был установлен (MIT), из-за чего VL не грузился,
+        а ошибка глоталась — теперь в лог пишется detail.</Evidence>
+      <Evidence note="C020-default-engine">Дефолт не изменён: остаётся rapidocr. Слияние читает лучше, но на proxy-ранжировании
+        прироста не даёт, а latency удваивается, поэтому fusion включается осознанно через OCR_ENGINE=fusion;
+        paddleocr_vl доступен через OCR_ENGINE=paddleocr_vl. Проверено живьём: при недоступной VL движок отдаёт fusion-fallback
+        и читает год (2023), то есть graceful fallback работает.</Evidence>
     </V-M-OCR>
   </VD-M4-OCR>
 </GraceVerificationDocument>
