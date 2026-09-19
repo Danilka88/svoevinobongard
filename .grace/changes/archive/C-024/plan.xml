@@ -1,0 +1,88 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-024>
+    <IntentSummary>Сверить документацию с фактическим состоянием проекта, честно описать качество
+      (прокси + OOD) и доказать воспроизводимость всех команд сдачи.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>AGENTS.md</Value></MustExist>
+      <MustExist><Value>README.md</Value></MustExist>
+      <MustExist><Value>ARCHITECTURE.md</Value></MustExist>
+      <MustExist><Value>docs/METRICS.md</Value></MustExist>
+      <MustExist><Value>docs/LIMITATIONS.md</Value></MustExist>
+      <MustExist><Value>docs/DEMO.md</Value></MustExist>
+      <MustVerify><Module>M-DEPLOY</Module></MustVerify>
+      <MustVerify><Module>M-DATA</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>reports/submission_readiness.json</Value></MustExist>
+      <MustExist><Value>reports/final.json</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>make lint</Command></MustPassCommand>
+      <MustVerify><Module>M-DEPLOY</Module></MustVerify>
+      <MustVerify><Module>M-DATA</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-DEPLOY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-DEPLOY/>
+      <M-DATA/>
+      <M-EVAL/>
+      <V-M-DEPLOY/>
+      <V-M-DATA/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>docs/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/</Path>
+      <File>AGENTS.md</File>
+      <File>README.md</File>
+      <File>ARCHITECTURE.md</File>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Синхронизация: таблица изменений и проверка артефактов</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Таблица изменений в AGENTS.md совпадает по составу с .grace/changes/archive (C-001…C-024).</Criterion>
+          <Criterion>Проверка артефактов (grace lint и status) не показывает расхождений; найденное фиксируется, а не замалчивается.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>ls .grace/changes/archive/ | wc -l</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Актуализация документации с честными метриками</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>README описывает текущую архитектуру, дефолты, эндпоинты и команды Makefile.</Criterion>
+          <Criterion>ARCHITECTURE включает мультивью-галерею, OCR-движки, официальный API v3 и энотуризм, сохраняя границу UI-&gt;gateway.</Criterion>
+          <Criterion>METRICS показывает прокси-метрики как in-distribution и OOD-числа рядом, а также SLA.</Criterion>
+          <Criterion>LIMITATIONS и DEMO прямо говорят об отсутствии полевого набора и неподтверждённом top-1 на официальном фото.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -c "OOD" docs/METRICS.md &amp;&amp; grep -c "C-024" AGENTS.md</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Проверка воспроизводимости команд сдачи</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>make lint, make test, make eval, make gate и make demo-eval проходят; вывод и коды возврата приложены.</Criterion>
+          <Criterion>Для demo-eval сервисы поднимаются и гасятся автоматически, как в гейте.</Criterion>
+          <Criterion>Результат проверки записан в reports/submission_readiness.json.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>make lint &amp;&amp; make test &amp;&amp; make eval</Command>
+          <Command>make gate</Command>
+          <Command>make demo-eval</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-024>
+</GraceChangePlan>

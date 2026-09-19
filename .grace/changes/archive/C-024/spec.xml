@@ -1,0 +1,29 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-024>
+    <Summary>Синхронизация документации и артефактов к сдаче: актуальная таблица изменений, честные метрики
+      с OOD-числами рядом, актуализация README/ARCHITECTURE/METRICS/LIMITATIONS/DEMO и проверка
+      воспроизводимости всех команд Makefile.</Summary>
+    <Goals>Убрать расхождение между фактическим состоянием проекта (C-001…C-024) и документацией, и привести
+      описание качества к честному виду: прокси-метрики рядом с OOD-результатами, без завышения.</Goals>
+    <Constraints>Только документация, синхронизация артефактов и проверка команд: ML-логика не меняется,
+      индекс не пересобирается, тяжёлые прогоны не запускаются. catalog*.jsonl не перезаписываются.
+      Только Apache-2.0/MIT; old/, my/ и материалы конкурса не изменяются; services/* не импортируют друг друга.
+      Формулировки о качестве обязаны соответствовать измерениям: прокси-числа помечаются как in-distribution,
+      рядом приводятся OOD-числа, отсутствие полевого набора фиксируется прямо.</Constraints>
+    <NonGoals>Изменение порогов, галереи, OCR-движков или API. Пересборка индекса. Новые фичи продукта.
+      Повторные эксперименты.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>Таблица изменений в AGENTS.md охватывает C-001…C-024 и соответствует составу .grace/changes/archive.</Criterion>
+      <Criterion>README, ARCHITECTURE, METRICS, LIMITATIONS и DEMO описывают текущий пайплайн (full-frame, галерея 6 видов, OCR-движки, официальный API v3, энотуризм) и содержат честные ограничения.</Criterion>
+      <Criterion>docs/METRICS.md показывает прокси-метрики с пометкой in-distribution и OOD-числа рядом.</Criterion>
+      <Criterion>Команды make lint, make test, make eval, make gate и make demo-eval проходят; вывод приложен.</Criterion>
+      <Criterion>Создан отчёт reports/submission_readiness.json с результатами проверки команд.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-EVAL/>
+      <M-DEPLOY/>
+      <M-DATA/>
+    </AffectedAreas>
+    <VerificationIntent>Обновить V-M-DEPLOY фактом прохождения всех команд сдачи и V-M-DATA честной сводкой ограничений.</VerificationIntent>
+  </C-024>
+</GraceChangeSpec>

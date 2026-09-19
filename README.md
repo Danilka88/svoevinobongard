@@ -156,3 +156,25 @@ docker compose config       # валидация конфигурации
   приватного набора требуется повторная калибровка (`scripts/eval/calibrate.py`).
 - `faiss` на macOS arm64 не используется: его libomp конфликтует с libomp от torch (`OMP Error #15`),
   поэтому векторный поиск идёт numpy-бэкендом.
+
+## Актуальные дефолты и команды (после C-023)
+
+Состояние пайплайна: **full-frame вход без кропа этикетки** (`NORMALIZE_CROP=0`), мультивью-галерея
+**6 видов** (12 222 вектора), пороги `SCORE_TAU=0.7615`, `MARGIN_DELTA=0.0058`, `GEO_WEIGHT=0.7`,
+текстовый фьюжн `conditional`, OCR-движок `rapidocr` (доступны `fusion` и `paddleocr_vl`),
+VLM выключен из онлайна (`VLM_FALLBACK_ENABLED=0`), официальные данные портала для 2035 из 2103 позиций.
+
+| Команда | Что делает |
+|---|---|
+| `make etl` | каталог из CSV + sitemap → `data/catalog/` |
+| `make index` | индекс галереи: `--views 6` (регулируется `VIEWS=4`), голова, признаки геоверификации |
+| `make eval` | синтетический baseline: acc@1/@5, near-dup, latency |
+| `make gate` | **гейт сдачи:** lint + тесты + eval с проверкой acc@1 ≥ 0.75 и p95 ≤ 3000 + живой контракт `/v1/eval/predict` |
+| `make demo-eval` | официальные контрольные фото организатора (нужен запущенный gateway) |
+| `make test` / `make lint` | тесты (144) и проверка GRACE-артефактов |
+
+Эндпоинты gateway: `POST /v1/scan` (карточка), `POST /v1/eval/predict` (плоский `slug` для организатора),
+`GET /v1/similar/{slug}` (официальные похожие), `POST /v1/sommelier`, `GET /v1/enotourism/{slug}`, `GET /v1/health`.
+
+**Качество и его границы:** in-distribution acc@1 0.785 / acc@5 0.910 / p95 ≈161 мс; на отложенных
+суровых условиях acc@1 ≈0.06 — подробности и таблица в `docs/METRICS.md`, ограничения в `docs/LIMITATIONS.md`.

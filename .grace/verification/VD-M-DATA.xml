@@ -42,6 +42,18 @@
       <Evidence note="reproducible-eval">make eval больше не зависит от полевого набора: сначала
         синтетический baseline (scripts/eval/baseline_report.py, seed 42), затем при наличии папки —
         demo-eval на официальных фото. Работает без Docker (numpy dev-бэкенд).</Evidence>
+          <Scenario id="S-DATA-6">Документация описывает качество честно: прокси-метрики помечены как in-distribution, рядом приведены OOD-числа.</Scenario>
+      <Scenario id="S-DATA-7">Ограничения проекта (нет полевых фото, локальные признаки мертвы на OOD, PaddleOCR-VL неработоспособен онлайн) зафиксированы явно.</Scenario>
+      <Evidence note="C024-docs-sync">Обновлены: AGENTS.md (таблица изменений C-001…C-024 и сводка по этапам M0-M6),
+        README.md (дефолты после C-023, команды etl/index/eval/gate/demo-eval, эндпоинты),
+        ARCHITECTURE.md (мультивью-галерея, OCR-движки rapidocr/cyrillic/fusion/paddleocr_vl, официальный API v3,
+        энотуризм; границы UI-&gt;gateway сохранены), docs/METRICS.md (таблица in-distribution против OOD),
+        docs/LIMITATIONS.md (вердикт C-023 и ограничения), docs/DEMO.md (сценарий не длиннее 7 минут).
+        До обновления таблица изменений перечисляла только C-001…C-008 — расхождение устранено.</Evidence>
+      <Evidence note="C024-honest-quality">Честная сводка: ин-дистрибуция acc@1 0.785 / acc@5 0.910 / p95 ≈138-154 мс,
+        OOD holdout acc@1 ≈0.005-0.075 (1/4-6 видов), локальные признаки на OOD дают 0 инлайеров,
+        PaddleOCR-VL ≈186-234 с на кадр (офлайн), полевых фото нет с C-011, официальный top-1 не подтверждается.
+        Ни одна из этих оговорок не смягчена в документации.</Evidence>
     </V-M-DATA>
   </VD-M-DATA>
 </GraceVerificationDocument>

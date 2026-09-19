@@ -52,6 +52,25 @@
         и получил HTTP 200 с плоским ответом {"slug": "nebo-rossii-glera"}, после чего погасил сервисы.
         Найден и исправлен дефект самой проверки: gateway отвечает 503, пока retrieval не прогрел энкодер,
         поэтому в post_predict добавлены ретраи 503 в пределах 150 с — иначе гейт падал на гонке старта.</Evidence>
+          <Command>make lint &amp;&amp; make test &amp;&amp; make eval</Command>
+      <Command>make gate</Command>
+      <Command>make demo-eval</Command>
+      <Scenario id="S-DEPLOY-7">Все команды сдачи проходят и дают ненулевой результат: lint, тесты, eval, гейт, прогон официальных фото.</Scenario>
+      <Scenario id="S-DEPLOY-8">Цели Makefile воспроизводимы: повторный прогон не падает на устаревших артефактах.</Scenario>
+      <Evidence note="C024-commands">Проверка воспроизводимости с реальными кодами возврата:
+        make lint -&gt; 0 (lint 0/0, 101 governed файл, 68 XML); make test -&gt; 0 (144 passed);
+        make eval -&gt; 0 (acc@1 0.785, acc@5 0.910, near-dup 0.7619, p50 123.8 мс, p95 137.9 мс);
+        make gate -&gt; 0 (гейт пройден: acc@1 0.785 ≥ 0.75, p95 154.2 мс ≤ 3000, живой контракт вернул плоский {"slug": "nebo-rossii-glera"});
+        make demo-eval -&gt; 0 (обработано 2 официальных фото, ошибок 0, p50 950.8 мс, p95 1029.0 мс).
+        Результаты сведены в reports/submission_readiness.json.</Evidence>
+      <Evidence note="C024-fixed-reproducibility">Найден и исправлен дефект воспроизводимости: make demo-eval падал с
+        «ERROR: output already exists» на устаревшем reports/predictions.eval_queries.jsonl (evaluate.py намеренно
+        защищает вывод от перезаписи). Цель теперь удаляет прошлый артефакт перед прогоном, поэтому повторный запуск работает.</Evidence>
+      <Evidence note="C024-demo-truth">Официальные фото: 019c68d0 -&gt; nebo-rossii-glera (подсказка README ожидала kokur-suhoe-2025,
+        которого нет в живом API), 096ca74e -&gt; aristov-anima-millesimato (в каталоге есть также более длинный slug
+        aristov-anima-millesimato-beloe-bryut, то есть top-1 указывает на родственную, но не ту же позицию).
+        Это честно зафиксировано в docs/LIMITATIONS.md и docs/DEMO.md: единственный официальный набор не даёт
+        надёжной точки проверки качества.</Evidence>
     </V-M-DEPLOY>
   </VD-M6-DEPLOY>
 </GraceVerificationDocument>

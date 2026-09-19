@@ -42,6 +42,7 @@ eval: ## Оценка качества: самодостаточный синт�
 
 demo-eval: ## Официальные контрольные фото организатора (опционально, если папка есть)
 	@if [ -d data/samples/eval_queries ]; then \
+	  rm -f reports/predictions.eval_queries.jsonl; \
 	  python3 scripts/eval/evaluate.py --images data/samples/eval_queries \
 	    --endpoint http://127.0.0.1:$(PORT)/v1/eval/predict \
 	    --output reports/predictions.eval_queries.jsonl; \
