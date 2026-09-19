@@ -15,6 +15,12 @@
       <Scenario id="S-CONTRACTS-1">ScanResponse по умолчанию имеет path retrieval и все поля контракта.</Scenario>
       <Scenario id="S-CONTRACTS-2">EvalPredictResponse.model_dump() равен ровно {"slug": ...} (плоский контракт организатора).</Scenario>
       <Scenario id="S-CONTRACTS-3">ErrorResponse требует error и detail.</Scenario>
+          <Scenario id="S-CONTRACTS-5">Card несёт официальные поля портала: temperature, alcohol_pct, dishes, grapes, winery_slug/winery_url, api_match.</Scenario>
+      <Scenario id="S-CONTRACTS-6">SimilarItem несёт image_url и source (official | catalog), SommelierResponse — official_dishes.</Scenario>
+      <Scenario id="S-CONTRACTS-7">EvalPredictResponse остаётся плоским: только slug.</Scenario>
+      <Evidence note="C018-schema">Расширены packages/contracts/schemas.py — Card (+temperature, alcohol_pct, dishes, grapes,
+        winery_slug, winery_url, api_match), SimilarItem (+image_url, source), SommelierResponse (+official_dishes).
+        Ответ /v1/eval/predict проверен живьём: {"slug":"nebo-rossii-glera"} — контракт не изменился.</Evidence>
     </V-M-CONTRACTS>
 
     <V-M-NORMALIZE>

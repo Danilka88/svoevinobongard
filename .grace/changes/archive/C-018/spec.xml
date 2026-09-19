@@ -1,0 +1,34 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-018>
+    <Summary>Карточка вина с официальными полями портала, сомелье на официальных гастросочетаниях,
+      аналоги через официальный API с запасной логикой по метаданным, и обновлённый mobile-first UI.</Summary>
+    <Goals>Довести карточку до паритета с порталом «Своё Вино» (температура подачи, крепость, гастросочетания,
+      винодельня со ссылкой, регион, сорта, цвет, изображение), убрать выдуманные моделью сочетания из сомелье
+      и перевести аналоги на официальный источник похожих вин.</Goals>
+    <Constraints>Источник официальных полей — catalog_enriched_v3.jsonl (C-017); для slug без совпадения с API
+      карточка обязана работать на прежних данных CSV. Контракт организатора POST /v1/eval/predict не меняется:
+      на верхнем уровне только slug. services/* по-прежнему не импортируют друг друга — общий клиент API живёт
+      в packages/common/official_api.py. Клиент обязан кэшировать ответы на диск, иметь таймаут и деградировать
+      без исключения. UI общается только с gateway. Только permissive; old/, my/ и материалы не изменяются;
+      catalog.jsonl и catalog_enriched_v3.jsonl не перезаписываются.</Constraints>
+    <NonGoals>Онлайн-инференс VLM для карточки. Изменение retrieval и нормализации. Энотуризм и статьи (C-019).
+      Переиндексация каталога.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>GET /v1/scan отдаёт карточку с temperature, alcohol_pct, dishes, grapes, region, manufacturer со ссылкой /wineries/{slug} и image_url для slug, совпавших с API.</Criterion>
+      <Criterion>Для slug без официальных данных карточка остаётся на полях CSV и помечается api_match=false.</Criterion>
+      <Criterion>POST /v1/sommelier берёт гастрономические пары из официальных dishes вина и остаётся работоспособным при недоступной LLM.</Criterion>
+      <Criterion>GET /v1/similar/{slug} возвращает официальные похожие вина, а при недоступности API откатывается на логику по метаданным, не ломая контракт ответа.</Criterion>
+      <Criterion>Сборка UI (bun install и bun run build) проходит, а новые поля присутствуют в собранном клиентском бандле.</Criterion>
+      <Criterion>POST /v1/eval/predict отвечает плоским slug, как раньше.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-GATEWAY/>
+      <M-CONTRACTS/>
+      <M-WEB/>
+      <M-COMMON/>
+      <M-CATALOG/>
+    </AffectedAreas>
+    <VerificationIntent>Обновить V-M-GATEWAY доказательствами карточки, сомелье и похожих, V-M-CONTRACTS —
+      расширением схем, V-M-WEB — сборкой и новыми полями UI.</VerificationIntent>
+  </C-018>
+</GraceChangeSpec>

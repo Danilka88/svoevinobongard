@@ -4,8 +4,12 @@
  */
 export interface TopKItem { slug: string; score: number; name?: string | null; winery?: string | null }
 export interface Card {
-  name: string; winery: string; region: string; category: string; color: string;
-  grape: string; description: string; year?: number | null; sweetness?: string | null; image?: string | null;
+  // C-018: карточка повторяет поля портала (официальные данные API vino-svoe.ru)
+  name: string; winery: string; winery_slug?: string; winery_url?: string;
+  region: string; category: string; color: string; grape: string; grapes?: string[];
+  description: string; year?: number | null; sweetness?: string | null;
+  alcohol_pct?: number | null; temperature?: string; dishes?: string[];
+  image?: string | null; image_url?: string | null; api_match?: boolean;
 }
 export interface ScanResponse {
   slug: string | null; confidence: number; margin: number; path: string; latency_ms: number;
@@ -13,11 +17,12 @@ export interface ScanResponse {
 }
 export interface SimilarItem {
   slug: string; name: string; winery: string; region: string; category: string; grape: string;
-  score: number; reason: string;
+  score: number; reason: string; image_url?: string; source?: string;
 }
 export interface SommelierItem { slug: string; name: string; winery: string; why: string }
 export interface SommelierResponse {
-  slug: string; recommendations: SommelierItem[]; pairing: string[]; source: string; note: string;
+  slug: string; recommendations: SommelierItem[]; pairing: string[];
+  official_dishes?: string[]; source: string; note: string;
 }
 
 export function useGateway() {

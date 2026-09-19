@@ -10,6 +10,7 @@
 # app - FastAPI-приложение gateway
 # VLM_MODEL - имя VLM из окружения
 # ENCODER - имя image-энкодера из окружения
+# get_official - ленивая загрузка официального обогащения v3 (C-017)
 # get_store - ленивая загрузка read-only каталога
 # health - GET /v1/health
 # warmup - POST /v1/warmup (прогрев retrieval)
@@ -31,7 +32,7 @@ import os
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 
-from packages.common.catalog import CatalogStore
+from packages.common.catalog import CatalogStore, load_official_v3
 from packages.common.config import settings
 from packages.common.llm.errors import LLMError
 from packages.common.llm.router import LLMRouter
@@ -51,12 +52,15 @@ from services.gateway.app.recommend import (
     build_sommelier_prompt,
     catalog_recommendations,
     find_similar,
+    find_similar_official,
+    official_dishes,
     pairing_for,
     parse_sommelier_reply,
 )
 
 __all__ = [
     "app",
+    "get_official",
     "VLM_MODEL",
     "ENCODER",
     "get_store",
@@ -74,6 +78,21 @@ VLM_MODEL = os.getenv("VLM_MODEL", "gemma4:12b")
 ENCODER = os.getenv("ENCODER", "siglip2")
 
 _store: CatalogStore | None = None
+
+
+_official: dict[str, dict] | None = None
+
+
+def get_official() -> dict[str, dict]:
+    """Официальное обогащение v3 (C-017): карточка, сомелье и похожие берут данные отсюда.
+
+    Файла может не быть — тогда карточка работает на данных CSV, как раньше.
+    """
+    global _official
+    if _official is None:
+        _official = load_official_v3()
+        log_marker("M-GATEWAY", "get_official", "READY", slugs=len(_official))
+    return _official
 
 
 def get_store() -> CatalogStore:
@@ -122,10 +141,23 @@ async def warmup() -> dict:
 
 
 @app.get("/v1/similar/{slug}")
-def similar(slug: str) -> SimilarResponse:
-    """Аналоги из других виноделен по сорту, региону и цвету."""
-    items = find_similar(get_store(), slug, limit=6)
-    log_marker("M-GATEWAY", "similar", "DONE", slug=slug, items=len(items))
+def similar(slug: str, limit: int = 6) -> SimilarResponse:
+    """Похожие вина: сначала официальный API портала, иначе метаданные каталога."""
+    items = find_similar_official(slug, limit=limit)
+    source = "official"
+    if not items:
+        items = find_similar(get_store(), slug, limit=limit)
+        source = "catalog"
+    official = get_official().get(slug) or {}
+    # дополняем официальные карточки локальными полями (цвет/сорт), если их нет
+    for item in items:
+        extra = get_official().get(item.get("slug", "")) or {}
+        if source == "catalog":
+            item.setdefault("image_url", str(extra.get("image_url") or ""))
+            item.setdefault("source", "catalog")
+        if not item.get("grape"):
+            item["grape"] = str(extra.get("grapes", [""])[0] if extra.get("grapes") else "")
+    log_marker("M-GATEWAY", "similar", "DONE", slug=slug, items=len(items), source=source)
     return SimilarResponse(base_slug=slug,
                            items=[SimilarItem(**item) for item in items])
 
@@ -145,7 +177,9 @@ async def sommelier(request: SommelierRequest) -> SommelierResponse:
 
     fallback = catalog_recommendations(store, request.slug, request.answers)
     allowed = {item["slug"] for item in fallback}
-    pairing = pairing_for(record)
+    # пары берём из официальных гастросочетаний портала; LLM только формулирует
+    dishes = official_dishes(get_official().get(request.slug) or {})
+    pairing = pairing_for(record, dishes)
     source = "catalog"
     note = ""
 
@@ -179,7 +213,8 @@ async def sommelier(request: SommelierRequest) -> SommelierResponse:
                 if recommendations:
                     log_marker("M-GATEWAY", "sommelier", "LLM_OK", items=len(recommendations))
                     return SommelierResponse(slug=request.slug, recommendations=recommendations,
-                                             pairing=pairing, source="llm")
+                                             pairing=pairing, official_dishes=dishes,
+                                             source="llm" if not dishes else "llm+official-dishes")
         except LLMError as error:
             note = f"llm unavailable: {type(error).__name__}"
             log_marker("M-GATEWAY", "sommelier", "LLM_FAILED", error=type(error).__name__)
@@ -192,7 +227,8 @@ async def sommelier(request: SommelierRequest) -> SommelierResponse:
         slug=request.slug,
         recommendations=[SommelierItem(**item) for item in fallback],
         pairing=pairing,
-        source=source,
+        official_dishes=dishes,
+        source="official-dishes" if dishes else source,
         note=note,
     )
 
@@ -218,7 +254,9 @@ async def scan(image: UploadFile = File(...)) -> ScanResponse:
     if not data:
         raise HTTPException(status_code=400, detail="empty image")
     try:
-        return await run_scan(data, get_store(), filename=image.filename or "query.jpg")
+        store = get_store()
+        return await run_scan(data, store, filename=image.filename or "query.jpg",
+                              official_index=get_official())
     except RuntimeError as error:
         log_marker("M-GATEWAY", "scan", "PIPELINE_UNAVAILABLE", error=str(error))
         raise HTTPException(status_code=503, detail=str(error)) from error

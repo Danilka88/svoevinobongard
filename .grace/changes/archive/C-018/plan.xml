@@ -1,0 +1,99 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-018>
+    <IntentSummary>Прокинуть официальные поля v3 в карточку /v1/scan, перевести сомелье на официальные
+      гастросочетания, аналоги — на официальный API с fallback, и обновить UI под новые поля.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>data/catalog/catalog_enriched_v3.jsonl</Value></MustExist>
+      <MustExist><Value>services/gateway/app/pipeline.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/recommend.py</Value></MustExist>
+      <MustExist><Value>apps/web/components/WineCard.vue</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-CONTRACTS</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>packages/common/official_api.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustVerify><Module>M-CONTRACTS</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/>
+      <M-CONTRACTS/>
+      <M-WEB/>
+      <M-COMMON/>
+      <V-M-GATEWAY/>
+      <V-M-CONTRACTS/>
+      <V-M-WEB/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>packages/contracts/</Path>
+      <Path>services/gateway/app/</Path>
+      <Path>apps/web/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Общий клиент официального API и загрузчик v3</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>fetch_json повторяет запрос при сетевом сбое, соблюдает таймаут и паузу между запросами.</Criterion>
+          <Criterion>cached_json читает диск и пишет кэш; при недоступности сети и пустом кэше возвращает None вместо исключения.</Criterion>
+          <Criterion>fetch_similar ограничивает size значением 24 и возвращает None, если API отдал ошибку.</Criterion>
+          <Criterion>load_official_v3 терпим к отсутствию файла: без него карточка работает на CSV.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -c "from packages.common.catalog import load_official_v3; print(len(load_official_v3()))"</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Карточка /v1/scan с официальными полями и расширенные схемы</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>build_card принимает запись v3 и заполняет temperature, alcohol_pct, dishes, grapes, регион, винодельню со ссылкой и image_url.</Criterion>
+          <Criterion>run_scan получает индекс v3 и передаёт в карточку именно запись нужного slug, а не весь индекс.</Criterion>
+          <Criterion>При отсутствии официальных данных карточка возвращает прежние значения CSV и api_match=false.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>curl -s -X POST http://127.0.0.1:8080/v1/scan -F "image=@data/samples/eval_queries/096ca74e.jpg"</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Сомелье на официальных dishes и аналоги через официальный API</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>pairing_for отдаёт официальные блюда, если они есть, и только при их отсутствии считает пары по цвету и сладости.</Criterion>
+          <Criterion>LLM вызывается только для формулировки; при ошибке ответ уходит с детерминированными рекомендациями и пометкой причины.</Criterion>
+          <Criterion>GET /v1/similar/{slug} сначала спрашивает официальный API и при пустом ответе использует прежнюю логику, помечая источник.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>curl -s "http://127.0.0.1:8080/v1/similar/simbioz?limit=4"</Command>
+          <Command>curl -s -X POST http://127.0.0.1:8080/v1/sommelier -H "Content-Type: application/json" -d "{\"slug\":\"aristov-anima-millesimato-beloe-bryut\",\"answers\":{\"dish\":\"рыба\"}}"</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>UI карточки под новые поля и сборка</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Карточка показывает крепость, температуру подачи, блок сортов, блок гастросочетаний и ссылку на винодельню.</Criterion>
+          <Criterion>Типы клиента gateway расширены под новые поля Card, SimilarItem и SommelierResponse.</Criterion>
+          <Criterion>bun install и bun run build завершаются успешно; новые поля присутствуют в собранном бандле.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; bun install</Command>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-018>
+</GraceChangePlan>

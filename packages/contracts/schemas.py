@@ -52,19 +52,26 @@ class TopKItem(BaseModel):
 
 
 class Card(BaseModel):
-    """Карточка вина для мобильного UI."""
+    """Карточка вина для мобильного UI (C-018: поля как на портале)."""
 
     name: str = ""
     winery: str = ""
+    winery_slug: str = ""
+    winery_url: str = ""
     region: str = ""
     category: str = ""
     color: str = ""
     grape: str = ""
+    grapes: list[str] = Field(default_factory=list)
     description: str = ""
     year: int | None = None
     sweetness: str | None = None
+    alcohol_pct: float | None = None
+    temperature: str = ""
+    dishes: list[str] = Field(default_factory=list)
     image: str | None = None
     image_url: str | None = None
+    api_match: bool = False
 
 
 class ScanResponse(BaseModel):
@@ -112,6 +119,8 @@ class SimilarItem(BaseModel):
     grape: str = ""
     score: float = 0.0
     reason: str = ""
+    image_url: str = ""
+    source: str = "catalog"
 
 
 class SimilarResponse(BaseModel):
@@ -143,5 +152,6 @@ class SommelierResponse(BaseModel):
     slug: str
     recommendations: list[SommelierItem] = Field(default_factory=list)
     pairing: list[str] = Field(default_factory=list)
+    official_dishes: list[str] = Field(default_factory=list)
     source: str = "catalog"
     note: str = ""

@@ -7,7 +7,9 @@
 # MAP_MODE: EXPORTS
 # END_MODULE_CONTRACT
 # START_MODULE_MAP
-# find_similar - аналоги из других виноделен по сорту, региону и цвету с объяснением
+# find_similar - аналоги из других виноделен по метаданным (запасной путь)
+# find_similar_official - официальные похожие вина портала через API
+# official_dishes - официальные гастросочетания вина по сорту, региону и цвету с объяснением
 # pairing_for - детерминированные гастрономические пары по цвету и сладости
 # catalog_recommendations - подбор вин по ответам пользователя без LLM
 # build_sommelier_prompt - промпт для текстовой модели сомелье
@@ -29,9 +31,10 @@ import re
 from dataclasses import dataclass, field
 
 from packages.common.catalog import CatalogStore
+from packages.common.official_api import absolute_url
 from packages.common.logging import log_marker
 
-__all__ = ["find_similar", "pairing_for", "catalog_recommendations",
+__all__ = ["find_similar", "find_similar_official", "official_dishes", "pairing_for", "catalog_recommendations",
            "build_sommelier_prompt", "parse_sommelier_reply"]
 
 _MAX_ITEMS = 8
@@ -112,8 +115,50 @@ def find_similar(store: CatalogStore, slug: str, limit: int = 6) -> list[dict]:
     ]
 
 
-def pairing_for(record: dict) -> list[str]:
-    """Детерминированные гастрономические пары по цвету и сладости."""
+def official_dishes(record: dict) -> list[str]:
+    """Официальные гастросочетания вина из API (C-017/C-018).
+
+    Это источник истины: сомелье не выдумывает пары, а берёт их из данных портала.
+    """
+    return [str(dish) for dish in (record.get("dishes") or []) if dish]
+
+
+def find_similar_official(slug: str, limit: int = 6, *, refresh: bool = False) -> list[dict]:
+    """Похожие вина из официального API.
+
+    Returns:
+        Список словарей в формате SimilarItem или пустой список, если API недоступен
+        (тогда вызывающий использует запасную логику по метаданным).
+    """
+    from packages.common.official_api import fetch_similar  # noqa: PLC0415
+
+    payload = fetch_similar(slug, size=limit, refresh=refresh)
+    if not payload:
+        return []
+    items: list[dict] = []
+    for entry in payload:
+        image = entry.get("image") or {}
+        items.append({
+            "slug": str(entry.get("slug") or ""),
+            "name": str(entry.get("title") or ""),
+            "winery": str(entry.get("manufacturer") or ""),
+            "region": str(entry.get("region") or ""),
+            "category": str(entry.get("category") or ""),
+            "grape": "",
+            "score": 1.0,
+            "reason": "официальные похожие вина портала",
+            "image_url": absolute_url(image.get("url") if isinstance(image, dict) else ""),
+            "source": "official",
+        })
+    log_marker("M-GATEWAY", "similar_official", "DONE", slug=slug, items=len(items))
+    return [item for item in items if item["slug"]]
+
+
+def pairing_for(record: dict, official: list[str] | None = None) -> list[str]:
+    """Гастрономические пары: приоритет у официальных блюд портала, иначе по цвету и сладости."""
+    dishes = official if official is not None else official_dishes(record)
+    if dishes:
+        return dishes
     haystack = " ".join(_norm(record.get(field)) for field in ("category", "sweetness", "name"))
     if "игрист" in haystack or "брют" in haystack:
         return ["Икра и морепродукты", "Мягкие сыры", "Устрицы"]

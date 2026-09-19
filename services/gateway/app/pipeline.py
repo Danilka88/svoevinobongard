@@ -68,23 +68,41 @@ def calibrated_confidence(scores: list[float], temperature: float | None = None)
     return float(weights[0] / total)
 
 
-def build_card(store: CatalogStore, slug: str) -> Card:
-    """Собирает карточку вина из метаданных каталога."""
+def build_card(store: CatalogStore, slug: str, official: dict | None = None) -> Card:
+    """Собирает карточку вина: данные CSV плюс официальные поля API (C-018).
+
+    Args:
+        store: read-only каталог CSV.
+        slug: slug вина.
+        official: запись catalog_enriched_v3 (если slug совпал с API). Пустая запись —
+            карточка остаётся на данных CSV, как раньше.
+    """
     data = store.card(slug)
     if not data:
         return Card()
+    extra = official or {}
+    winery_slug = str(extra.get("manufacturer_slug") or "")
+    grapes = [str(item) for item in (extra.get("grapes") or []) if item]
+    alcohol = extra.get("alcohol_pct")
     return Card(
         name=data.get("name") or "",
-        winery=data.get("winery") or "",
-        region=data.get("region") or "",
-        category=data.get("category") or "",
-        color=data.get("color") or "",
-        grape=data.get("grape") or "",
-        description=data.get("description") or "",
+        winery=extra.get("manufacturer_name") or data.get("winery") or "",
+        winery_slug=winery_slug,
+        winery_url=f"/wineries/{winery_slug}" if winery_slug else "",
+        region=extra.get("region_name") or data.get("region") or "",
+        category=data.get("category") or extra.get("category_official") or "",
+        color=str(extra.get("color_official") or data.get("color") or ""),
+        grape=data.get("grape") or (grapes[0] if grapes else ""),
+        grapes=grapes,
+        description=str(extra.get("description") or data.get("description") or ""),
         year=data.get("year"),
         sweetness=data.get("sweetness"),
+        alcohol_pct=float(alcohol) if isinstance(alcohol, (int, float)) else None,
+        temperature=str(extra.get("temperature") or ""),
+        dishes=[str(dish) for dish in (extra.get("dishes") or []) if dish],
         image=data.get("image"),
-        image_url=None,
+        image_url=str(extra.get("image_url") or "") or None,
+        api_match=bool(extra.get("api_match")),
     )
 
 
@@ -93,6 +111,7 @@ async def run_scan(
     store: CatalogStore,
     clients: ServiceClients | None = None,
     filename: str = "query.jpg",
+    official_index: dict[str, dict] | None = None,
     trace: PipelineTrace | None = None,
 ) -> ScanResponse:
     """Прогоняет изображение по пайплайну Tier-1.
@@ -264,7 +283,7 @@ async def run_scan(
         ocr_used=ocr_used,
         ocr_latency_ms=round(ocr_latency_ms, 1),
         degraded=degraded,
-        card=build_card(store, best.slug),
+        card=build_card(store, best.slug, (official_index or {}).get(best.slug)),
     )
 
     # Flywheel (C-006): лог запроса без PII. Best-effort — сбой не влияет на ответ.

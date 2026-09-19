@@ -117,6 +117,33 @@
         "head":"yes","geo":"yes","latency_ms":115.1}}. Первый /v1/scan после старта 955.6 мс.</Evidence>
       <Evidence note="e2e">Живой прогон: /v1/eval/predict вернул плоский {"slug": ...};
         полевой прогон 31 фото: 0 ошибок, 0 пустых slug, p50 234.8 / p95 357.7 мс.</Evidence>
+          <Command>PYTHONPATH=. .venv/bin/python -m uvicorn services.gateway.app.main:app --host 127.0.0.1 --port 8080</Command>
+      <Command>curl -s -X POST http://127.0.0.1:8080/v1/scan -F "image=@data/samples/eval_queries/096ca74e.jpg"</Command>
+      <Command>curl -s "http://127.0.0.1:8080/v1/similar/simbioz?limit=4"</Command>
+      <Scenario id="S-GW-6">Карточка /v1/scan отдаёт официальные поля портала: temperature, alcohol_pct, dishes, grapes, region, manufacturer со ссылкой /wineries/{slug}, image_url.</Scenario>
+      <Scenario id="S-GW-7">Для slug без совпадения с API карточка остаётся на данных CSV (api_match=false), как раньше.</Scenario>
+      <Scenario id="S-GW-8">GET /v1/similar/{slug} сначала берёт официальные похожие вина (параметр size), а при недоступности API откатывается на метаданные каталога.</Scenario>
+      <Scenario id="S-GW-9">POST /v1/sommelier берёт гастрономические пары из официальных dishes вина; LLM используется только для формулировки.</Scenario>
+      <Scenario id="S-GW-10">POST /v1/eval/predict остаётся плоским контрактом организатора: только slug на верхнем уровне.</Scenario>
+      <Evidence note="C018-card-parity">Живой прогон стека (normalize 8081, retrieval 8082, matcher 8084, gateway 8080) на официальных фото организатора.
+        /v1/scan, фото 096ca74e.jpg: slug aristov-anima-millesimato-beloe-bryut, latency 892.5 мс, card = alcohol_pct 12.0,
+        temperature 6-8, dishes [Легкие закуски, Фрукты], grapes [Алиготе, Мюллер-Тургау, Пино Блан, Рислинг, Шардоне],
+        region Кубань, winery Кубань-Вино, winery_slug kuban-vino, winery_url /wineries/kuban-vino,
+        image_url https://api.vino-svoe.ru/uploads/Aristov_Anima_milezimiato_bryut_4a887b783f.webp, api_match true.
+        Второе фото 019c68d0.jpg: slug nebo-rossii-glera, latency 934.5 мс, alcohol_pct 11.0, temperature 6-8,
+        dishes [Блюда из птицы, Морепродукты, Сыры], grapes [Глера], winery Kalos Limen, winery_url /wineries/kalos-limen.</Evidence>
+      <Evidence note="C018-card-bug-found">Найден и исправлен дефект: сначала в run_scan передавался весь индекс v3 вместо записи по slug,
+        из-за чего карточка показывала api_match=false и пустые официальные поля. Ошибку поймала проверка живого ответа —
+        сомелье для того же slug уже видел dishes, а карточка ещё нет. После фикса поля заполняются.</Evidence>
+      <Evidence note="C018-similar-official">GET /v1/similar/simbioz?limit=4 отдаёт официальные похожие портала: ИИ ВИНО (WINEPARK, Крым),
+        Гренаш (WINEPARK), Саперави ДВА ДУБКА (Сенетх, Кубань), source=official, image_url абсолютные.
+        Параметр найден подбором: size работает, а limit/perPage/itemsPerPage/take/count дают 400 «Значение должно быть меньше, либо равно 24».</Evidence>
+      <Evidence note="C018-sommelier-dishes">POST /v1/sommelier для aristov-anima-millesimato-beloe-bryut: source=official-dishes,
+        official_dishes=[Легкие закуски, Фрукты], pairing совпадает с ними, note='llm unavailable: AllProvidersExhausted',
+        рекомендации в 5 позиций собраны детерминированно по каталогу. Пары взяты из данных портала, а не из модели;
+        при недоступной LLM фича остаётся рабочей.</Evidence>
+      <Evidence note="C018-eval-predict-intact">POST /v1/eval/predict на фото 019c68d0.jpg вернул ровно {"slug":"nebo-rossii-glera"} —
+        контракт организатора (плоский slug) не затронут новыми полями карточки.</Evidence>
     </V-M-GATEWAY>
   </VD-M0-CODE>
 </GraceVerificationDocument>

@@ -44,6 +44,16 @@
         Итог: pytest 79 passed по всему проекту.</Evidence>
       <Evidence note="boundary">apps/web использует единственный HTTP-клиент composables/useGateway.ts с базой
         NUXT_PUBLIC_API_BASE; прямых обращений к retrieval/ocr/vlm/matcher в коде нет — UI удаляется без влияния на ML.</Evidence>
+          <Command>cd apps/web &amp;&amp; bun install</Command>
+      <Command>cd apps/web &amp;&amp; bun run build</Command>
+      <Scenario id="S-WEB-4">Карточка показывает температуру подачи, крепость, гастросочетания, сорта, цвет и ссылку на винодельню.</Scenario>
+      <Scenario id="S-WEB-5">Сборка Nuxt проходит, и новые поля присутствуют в собранном клиентском бандле.</Scenario>
+      <Evidence note="C018-ui">apps/web/components/WineCard.vue показывает image_url, чипы крепости и температуры,
+        блок «Сорта», блок «Гастросочетания» (с пометкой, что подбор сделан порталом, а не моделью) и ссылку на винодельню
+        https://vino-svoe.ru/wineries/{slug}. Типы composables/useGateway.ts расширены под Card, SimilarItem и SommelierResponse.</Evidence>
+      <Evidence note="C018-build">bun install: 598 установок, 675 пакетов, изменений нет. bun run build: exit code 0,
+        «Build complete!», суммарный размер 1.98 MB (493 kB gzip), артефакт .output/server/index.mjs собран.
+        Новые поля реально попали в бандл: в .output/public/_nuxt/CSbu-pex.js есть строки «Гастросочетания», «°C» и «wineries/».</Evidence>
     </V-M-WEB>
   </VD-M5-WEB>
 </GraceVerificationDocument>
