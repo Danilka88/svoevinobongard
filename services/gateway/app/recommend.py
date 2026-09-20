@@ -176,10 +176,38 @@ def pairing_for(record: dict, official: list[str] | None = None) -> list[str]:
     return ["Сырная тарелка", "Закуски"]
 
 
+def _intensity(answers: dict[str, str], key: str) -> int:
+    """Интенсивность 0..3 из ответа (строки приходят из UI)."""
+    try:
+        return max(0, min(3, int(float(str(answers.get(key) or 0)))))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _likes_profile(store: CatalogStore, likes: list[str] | None) -> dict:
+    """Профиль вкуса: что общего у понравившихся вин (сорт, категория, регион)."""
+    profile = {"grapes": set(), "categories": set(), "regions": set()}
+    for slug in likes or []:
+        record = store.get(slug) or {}
+        for key, field in (("grapes", "grape"), ("categories", "category"), ("regions", "region")):
+            value = _norm(record.get(field))
+            if value:
+                profile[key].add(value)
+    return profile
+
+
 def catalog_recommendations(store: CatalogStore, slug: str, answers: dict[str, str],
-                            limit: int = 5) -> list[dict]:
-    """Подбирает вина по каталогу без LLM: фильтр по ответам + похожесть."""
-    base = store.get(slug) or {}
+                            limit: int = 5, likes: list[str] | None = None) -> list[dict]:
+    """Подбирает вина по каталогу без LLM: фильтр по ответам + похожесть.
+
+    slug может быть пустым: тогда подбор идёт по всему каталогу только по предпочтениям
+    (экран сомелье без скана). История вкуса (likes) даёт мягкий буст кандидатам с теми же
+    сортом, категорией или регионом, но не отсекает остальные варианты.
+    """
+    base = store.get(slug) or {} if slug else {}
+    profile = _likes_profile(store, likes)
+    spice = _intensity(answers, "spice")
+    fat = _intensity(answers, "fat")
     wanted_color = _norm(answers.get("style") or answers.get("wine_type"))
     budget = _norm(answers.get("budget"))
     dish = _norm(answers.get("dish"))
@@ -197,7 +225,28 @@ def catalog_recommendations(store: CatalogStore, slug: str, answers: dict[str, s
                 continue
             if dish in {"мясо", "стейк"} and "белое" in haystack:
                 continue
-        score = 0.0
+        if spice >= 2:
+            haystack_style = _norm(f"{record.get('sweetness')} {record.get('category')}")
+            if "сладкое" in haystack_style or "полусладкое" in haystack_style:
+                score_spice = 0.2
+            elif "сухое" in haystack_style:
+                score_spice = -0.1
+            else:
+                score_spice = 0.0
+        else:
+            score_spice = 0.0
+        if fat >= 2 and "белое" in _norm(record.get("category")):
+            score_spice += 0.1
+        score = score_spice
+        grape_norm, category_norm, region_norm = (_norm(record.get("grape")),
+                                                  _norm(record.get("category")),
+                                                  _norm(record.get("region")))
+        if grape_norm and grape_norm in profile["grapes"]:
+            score += 0.15
+        if category_norm and category_norm in profile["categories"]:
+            score += 0.1
+        if region_norm and region_norm in profile["regions"]:
+            score += 0.1
         if _norm(record.get("grape")) and _norm(record.get("grape")) == _norm(base.get("grape")):
             score += 0.3
         if _norm(record.get("region")) == _norm(base.get("region")):

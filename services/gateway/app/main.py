@@ -282,12 +282,13 @@ async def sommelier(request: SommelierRequest) -> SommelierResponse:
     фича оставалась рабочей без LLM.
     """
     store = get_store()
-    record = store.get(request.slug)
-    catalog_record = (get_official().get(request.slug) or {}) if record else {}
-    if not record:
+    # C-037: slug необязателен — без него подбор идёт по всему каталогу по предпочтениям
+    record = store.get(request.slug) if request.slug else {}
+    catalog_record = (get_official().get(request.slug) or {}) if request.slug else {}
+    if request.slug and not record:
         raise HTTPException(status_code=404, detail=f"unknown slug: {request.slug}")
 
-    fallback = catalog_recommendations(store, request.slug, request.answers)
+    fallback = catalog_recommendations(store, request.slug, request.answers, likes=request.likes)
     allowed = {item["slug"] for item in fallback}
     # пары берём из официальных гастросочетаний портала; LLM только формулирует
     dishes = official_dishes(get_official().get(request.slug) or {})
@@ -340,14 +341,45 @@ async def sommelier(request: SommelierRequest) -> SommelierResponse:
     pairing_cards = [
         {"name": dish, "image_url": _dish_image(dish, dish_images)} for dish in pairing
     ]
-    alternatives = [
-        {"slug": item["slug"], "name": item.get("name", ""), "winery": item.get("winery", ""),
-         "image_url": media_for(item["slug"]).get("image_url", "")}
-        for item in find_similar_official(request.slug, limit=3)
-    ] if settings.explain_enabled else []
+    if request.slug:
+        alternatives = [
+            {"slug": item["slug"], "name": item.get("name", ""), "winery": item.get("winery", ""),
+             "image_url": media_for(item["slug"]).get("image_url", "")}
+            for item in find_similar_official(request.slug, limit=3)
+        ]
+    else:
+        # подбор с нуля: альтернативы — следующие варианты каталога под те же условия
+        extra = catalog_recommendations(store, "", request.answers, limit=8, likes=request.likes)[5:8]
+        alternatives = [
+            {"slug": item["slug"], "name": item.get("name", ""), "winery": item.get("winery", ""),
+             "image_url": media_for(item["slug"]).get("image_url", "")}
+            for item in extra
+        ]
+    enriched: list[SommelierItem] = []
+    for item in fallback:
+        slug_item = str(item.get("slug") or "")
+        official_item = get_official().get(slug_item) or {}
+        article = media_for(slug_item)
+        dishes_for_item = article.get("dish_images") or []
+        catalog_item = store.get(slug_item) or {}
+        enriched.append(SommelierItem(
+            slug=slug_item,
+            name=item.get("name", "") or catalog_item.get("name", ""),
+            winery=item.get("winery", "") or catalog_item.get("winery", ""),
+            why=item.get("why", ""),
+            image_url=str(article.get("image_url") or ""),
+            sensory_note=_sensory_note(official_item or catalog_item,
+                                       [dish for dish in (official_item.get("dishes") or [])][:3]),
+            grape=str(catalog_item.get("grape") or ""),
+            region=str(official_item.get("region_name") or catalog_item.get("region") or ""),
+            category=str(official_item.get("category_official") or catalog_item.get("category") or ""),
+            year=catalog_item.get("year"),
+            pairing_cards=[{"name": dish, "image_url": _dish_image(dish, dishes_for_item)}
+                           for dish in (official_item.get("dishes") or [])[:3]],
+        ))
     return SommelierResponse(
         slug=request.slug,
-        recommendations=[SommelierItem(**item) for item in fallback],
+        recommendations=enriched,
         pairing=pairing,
         official_dishes=dishes,
         source="official-dishes" if dishes else source,

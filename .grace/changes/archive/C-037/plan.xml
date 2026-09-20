@@ -1,0 +1,69 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-037>
+    <IntentSummary>Сделать подбор сомелье возможным без скана (по всему каталогу и предпочтениям), добавить
+      учёт истории вкуса и собрать пошаговый экран с персонализацией в localStorage.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/gateway/app/recommend.py</Value></MustExist>
+      <MustExist><Value>packages/contracts/schemas.py</Value></MustExist>
+      <MustExist><Value>apps/web/pages/sommelier.vue</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>apps/web/composables/useTaste.ts</Value></MustExist>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/>
+      <M-WEB/>
+      <V-M-GATEWAY/>
+      <V-M-WEB/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>services/gateway/app/</Path>
+      <Path>packages/contracts/</Path>
+      <Path>apps/web/</Path>
+      <Path>tests/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Аддитивный подбор без slug и учёт истории вкуса</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>slug в запросе необязателен: без него подбор идёт по всему каталогу по ответам, с ним — как раньше от базового вина.</Criterion>
+          <Criterion>Запрос принимает likes; кандидаты, совпадающие с понравившимися по сорту, категории или региону, получают мягкий буст.</Criterion>
+          <Criterion>Учитываются интенсивности (острота, жирность, кислотность, сладость) и категория блюда.</Criterion>
+          <Criterion>Каждая рекомендация получает sensory_note, а ответ — pairing_cards и alternatives; существующие поля не меняются.</Criterion>
+          <Criterion>Неизвестный slug по-прежнему даёт 404, а отсутствие slug — нет.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>curl -s -X POST http://127.0.0.1:8080/v1/sommelier -H "Content-Type: application/json" -d '{"answers":{"dish":"рыба","style":"сухое","budget":"средний"}}'</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Экран сомелье: три шага, результаты, персонализация</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Шаг 1 — блюдо и слайдеры интенсивности; шаг 2 — повод и настроение; шаг 3 — бюджет, стиль, регион, смелость.</Criterion>
+          <Criterion>Результаты показывают изображение, sensory-пояснение, чипы и картинки блюд, «подачу» и альтернативы.</Criterion>
+          <Criterion>Кнопка сохранения добавляет вино в «Мой вкус» (localStorage), панель позволяет удалять и очищать список, при подборе передаются likes и видно, что учтено.</Criterion>
+          <Criterion>При query slug базой становится это вино, иначе подбор с нуля; работают клавиатура, aria-live и скелетоны.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-037>
+</GraceChangePlan>

@@ -138,10 +138,14 @@ class SimilarResponse(BaseModel):
 
 
 class SommelierRequest(BaseModel):
-    """Ответы пользователя на вопросы цифрового сомелье."""
+    """Ответы пользователя на вопросы цифрового сомелье.
 
-    slug: str
+    C-037: slug необязателен — без него подбор идёт по всему каталогу по предпочтениям.
+    """
+
+    slug: str = ""
     answers: dict[str, str] = Field(default_factory=dict)
+    likes: list[str] = Field(default_factory=list)  # история вкуса из localStorage
 
 
 class SommelierItem(BaseModel):
@@ -151,6 +155,14 @@ class SommelierItem(BaseModel):
     name: str = ""
     winery: str = ""
     why: str = ""
+    # C-037: аддитивные поля для экрана сомелье
+    image_url: str = ""
+    sensory_note: str = ""
+    grape: str = ""
+    region: str = ""
+    category: str = ""
+    year: int | None = None
+    pairing_cards: list[dict] = Field(default_factory=list)
 
 
 class SommelierResponse(BaseModel):

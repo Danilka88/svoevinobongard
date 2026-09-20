@@ -111,6 +111,17 @@
       <Evidence note="C036-build">bun run build: exit code 0, «Build complete!», суммарный размер 2.08 МБ (518 кБ gzip).
         git показывает изменения только в apps/web (шесть компонентов, composables/useGateway.ts, pages/index.vue):
         services/ и packages/ не тронуты, контракт организатора не затрагивался, pytest 203 passed, grace lint 0/0.</Evidence>
+          <Scenario id="S-WEB-17">Экран сомелье ведёт по трём шагам: стол с интенсивностями, повод и настроение, предпочтения.</Scenario>
+      <Scenario id="S-WEB-18">Результаты показывают изображение, sensory-пояснение, чипы, картинки блюд, кнопку сохранения в «Мой вкус» и блок альтернатив.</Scenario>
+      <Scenario id="S-WEB-19">Персонализация хранится в localStorage: добавление, удаление, очистка; likes передаются в подбор.</Scenario>
+      <Scenario id="S-WEB-20">При query slug подбор идёт от базового вина, иначе с нуля.</Scenario>
+      <Evidence note="C037-sommelier-screen">apps/web/pages/sommelier.vue: мастер из трёх шагов (блюдо и слайдеры остроты/жирности/кислотности/сладости;
+        повод и настроение со слайдером смелости; бюджет, стиль, регион), результаты с изображением вина, sensory-пояснением,
+        чипами сорта/региона/типа/года и чипами блюд с миниатюрами, кнопкой ♥ и блоком «Альтернативы».
+        Новый composables/useTaste.ts хранит историю вкуса в localStorage (добавление, удаление, очистка, профиль по сортам,
+        регионам и категориям) и работает офлайн; likes уходят в запрос подбора, а на экране видно, сколько вин учтено.
+        Поддержаны клавиатура, aria-pressed на чипах, aria-live для результата, скелетоны и тосты об ошибке.
+        bun run build: exit 0, 2.11 МБ (525 кБ gzip). Бэкенд ML не затронут: proxy acc@1 0.775, pytest 203 passed, grace lint 0/0.</Evidence>
     </V-M-WEB>
   </VD-M5-WEB>
 </GraceVerificationDocument>
