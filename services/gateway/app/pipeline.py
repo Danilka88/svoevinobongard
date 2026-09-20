@@ -19,6 +19,9 @@ M1-путь: normalize → retrieval → решение по Top-1. Ветвле
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import base64
 import time
 from dataclasses import dataclass, field
@@ -97,30 +100,33 @@ def text_first_ranking(store: CatalogStore, fields: dict, visual: list[str], *,
     return rrf([visual, ranked], weights=[1.0, 0.5])
 
 
-def build_trace(diagnostics, top5: list, *, confidence: float, margin: float, path: str,
-                latency_ms: float, retrieval_scores: list[float]) -> dict:
-    """Собирает витрину пути решения для UI.
+def build_trace(response) -> dict:
+    """Собирает витрину пути решения из готового ответа.
 
-    Источник — существующий PipelineTrace (diagnostics) и финальная выдача. Трейс не участвует
-    в решении и не содержит секретов: только стадии с измеренной latency, методы, значения флагов
-    и кандидаты. Отдаётся при EXPLAIN_ENABLED.
+    Никаких локальных переменных стадий: всё берётся из самого ответа (он уже содержит
+    latency, path, уверенность, запас и top-5 со скорами и geo-полями) и из настроек.
+    Трейс не участвует в решении и не содержит секретов; при EXPLAIN_ENABLED=0 возвращает {}.
     """
     if not settings.explain_enabled:
         return {}
-    stages = [
-        {"name": "normalize", "latency_ms": round(float(getattr(diagnostics, "normalize_ms", 0.0)), 1)},
-        {"name": "retrieval", "latency_ms": round(float(getattr(diagnostics, "retrieval_ms", 0.0)), 1)},
-        {"name": "geo", "latency_ms": round(float(getattr(diagnostics, "geo_ms", 0.0)), 1)},
-        {"name": "ocr", "latency_ms": round(float(getattr(diagnostics, "ocr_ms", 0.0)), 1)},
-        {"name": "decision", "latency_ms": round(float(latency_ms), 1)},
-    ]
+    meta_views = 1
+    meta_path = Path(settings.index_dir) / "meta.json"
+    if meta_path.is_file():
+        try:
+            meta_views = int(json.loads(meta_path.read_text(encoding="utf-8")).get("views") or 1)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            meta_views = 1
+    total_ms = float(getattr(response, "latency_ms", 0.0) or 0.0)
     return {
-        "stages": [stage for stage in stages if stage["latency_ms"] > 0 or stage["name"] == "decision"],
+        "stages": [
+            {"name": "normalize+retrieval+geo", "latency_ms": round(total_ms, 1)},
+            {"name": "decision", "latency_ms": round(total_ms, 1)},
+        ],
         "methods": {
-            "encoder": ENCODER,
-            "geo": str(getattr(diagnostics, "geo_method", "") or getattr(settings, "geo_method", "orb")),
-            "ocr": str(getattr(diagnostics, "ocr_engine", "") or settings.ocr_engine or "rapidocr"),
-            "normalization": str(getattr(diagnostics, "normalize_method", "") or "letterbox+pas"),
+            "encoder": getattr(settings, "encoder", "siglip2"),
+            "geo": "orb",
+            "ocr": settings.ocr_engine or "rapidocr",
+            "normalization": "letterbox+pas",
         },
         "flags": {
             "TEXT_FUSION_MODE": settings.text_fusion_mode,
@@ -130,17 +136,17 @@ def build_trace(diagnostics, top5: list, *, confidence: float, margin: float, pa
             "CYLINDER_UNWRAP_ENABLED": settings.cylinder_unwrap_enabled,
             "VLM_FALLBACK_ENABLED": settings.vlm_fallback_enabled,
             "OCR_ENGINE": settings.ocr_engine or "rapidocr",
-            "VIEWS": json.loads((Path(settings.index_dir) / "meta.json").read_text(encoding="utf-8")).get("views", 1)
-            if (Path(settings.index_dir) / "meta.json").is_file() else 1,
+            "NORMALIZE_CROP": settings.normalize_crop,
+            "EXPLAIN_ENABLED": settings.explain_enabled,
+            "VIEWS": meta_views,
         },
         "top_k": [{"slug": item.slug, "score": round(float(item.score), 6),
                    "geo_score": round(float(getattr(item, "geo_score", 0.0)), 4),
-                   "inliers": int(getattr(item, "inliers", 0))} for item in top5[:5]],
-        "confidence": confidence,
-        "margin": margin,
-        "path": path,
-        "retrieval_scores": [round(float(score), 6) for score in retrieval_scores[:5]],
-        "notes": list(getattr(diagnostics, "notes", []) or []),
+                   "inliers": int(getattr(item, "inliers", 0))} for item in (response.top5 or [])[:5]],
+        "confidence": float(getattr(response, "confidence", 0.0) or 0.0),
+        "margin": float(getattr(response, "margin", 0.0) or 0.0),
+        "path": str(getattr(response, "path", "") or ""),
+        "notes": [],
     }
 
 

@@ -58,7 +58,7 @@ from services.gateway.app.clients import ServiceClients
 from services.gateway.app.enotourism import enotourism_for, load_collections
 from services.gateway.app.media import (catalog_search, demo_metrics, load_media,
                                         media_for)
-from services.gateway.app.pipeline import run_scan
+from services.gateway.app.pipeline import build_trace, run_scan
 from services.gateway.app.recommend import (
     build_sommelier_prompt,
     catalog_recommendations,
@@ -414,6 +414,7 @@ async def scan(image: UploadFile = File(...)) -> ScanResponse:
         store = get_store()
         response = await run_scan(data, store, filename=image.filename or "query.jpg",
                                   official_index=get_official())
+        response.trace = build_trace(response)  # C-038: витрина пути решения
         if response.card is not None and response.slug:
             entry = media_for(response.slug)
             response.card.category_gradient = str(entry.get("category_gradient") or "")

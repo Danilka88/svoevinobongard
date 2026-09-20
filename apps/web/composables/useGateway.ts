@@ -77,6 +77,18 @@ export function useGateway() {
     return await $fetch<ScanResponse>(`${base}/v1/scan`, { method: 'POST', body });
   }
 
+  // C-038: скан с витриной пути решения (additive)
+  async function scanExplain(file: File): Promise<ScanResponse> {
+    const body = new FormData();
+    body.append('image', file, file.name || 'label.jpg');
+    return await $fetch<ScanResponse>(`${base}/v1/scan?explain=1`, { method: 'POST', body });
+  }
+
+  // C-038: метрики для дашборда (additive)
+  async function demoMetrics(): Promise<Record<string, any>> {
+    return await $fetch<Record<string, any>>(`${base}/v1/demo/metrics`);
+  }
+
   async function similar(slug: string): Promise<SimilarItem[]> {
     const response = await $fetch<{ items: SimilarItem[] }>(`${base}/v1/similar/${encodeURIComponent(slug)}`);
     return response.items || [];
@@ -93,5 +105,5 @@ export function useGateway() {
     return await $fetch<EnotourismResponse>(`${base}/v1/enotourism/${encodeURIComponent(slug)}`);
   }
 
-  return { base, scan, similar, sommelier, enotourism };
+  return { base, scan, scanExplain, demoMetrics, similar, sommelier, enotourism };
 }

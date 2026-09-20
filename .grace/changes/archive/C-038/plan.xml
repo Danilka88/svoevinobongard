@@ -1,0 +1,74 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-038>
+    <IntentSummary>Добавить два клиентских вызова (scanExplain, demoMetrics) и собрать экраны прозрачности
+      и метрик на токенах, без внешних чарт-библиотек.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>apps/web/composables/useGateway.ts</Value></MustExist>
+      <MustExist><Value>apps/web/pages/how.vue</Value></MustExist>
+      <MustExist><Value>apps/web/pages/metrics.vue</Value></MustExist>
+      <MustExist><Value>reports/final.json</Value></MustExist>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>apps/web/pages/how.vue</Value></MustExist>
+      <MustExist><Value>apps/web/pages/metrics.vue</Value></MustExist>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-WEB</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-WEB/>
+      <V-M-WEB/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>apps/web/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Аддитивные вызовы gateway для трейса и метрик</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>scanExplain отправляет фото с параметром explain=1 и возвращает ScanResponse с trace.</Criterion>
+          <Criterion>demoMetrics читает /v1/demo/metrics; существующие функции клиента не изменены.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -c scanExplain apps/web/composables/useGateway.ts</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Экран «Как это работает»</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Загрузчик запускает скан с трейсом; показываются этапы с таймингами, методы, флаги, top-K и решение.</Criterion>
+          <Criterion>Есть статичная схема пайплайна с объяснением порядка «детерминированное → дешёвое → дорогое».</Criterion>
+          <Criterion>Есть честные ограничения и витрина методов с вердиктами и источником чисел.</Criterion>
+          <Criterion>Пустой трейс даёт понятное сообщение, а не пустую страницу.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Экран «Метрики»</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Дашборд показывает proxy acc@1/@5, near-dup, latency и SLA, реальные identity@1/@5 и статус гейта.</Criterion>
+          <Criterion>Визуализация сделана на CSS/SVG без внешних библиотек; числа сопровождаются пояснением о домене.</Criterion>
+          <Criterion>При недоступном gateway показывается понятная ошибка, а не пустой экран.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>curl -s http://127.0.0.1:8080/v1/demo/metrics</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-038>
+</GraceChangePlan>
