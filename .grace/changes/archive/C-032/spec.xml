@@ -1,0 +1,33 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-032>
+    <Summary>Cross-encoder реранк пар (запрос, кандидат) на базе bge-reranker-v2-m3 в трёх режимах
+      (text/visual/both) за флагом TEXT_CE_ENABLED, с обязательным замером на реальных фото.</Summary>
+    <Goals>Проверить стандартный этап «Retrieve, Match, Escalate»: помогает ли мультиязычный cross-encoder
+      поднять правильного кандидата там, где визуальный поиск ставит его не первым (C-026: 3 из 13 случаев
+      правильный ответ есть в top-K, но не на первом месте), и улучшает ли он текстовое ранжирование C-028.</Goals>
+    <Constraints>Флаг TEXT_CE_ENABLED по умолчанию off; при off путь идентичен прежнему. Режимы
+      TEXT_CE_MODE=off|text|visual|both. Модель только permissive (Apache-2.0), веса кэшируются в data/
+      (gitignored), скачивание и инициализация ограничены time-box; при перерасходе или недоступности
+      реранк деградирует, а не ломает путь. Замер обязателен: если режим не лучше baseline — флаг остаётся
+      выключенным, но модуль сохраняется. Учитывается SLA: если реранк не укладывается в
+      TEXT_FIRST_MAX_LATENCY_MS, он не применяется. Без платных запросов, VLM не включается;
+      catalog*.jsonl не перезаписываются; old/ и my/real_photo не изменяются; services/* не импортируют
+      друг друга (общий код в packages/common).</Constraints>
+    <NonGoals>Обучение и дообучение реранкера. Мультимодальный Qwen3-VL-Reranker локально (только заметка
+      как будущий облачный этап). Изменение визуального поиска. Продуктовые фичи.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>text_ce загружает bge-reranker-v2-m3 через ONNX Runtime, при недоступности — через sentence_transformers, при обеих неудачах возвращает None и не ломает путь.</Criterion>
+      <Criterion>rerank(query_fields, candidates) сравнивает нормализованные поля запроса с текстом кандидата (винодельня, название, сорт, регион, сладость, год).</Criterion>
+      <Criterion>Режимы text/visual/both реализованы; при off путь идентичен прежнему, что доказывается тестом.</Criterion>
+      <Criterion>Замер на реальных фото: identity@1/@5, ±ранги, достижимость top-100 и latency по всем режимам.</Criterion>
+      <Criterion>Решение о дефолте принимается по критерию «не хуже baseline и даёт прирост»; иначе off с честной фиксацией.</Criterion>
+      <Criterion>Qwen3-VL-Reranker отмечен в docs/LIMITATIONS.md как будущий облачный этап.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-TEXT/>
+      <M-MATCHER/>
+      <M-EVAL/>
+    </AffectedAreas>
+    <VerificationIntent>Обновить V-M-TEXT устройством cross-encoder, режимами и вердиктом замера.</VerificationIntent>
+  </C-032>
+</GraceChangeSpec>

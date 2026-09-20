@@ -1,0 +1,82 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-032>
+    <IntentSummary>Подключить cross-encoder bge-reranker-v2-m3 через ONNX, реализовать реранк пар в трёх
+      режимах за флагом и замерить на реальных фото, оставив флаг off при отсутствии прироста.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>reports/c028_baseline.json</Value></MustExist>
+      <MustExist><Value>reports/real_field.json</Value></MustExist>
+      <MustExist><Value>packages/common/text_norm.py</Value></MustExist>
+      <MustVerify><Module>M-TEXT</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>packages/common/text_ce.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/text_ce_eval.py</Value></MustExist>
+      <MustExist><Value>tests/test_text_ce.py</Value></MustExist>
+      <MustExist><Value>reports/text_ce.json</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-TEXT</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-TEXT</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-TEXT/>
+      <M-MATCHER/>
+      <M-EVAL/>
+      <V-M-TEXT/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>tests/</Path>
+      <Path>data/models/</Path>
+      <Path>reports/</Path>
+      <Path>docs/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Модуль cross-encoder и реранк пар</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Загрузка идёт через ONNX Runtime с CPUExecutionProvider, веса кэшируются в data/, при недоступности — sentence_transformers.</Criterion>
+          <Criterion>rerank(query_fields, candidates) формирует текст кандидата из полей каталога и нормализует запрос через text_norm.</Criterion>
+          <Criterion>Недоступность модели возвращает None, и вызывающий оставляет путь без изменений.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_text_ce.py -v</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Три режима за флагом и замер на реальных фото</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Режимы off|text|visual|both; при off путь идентичен прежнему.</Criterion>
+          <Criterion>Замер печатает identity@1/@5, улучшенные и ухудшенные ранги, достижимость top-100 и latency.</Criterion>
+          <Criterion>При превышении TEXT_FIRST_MAX_LATENCY_MS реранк не применяется.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/text_ce_eval.py --out reports/text_ce.json</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Вердикт и заметка о мультимодальном реранкере</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Дефолт меняется только при выполнении критерия приёмки.</Criterion>
+          <Criterion>Qwen3-VL-Reranker отмечен в документации как будущий облачный этап, без локальной загрузки.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>make gate</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-032>
+</GraceChangePlan>
