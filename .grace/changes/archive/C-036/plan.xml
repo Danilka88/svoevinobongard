@@ -1,0 +1,74 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-036>
+    <IntentSummary>Собрать экран «Сканер» из новых компонентов на токенах C-035 и медиа-полях C-034:
+      загрузчик, карточка с ассетами, честный отказ, аналоги, энотуризм и статьи — без изменения логики.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>apps/web/assets/css/main.css</Value></MustExist>
+      <MustExist><Value>apps/web/layouts/default.vue</Value></MustExist>
+      <MustExist><Value>apps/web/components/WineCard.vue</Value></MustExist>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>apps/web/components/ScanUploader.vue</Value></MustExist>
+      <MustExist><Value>apps/web/components/NotFoundBlock.vue</Value></MustExist>
+      <MustExist><Value>apps/web/components/SimilarWines.vue</Value></MustExist>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-WEB</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-WEB/>
+      <V-M-WEB/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>apps/web/components/</Path>
+      <Path>apps/web/pages/</Path>
+      <Path>apps/web/composables/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Типы gateway и загрузчик</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Card, SimilarItem и ScanResponse расширены аддитивно медиа-полями и trace; эндпоинты и запросы не изменены.</Criterion>
+          <Criterion>Загрузчик поддерживает съёмку и выбор файла, drag and drop, превью, busy и доступен с клавиатуры.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Карточка с ассетами и честный отказ</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Карточка показывает hero с градиентом категории и бутылкой, чипы характеристик, сорта с миниатюрами, гастрономию с картинками и пометкой, регион с изображением, описание.</Criterion>
+          <Criterion>При отсутствии медиа используются токен-градиент и текстовые чипы, блоки не ломаются.</Criterion>
+          <Criterion>Отказ объясняется человеческим текстом и показывает кандидатов со скор-барами и выбором.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>ls apps/web/components/WineCard.vue apps/web/components/NotFoundBlock.vue</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Аналоги, энотуризм и статьи с изображениями</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Аналоги показывают изображение, причину совпадения и кнопку открытия.</Criterion>
+          <Criterion>Энотуризм показывает картинку и факт региона со счётчиками, туры с адресом, ценой и изображением.</Criterion>
+          <Criterion>Статьи показывают изображение, автора и дату; пустые данные не оставляют пустых заголовков.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-036>
+</GraceChangePlan>

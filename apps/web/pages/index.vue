@@ -59,8 +59,14 @@ async function pick(slug: string) {
     <div class="page">
       <ScanUploader :busy="busy" @selected="onFile" />
 
-      <p v-if="error" class="card status error">{{ error }}</p>
-      <div v-if="busy" class="card"><div class="skeleton" /><div class="skeleton" /></div>
+      <div v-if="error" class="toast-stack" role="status" aria-live="polite">
+        <div class="toast">{{ error }}</div>
+      </div>
+      <section v-if="busy" class="card" aria-busy="true">
+        <div class="skeleton skeleton-line" style="width: 50%" />
+        <div class="skeleton skeleton-line" />
+        <div class="skeleton" style="height: 120px" />
+      </section>
 
       <template v-if="current">
         <WineCard v-if="current.card && !current.not_found" :card="current.card" :slug="current.slug || ''" />

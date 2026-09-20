@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import type { Card } from '~/composables/useGateway';
 
-// Метрики уверенности (F1/confidence) в UI не показываем — по ТЗ они видны только в API.
+// Карточка вина (C-036): hero с градиентом категории и бутылкой, характеристики, сорта
+// с миниатюрами, гастрономия с картинками, регион с изображением. Метрики уверенности
+// в UI не показываем — по ТЗ они видны только в API.
 const props = defineProps<{ card: Card; slug: string }>();
 
-// Основные чипы: категория, сладость, год, крепость, температура подачи.
+const FALLBACK_GRADIENT = 'linear-gradient(135deg, var(--accent-strong), var(--accent))';
+
+const heroStyle = computed(() => ({
+  background: props.card.category_gradient || FALLBACK_GRADIENT,
+}));
+const bottle = computed(() => props.card.image_url || '');
 const chips = computed(() => {
   const items: string[] = [];
   if (props.card.category) items.push(props.card.category);
@@ -14,82 +21,121 @@ const chips = computed(() => {
   if (props.card.temperature) items.push(`${props.card.temperature} °C`);
   return items;
 });
-
-// Сорта: список из официального API, иначе одиночное поле каталога.
-const grapes = computed(() => {
-  const list = (props.card.grapes || []).filter(Boolean);
-  return list.length ? list : [props.card.grape].filter(Boolean) as string[];
+const grapeChips = computed(() => {
+  const withImages = (props.card.grape_images || []).filter(item => item?.name);
+  if (withImages.length) return withImages.map(item => ({ name: item.name, url: item.url }));
+  return (props.card.grapes?.length ? props.card.grapes : [props.card.grape])
+    .filter(Boolean).map(name => ({ name: String(name), url: '' }));
 });
-
-// Ссылка на винодельню: официальный slug из API (портал отдаёт /wineries/{slug}).
-const wineryHref = computed(() => {
-  if (props.card.winery_url) return `https://vino-svoe.ru${props.card.winery_url}`;
-  return '';
+const dishes = computed(() => {
+  const withImages = (props.card.dish_images || []).filter(item => item?.name);
+  if (withImages.length) return withImages.map(item => ({ name: item.name, url: item.url }));
+  return (props.card.dishes || []).filter(Boolean).map(name => ({ name: String(name), url: '' }));
 });
+const wineryHref = computed(() => (props.card.winery_url ? `https://vino-svoe.ru${props.card.winery_url}` : ''));
 </script>
 
 <template>
-  <section class="card">
-    <div class="wine-head">
-      <img
-        v-if="props.card.image_url"
-        class="wine-photo"
-        :src="props.card.image_url"
-        :alt="props.card.name || props.slug"
-        loading="lazy"
-      />
-      <div>
-        <h2 class="wine-title">{{ props.card.name || props.slug }}</h2>
+  <section class="card" style="padding: 0; overflow: hidden" aria-labelledby="wine-title">
+    <div class="wine-hero" :style="heroStyle">
+      <img v-if="bottle" class="wine-hero-bottle" :src="bottle" :alt="props.card.name || props.slug" loading="lazy">
+      <div class="wine-hero-text">
+        <h2 id="wine-title" class="wine-title">{{ props.card.name || props.slug }}</h2>
         <p class="wine-sub">
           <a v-if="wineryHref" :href="wineryHref" target="_blank" rel="noopener">{{ props.card.winery }}</a>
           <template v-else>{{ props.card.winery }}</template>
           <template v-if="props.card.region"> · {{ props.card.region }}</template>
         </p>
+        <p v-if="props.card.category" class="wine-hero-cat">
+          {{ props.card.category }}
+          <span v-if="props.card.year"> · {{ props.card.year }}</span>
+        </p>
       </div>
     </div>
 
-    <ul class="chips">
-      <li v-for="chip in chips" :key="chip" class="chip">{{ chip }}</li>
-    </ul>
-
-    <p v-if="props.card.color" class="muted" style="margin-top: 10px">Цвет: {{ props.card.color }}</p>
-
-    <div v-if="grapes.length" class="block">
-      <h3 class="block-title">Сорта</h3>
+    <div style="padding: var(--space-5)">
       <ul class="chips">
-        <li v-for="grape in grapes" :key="grape" class="chip chip-soft">{{ grape }}</li>
+        <li v-for="chip in chips" :key="chip" class="chip">{{ chip }}</li>
       </ul>
-    </div>
 
-    <div v-if="props.card.dishes?.length" class="block">
-      <h3 class="block-title">Гастросочетания</h3>
-      <ul class="chips">
-        <li v-for="dish in props.card.dishes" :key="dish" class="chip chip-dish">{{ dish }}</li>
-      </ul>
-      <p class="muted small">Подобрано порталом «Своё Вино» — без выдумок модели.</p>
-    </div>
+      <div v-if="grapeChips.length" class="block">
+        <h3 class="block-title">Сорта</h3>
+        <ul class="chips">
+          <li v-for="grape in grapeChips" :key="grape.name" class="chip chip-grape">
+            <img v-if="grape.url" :src="grape.url" alt="" class="chip-thumb" loading="lazy">
+            {{ grape.name }}
+          </li>
+        </ul>
+      </div>
 
-    <p v-if="props.card.description" class="muted" style="margin-top: 14px">{{ props.card.description }}</p>
+      <div v-if="dishes.length" class="block">
+        <h3 class="block-title">К чему подходит</h3>
+        <ul class="dish-grid">
+          <li v-for="dish in dishes" :key="dish.name" class="dish">
+            <img v-if="dish.url" :src="dish.url" :alt="dish.name" class="dish-photo" loading="lazy">
+            <span class="dish-name">{{ dish.name }}</span>
+          </li>
+        </ul>
+        <p class="muted small" style="margin-top: 8px">Гастросочетания подобраны порталом «Своё Вино» — без выдумок модели.</p>
+      </div>
+
+      <div v-if="props.card.region_image_url || props.card.region_geojson_url" class="block">
+        <h3 class="block-title">Регион</h3>
+        <div class="region-card">
+          <img v-if="props.card.region_image_url" :src="props.card.region_image_url" :alt="props.card.region" class="region-photo" loading="lazy">
+          <div>
+            <p style="margin: 0; font-weight: 600">{{ props.card.region || '—' }}</p>
+            <p v-if="props.card.region_geojson_url" class="muted small" style="margin: 4px 0 0">
+              Есть геометрия региона — пригодится для карты виноделен.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <p v-if="props.card.color" class="muted small" style="margin-top: 14px">Цвет: {{ props.card.color }}</p>
+      <p v-if="props.card.description" class="muted" style="margin-top: 12px">{{ props.card.description }}</p>
+      <p v-if="!props.card.api_match" class="muted small" style="margin-top: 12px">
+        Для этой позиции нет официальных данных портала — показаны поля каталога.
+      </p>
+    </div>
   </section>
 </template>
 
 <style scoped>
-.wine-photo {
-  width: 84px;
-  height: 84px;
-  object-fit: contain;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
+.wine-hero {
+  position: relative;
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-5);
+  color: #fff;
+  min-height: 176px;
 }
-.block { margin-top: 16px; }
-.block-title {
-  margin: 0 0 8px;
-  font-size: 0.82rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  opacity: 0.7;
+.wine-hero-bottle {
+  width: 96px; height: 140px; object-fit: contain; flex: none;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, .35));
 }
-.chip-soft { opacity: 0.85; }
-.chip-dish { font-weight: 600; }
-.small { font-size: 0.78rem; margin-top: 8px; }
+.wine-hero-text { min-width: 0; }
+.wine-hero .wine-title { color: #fff; margin: 0 0 4px; }
+.wine-hero .wine-sub { color: rgba(255, 255, 255, .9); }
+.wine-hero .wine-sub a { color: #fff; text-decoration: underline; }
+.wine-hero-cat { margin: 8px 0 0; font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; opacity: .85; }
+.chip-thumb { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; }
+.chip-grape { padding-left: 6px; }
+.dish-grid {
+  list-style: none; padding: 0; margin: 0;
+  display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+}
+.dish {
+  display: flex; flex-direction: column; gap: 6px;
+  border: 1px solid color-mix(in srgb, var(--gold) 30%, var(--border));
+  background: var(--gold-soft);
+  border-radius: var(--radius-sm); padding: var(--space-2); text-align: center;
+}
+.dish-photo { width: 100%; height: 92px; object-fit: cover; border-radius: var(--radius-sm); }
+.dish-name { font-size: .82rem; font-weight: 600; }
+.region-card { display: flex; gap: var(--space-3); align-items: center; }
+.region-photo { width: 96px; height: 68px; object-fit: cover; border-radius: var(--radius-sm); flex: none; }
+@media (max-width: 520px) {
+  .wine-hero { flex-direction: column; align-items: flex-start; text-align: left; }
+  .wine-hero-bottle { width: 84px; height: 118px; }
+}
 </style>

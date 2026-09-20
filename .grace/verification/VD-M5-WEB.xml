@@ -87,6 +87,30 @@
         бандле — тексты «Цифровой сомелье» и «Метрики качества». Бэкенд не тронут: git показывает изменения только в apps/web
         (main.css, nuxt.config.ts, index.vue) плюс новые layouts/ и pages/*.vue; composables/useGateway.ts, services/ и
         packages/ не изменялись, pytest 203 passed, grace lint 0/0.</Evidence>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+      <Scenario id="S-WEB-12">Карточка показывает hero с градиентом категории и бутылкой из медиа портала, чипы характеристик, сорта с миниатюрами, гастрономию с картинками, регион с изображением и описание.</Scenario>
+      <Scenario id="S-WEB-13">При отсутствии медиа карточка деградирует до токен-градиента и текстовых чипов, не ломая разметку.</Scenario>
+      <Scenario id="S-WEB-14">Отказ объясняется человеческим текстом и показывает кандидатов top-5 со скор-барами и кнопкой выбора.</Scenario>
+      <Scenario id="S-WEB-15">Загрузчик поддерживает съёмку, выбор файла и drag and drop, показывает превью и доступен с клавиатуры.</Scenario>
+      <Scenario id="S-WEB-16">Аналоги, туры и статьи используют изображения, адреса и цены; пустые данные не оставляют пустых блоков.</Scenario>
+      <Evidence note="C036-scanner-screen">Экран сканера собран на токенах C-035 и медиа-полях C-034. ScanUploader: кликабельная зона с role=button и
+        обработкой Enter/Space, capture=environment на мобиле, drag and drop на десктопе, превью выбранного кадра,
+        состояния busy и сброс. WineCard: hero с background из category_gradient (fallback — токен-градиент),
+        бутылка image_url, ссылка на винодельню портала, чипы категории/сладости/года/крепости/температуры,
+        сорта чипами с миниатюрами grape_images, гастрономия плитками с dish_images и пометкой «подобраны порталом»,
+        блок региона с region_image_url и упоминанием геометрии, описание и честная пометка при отсутствии официальных данных.
+        NotFoundBlock: объяснение отказа, кандидаты top-5 со скор-барами и выбором. SimilarWines: изображения, причина
+        совпадения, ссылка на портал для официальных похожих, скелетоны при загрузке. EnotourismBlock: картинка и факт
+        региона со счётчиками (вин, виноделен, событий), туры с адресом, ценой и изображением. ArticlesBlock: статьи
+        с изображением, автором и датой. Главная: тост об ошибке вместо строки, скелетон карточки, сценарий и логика
+        вызовов gateway не изменены.</Evidence>
+      <Evidence note="C036-types">composables/useGateway.ts расширен аддитивно: Card получила category_gradient, region_image_url,
+        region_geojson_url, grape_images и dish_images; ScanResponse — trace; SimilarItem уже нёс image_url и source;
+        SommelierResponse — pairing_cards, sensory_note и alternatives; EnotourismRegion — image_url, geojson_url,
+        wines_count, manufacturers_count, tours_count. Эндпоинты и тела запросов не менялись.</Evidence>
+      <Evidence note="C036-build">bun run build: exit code 0, «Build complete!», суммарный размер 2.08 МБ (518 кБ gzip).
+        git показывает изменения только в apps/web (шесть компонентов, composables/useGateway.ts, pages/index.vue):
+        services/ и packages/ не тронуты, контракт организатора не затрагивался, pytest 203 passed, grace lint 0/0.</Evidence>
     </V-M-WEB>
   </VD-M5-WEB>
 </GraceVerificationDocument>
