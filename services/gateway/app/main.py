@@ -10,6 +10,9 @@
 # app - FastAPI-приложение gateway
 # VLM_MODEL - имя VLM из окружения
 # ENCODER - имя image-энкодера из окружения
+# catalog - GET /v1/catalog: браузер каталога с фильтрами
+# demo - GET /v1/demo/metrics: метрики для дашборда
+# get_media_index - медиа-индекс каталога (C-034)
 # enotourism - GET /v1/enotourism/{slug}: регион, туры и статьи портала
 # get_official - ленивая загрузка официального обогащения v3 (C-017)
 # get_store - ленивая загрузка read-only каталога
@@ -30,6 +33,9 @@ from __future__ import annotations
 
 import os
 
+import json
+from pathlib import Path
+
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 
@@ -49,7 +55,9 @@ from packages.contracts.schemas import (
     SommelierResponse,
 )
 from services.gateway.app.clients import ServiceClients
-from services.gateway.app.enotourism import enotourism_for
+from services.gateway.app.enotourism import enotourism_for, load_collections
+from services.gateway.app.media import (catalog_search, demo_metrics, load_media,
+                                        media_for)
 from services.gateway.app.pipeline import run_scan
 from services.gateway.app.recommend import (
     build_sommelier_prompt,
@@ -63,7 +71,9 @@ from services.gateway.app.recommend import (
 
 __all__ = [
     "app",
+    "demo",
     "enotourism",
+    "get_media_index",
     "get_official",
     "VLM_MODEL",
     "ENCODER",
@@ -73,6 +83,7 @@ __all__ = [
     "eval_predict",
     "scan",
     "similar",
+    "catalog",
     "sommelier",
 ]
 
@@ -85,6 +96,11 @@ _store: CatalogStore | None = None
 
 
 _official: dict[str, dict] | None = None
+
+
+def get_media_index() -> dict[str, dict]:
+    """Медиа-индекс каталога (C-034): картинки, градиенты, сорта и блюда."""
+    return load_media()
 
 
 def get_official() -> dict[str, dict]:
@@ -145,6 +161,75 @@ async def warmup() -> dict:
     return {"status": "ok", "gateway": "ready", "retrieval": retrieval}
 
 
+def _dish_image(name: str, dish_images: list) -> str:
+    """Картинка блюда по названию; пустая строка, если соответствия нет."""
+    from rapidfuzz import fuzz  # noqa: PLC0415
+
+    best, best_score = "", 0.0
+    for item in dish_images:
+        if not isinstance(item, dict):
+            continue
+        score = fuzz.token_set_ratio(str(item.get("name") or "").lower(), str(name or "").lower()) / 100.0
+        if score > best_score:
+            best, best_score = str(item.get("url") or ""), score
+    return best if best_score >= 0.6 else ""
+
+
+def _sensory_note(record: dict, pairing: list[str]) -> str:
+    """Короткая детерминированная заметка «почему подходит» без обращения к LLM."""
+    parts = []
+    category = str(record.get("category_official") or record.get("category") or "").strip()
+    grapes = record.get("grapes") or ([record.get("grape")] if record.get("grape") else [])
+    if category:
+        parts.append(category.lower())
+    if grapes:
+        parts.append("сорт " + ", ".join(str(item) for item in grapes[:3]))
+    description = str(record.get("description") or "").strip()
+    if description:
+        parts.append(description.split(".")[0][:140])
+    if pairing:
+        parts.append("подходит к: " + ", ".join(pairing[:3]).lower())
+    return ". ".join(parts) + ("." if parts else "")
+
+
+def _enrich_region(payload: dict, store: CatalogStore, slug: str) -> None:
+    """Дополняет регион медиа и счётчиками (аддитивно, на месте)."""
+    region = payload.get("region") or {}
+    name = str(region.get("name") or "")
+    entry = media_for(slug)
+    region["image_url"] = str(entry.get("region_image_url") or "")
+    region["geojson_url"] = str(entry.get("region_geojson_url") or "")
+    regions_path = Path("data/api_cache/regions.json")
+    if regions_path.is_file():
+        items = (json.loads(regions_path.read_text(encoding="utf-8")).get("items") or [])
+        for item in items:
+            if str(item.get("name") or "").lower() == name.lower():
+                region["manufacturers_count"] = int(item.get("manufacturersCount") or 0)
+                region["events_count"] = int(item.get("eventsCount") or 0)
+                break
+    region["wines_count"] = sum(
+        1 for record in store.slug_to_record().values()
+        if str(record.get("region") or "").lower() == name.lower())
+    region["tours_count"] = sum(
+        1 for tour in (load_collections().get("tours") or []) if name.lower() in str(tour).lower())
+    payload["region"] = region
+
+
+@app.get("/v1/demo/metrics")
+def demo() -> dict:
+    """Метрики для дашборда: прокси, реальные фото, состояние гейта."""
+    return demo_metrics()
+
+
+@app.get("/v1/catalog")
+def catalog(q: str = "", region: str = "", category: str = "", grape: str = "",
+            winery: str = "", page: int = 1, per_page: int = 20, sort: str = "name") -> dict:
+    """Браузер каталога: поиск, фильтры, пагинация и сортировка без тяжёлых моделей."""
+    return catalog_search(get_store().slug_to_record(), get_media_index(), query=q, region=region,
+                          category=category, grape=grape, winery=winery, page=page,
+                          per_page=per_page, sort=sort)
+
+
 @app.get("/v1/similar/{slug}")
 def similar(slug: str, limit: int = 6) -> SimilarResponse:
     """Похожие вина: сначала официальный API портала, иначе метаданные каталога."""
@@ -182,6 +267,7 @@ def enotourism(slug: str) -> EnotourismResponse:
         fallback_region=str(record.get("region") or ""),
         fallback_winery=str(record.get("winery") or ""),
     )
+    _enrich_region(payload, get_store(), slug)
     log_marker("M-GATEWAY", "enotourism", "DONE", slug=slug,
                tours=len(payload["tours"]), articles=len(payload["articles"]))
     return EnotourismResponse(**payload)
@@ -197,6 +283,7 @@ async def sommelier(request: SommelierRequest) -> SommelierResponse:
     """
     store = get_store()
     record = store.get(request.slug)
+    catalog_record = (get_official().get(request.slug) or {}) if record else {}
     if not record:
         raise HTTPException(status_code=404, detail=f"unknown slug: {request.slug}")
 
@@ -248,6 +335,16 @@ async def sommelier(request: SommelierRequest) -> SommelierResponse:
             log_marker("M-GATEWAY", "sommelier", "LLM_ERROR", error=type(error).__name__)
 
     log_marker("M-GATEWAY", "sommelier", "CATALOG_FALLBACK", items=len(fallback))
+    entry = media_for(request.slug)
+    dish_images = entry.get("dish_images") or []
+    pairing_cards = [
+        {"name": dish, "image_url": _dish_image(dish, dish_images)} for dish in pairing
+    ]
+    alternatives = [
+        {"slug": item["slug"], "name": item.get("name", ""), "winery": item.get("winery", ""),
+         "image_url": media_for(item["slug"]).get("image_url", "")}
+        for item in find_similar_official(request.slug, limit=3)
+    ] if settings.explain_enabled else []
     return SommelierResponse(
         slug=request.slug,
         recommendations=[SommelierItem(**item) for item in fallback],
@@ -255,6 +352,9 @@ async def sommelier(request: SommelierRequest) -> SommelierResponse:
         official_dishes=dishes,
         source="official-dishes" if dishes else source,
         note=note,
+        pairing_cards=pairing_cards,
+        alternatives=alternatives,
+        sensory_note=_sensory_note(catalog_record, pairing),
     )
 
 
@@ -280,8 +380,16 @@ async def scan(image: UploadFile = File(...)) -> ScanResponse:
         raise HTTPException(status_code=400, detail="empty image")
     try:
         store = get_store()
-        return await run_scan(data, store, filename=image.filename or "query.jpg",
-                              official_index=get_official())
+        response = await run_scan(data, store, filename=image.filename or "query.jpg",
+                                  official_index=get_official())
+        if response.card is not None and response.slug:
+            entry = media_for(response.slug)
+            response.card.category_gradient = str(entry.get("category_gradient") or "")
+            response.card.region_image_url = str(entry.get("region_image_url") or "")
+            response.card.region_geojson_url = str(entry.get("region_geojson_url") or "")
+            response.card.grape_images = list(entry.get("grape_images") or [])
+            response.card.dish_images = list(entry.get("dish_images") or [])
+        return response
     except RuntimeError as error:
         log_marker("M-GATEWAY", "scan", "PIPELINE_UNAVAILABLE", error=str(error))
         raise HTTPException(status_code=503, detail=str(error)) from error

@@ -1,0 +1,100 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-034>
+    <IntentSummary>Собрать медиа-обогащение каталога из кэша API и добавить аддитивные поля и эндпоинты
+      gateway (карточка, сомелье, энотуризм, explain, метрики демо, браузер каталога) плюс зеркало ассетов.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>data/api_cache/wines/</Value></MustExist>
+      <MustExist><Value>data/api_cache/regions.json</Value></MustExist>
+      <MustExist><Value>services/gateway/app/main.py</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-CATALOG</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>data/catalog/catalog_media.json</Value></MustExist>
+      <MustExist><Value>scripts/catalog/build_media.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/media.py</Value></MustExist>
+      <MustExist><Value>apps/web/public/media/README.md</Value></MustExist>
+      <MustExist><Value>tests/test_gateway_media.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-CATALOG</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/>
+      <M-CATALOG/>
+      <M-WEB/>
+      <M-COMMON/>
+      <V-M-GATEWAY/>
+      <V-M-CATALOG/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>scripts/catalog/</Path>
+      <Path>services/gateway/app/</Path>
+      <Path>packages/contracts/</Path>
+      <Path>tests/</Path>
+      <Path>data/catalog/</Path>
+      <Path>apps/web/public/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Медиа-ETL из кэша API</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>По каждому slug собираются изображение, градиент категории, официальная категория, регион с картинкой и geojson, производитель, изображения сортов и блюд.</Criterion>
+          <Criterion>Все URL абсолютные; отсутствующие значения не ломают запись.</Criterion>
+          <Criterion>Повторный запуск не пересчитывает готовое, исходный кэш проверяется на неизменность.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/catalog/build_media.py --out data/catalog/catalog_media.json</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Аддитивные поля карточки, сомелье и энотуризма</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Карточка отдаёт category_gradient, region_image_url, grape_images, dish_images; при отсутствии данных — пустые значения.</Criterion>
+          <Criterion>Сомелье возвращает pairing как объекты с картинками, alternatives из официальных похожих и sensory_note.</Criterion>
+          <Criterion>Регион энотуризма дополняется картинкой, geojson и счётчиками вин, производителей, туров и событий.</Criterion>
+          <Criterion>Контракт организатора не меняется.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_gateway_media.py -v</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Explain-трейс, метрики демо и браузер каталога</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Explain-трейс содержит стадии с измеренной latency, методы, значения флагов, top_k с geo-полями, confidence, margin, path и notes; включён флагом EXPLAIN_ENABLED и не влияет на решение.</Criterion>
+          <Criterion>GET /v1/demo/metrics собирает метрики из отчётов, отсутствие файла не ошибка.</Criterion>
+          <Criterion>GET /v1/catalog поддерживает q, регион, категорию, сорт, винодельню, пагинацию и сортировку.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>curl -s "http://127.0.0.1:8080/v1/catalog?q=рисл&amp;per_page=3"</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Зеркало ассетов для офлайна</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>В apps/web/public/media сохранён минимальный набор: логотип портала, вырезы бутылок, несколько картинок блюд и регионов.</Criterion>
+          <Criterion>Добавлен README с провенансом: материалы портала «Своё Вино», только для демо конкурса.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>ls apps/web/public/media | wc -l</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-034>
+</GraceChangePlan>

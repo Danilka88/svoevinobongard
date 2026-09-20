@@ -97,6 +97,53 @@ def text_first_ranking(store: CatalogStore, fields: dict, visual: list[str], *,
     return rrf([visual, ranked], weights=[1.0, 0.5])
 
 
+def build_trace(diagnostics, top5: list, *, confidence: float, margin: float, path: str,
+                latency_ms: float, retrieval_scores: list[float]) -> dict:
+    """Собирает витрину пути решения для UI.
+
+    Источник — существующий PipelineTrace (diagnostics) и финальная выдача. Трейс не участвует
+    в решении и не содержит секретов: только стадии с измеренной latency, методы, значения флагов
+    и кандидаты. Отдаётся при EXPLAIN_ENABLED.
+    """
+    if not settings.explain_enabled:
+        return {}
+    stages = [
+        {"name": "normalize", "latency_ms": round(float(getattr(diagnostics, "normalize_ms", 0.0)), 1)},
+        {"name": "retrieval", "latency_ms": round(float(getattr(diagnostics, "retrieval_ms", 0.0)), 1)},
+        {"name": "geo", "latency_ms": round(float(getattr(diagnostics, "geo_ms", 0.0)), 1)},
+        {"name": "ocr", "latency_ms": round(float(getattr(diagnostics, "ocr_ms", 0.0)), 1)},
+        {"name": "decision", "latency_ms": round(float(latency_ms), 1)},
+    ]
+    return {
+        "stages": [stage for stage in stages if stage["latency_ms"] > 0 or stage["name"] == "decision"],
+        "methods": {
+            "encoder": ENCODER,
+            "geo": str(getattr(diagnostics, "geo_method", "") or getattr(settings, "geo_method", "orb")),
+            "ocr": str(getattr(diagnostics, "ocr_engine", "") or settings.ocr_engine or "rapidocr"),
+            "normalization": str(getattr(diagnostics, "normalize_method", "") or "letterbox+pas"),
+        },
+        "flags": {
+            "TEXT_FUSION_MODE": settings.text_fusion_mode,
+            "TEXT_FIRST_ENABLED": settings.text_first_enabled,
+            "TEXT_CE_ENABLED": settings.text_ce_enabled,
+            "COLOR_TIEBREAK_ENABLED": settings.color_tiebreak_enabled,
+            "CYLINDER_UNWRAP_ENABLED": settings.cylinder_unwrap_enabled,
+            "VLM_FALLBACK_ENABLED": settings.vlm_fallback_enabled,
+            "OCR_ENGINE": settings.ocr_engine or "rapidocr",
+            "VIEWS": json.loads((Path(settings.index_dir) / "meta.json").read_text(encoding="utf-8")).get("views", 1)
+            if (Path(settings.index_dir) / "meta.json").is_file() else 1,
+        },
+        "top_k": [{"slug": item.slug, "score": round(float(item.score), 6),
+                   "geo_score": round(float(getattr(item, "geo_score", 0.0)), 4),
+                   "inliers": int(getattr(item, "inliers", 0))} for item in top5[:5]],
+        "confidence": confidence,
+        "margin": margin,
+        "path": path,
+        "retrieval_scores": [round(float(score), 6) for score in retrieval_scores[:5]],
+        "notes": list(getattr(diagnostics, "notes", []) or []),
+    }
+
+
 def build_card(store: CatalogStore, slug: str, official: dict | None = None) -> Card:
     """Собирает карточку вина: данные CSV плюс официальные поля API (C-018).
 

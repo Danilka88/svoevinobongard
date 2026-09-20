@@ -72,6 +72,12 @@ class Card(BaseModel):
     image: str | None = None
     image_url: str | None = None
     api_match: bool = False
+    # C-034: медиа-поля портала (аддитивно; пустые значения, если данных нет)
+    category_gradient: str = ""
+    region_image_url: str = ""
+    region_geojson_url: str = ""
+    grape_images: list[dict] = Field(default_factory=list)
+    dish_images: list[dict] = Field(default_factory=list)
 
 
 class ScanResponse(BaseModel):
@@ -93,6 +99,7 @@ class ScanResponse(BaseModel):
     ocr_latency_ms: float = 0.0
     degraded: bool = False
     card: Card | None = None
+    trace: dict = Field(default_factory=dict)  # C-034: витрина пути решения, на решение не влияет
 
 
 class EvalPredictResponse(BaseModel):
@@ -155,6 +162,10 @@ class SommelierResponse(BaseModel):
     official_dishes: list[str] = Field(default_factory=list)
     source: str = "catalog"
     note: str = ""
+    # C-034: аддитивные поля для UI (pairing не меняется, чтобы не ломать существующих клиентов)
+    pairing_cards: list[dict] = Field(default_factory=list)
+    alternatives: list[dict] = Field(default_factory=list)
+    sensory_note: str = ""
 
 
 class EnotourismRegion(BaseModel):
@@ -164,6 +175,12 @@ class EnotourismRegion(BaseModel):
     fact: str = ""
     events_count: int = 0
     events_description: str = ""
+    # C-034: медиа и счётчики региона (аддитивно)
+    image_url: str = ""
+    geojson_url: str = ""
+    wines_count: int = 0
+    manufacturers_count: int = 0
+    tours_count: int = 0
 
 
 class EnotourismTour(BaseModel):

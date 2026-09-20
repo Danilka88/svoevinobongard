@@ -1,0 +1,34 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-034>
+    <Summary>Аддитивный UI-бэкенд: медиа-обогащение каталога из уже скачанного кэша API, новые поля и
+      эндпоинты gateway (explain-трейс, метрики демо, браузер каталога), зеркало ассетов.</Summary>
+    <Goals>Дать интерфейсу то, что он не мог получить: изображения сортов и блюд, градиенты категорий,
+      картинки регионов, объяснение пути решения для доски «как это работает», метрики демо и браузер каталога.
+      Всё из уже скачанного кэша, без новых внешних вызовов и без тяжёлых моделей.</Goals>
+    <Constraints>Изменения только аддитивные: существующие поля и ответы не меняются, контракт организатора
+      POST /v1/eval/predict остаётся плоским {"slug": ...}. ML-метрики обязаны не сдвинуться (код поиска не
+      трогается). media-ETL пишет отдельный файл, catalog*.jsonl не перезаписываются; исходный кэш читается
+      только на чтение и проверяется по байтам. Explain-трейс не содержит секретов и не влияет на решение,
+      включается флагом EXPLAIN_ENABLED (по умолчанию 1). services/* не импортируют друг друга, общий код —
+      packages/common. Только Apache-2.0/MIT; old/ и my/ не трогаются. Коммит не создаётся.</Constraints>
+    <NonGoals>Изменение поиска, матчинга, OCR и порогов. Облачные вызовы. Полная загрузка медиатеки портала.
+      Тяжёлые модели для браузера каталога.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>build_media.py строит data/catalog/catalog_media.json с абсолютными URL по каждому slug и возобновляется без повторной обработки.</Criterion>
+      <Criterion>Карточка /v1/scan получает category_gradient, region_image_url, grape_images и dish_images; отсутствие данных даёт пустые значения, а не ошибку.</Criterion>
+      <Criterion>Сомелье возвращает pairing как объекты {name, image_url}, а также alternatives и sensory_note; старые клиенты не ломаются.</Criterion>
+      <Criterion>Энотуризм отдаёт расширенный region: image_url, geojson_url, wines_count, manufacturers_count, tours_count, events_count.</Criterion>
+      <Criterion>Explain-трейс содержит стадии с измеренной latency, методы, флаги, top_k, confidence, margin, path и notes.</Criterion>
+      <Criterion>GET /v1/demo/metrics отдаёт метрики из отчётов, отсутствие файла не является ошибкой.</Criterion>
+      <Criterion>GET /v1/catalog поддерживает поиск, фильтры, пагинацию и сортировку.</Criterion>
+      <Criterion>В apps/web/public/media зазеркален минимальный набор ассетов с README о провенансе.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-GATEWAY/>
+      <M-CATALOG/>
+      <M-WEB/>
+      <M-COMMON/>
+    </AffectedAreas>
+    <VerificationIntent>Обновить V-M-GATEWAY новыми полями и эндпоинтами, V-M-CATALOG медиа-ETL, V-M-WEB зеркалом ассетов.</VerificationIntent>
+  </C-034>
+</GraceChangeSpec>

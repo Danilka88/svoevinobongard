@@ -95,6 +95,9 @@ class AppSettings:
     # близких скоров, и у 31% красных купажей палитры неотличимы (ΔE <= 3.5).
     # C-031: цилиндрический unwrap. По умолчанию выключен: автопоиск маркеров без обучения
     # нестабилен на полевых фото, и метод остаётся офлайн-инструментом.
+    # C-034: витрина пути решения для UI (без секретов, на решение не влияет)
+    explain_enabled: bool = field(
+        default_factory=lambda: _env("EXPLAIN_ENABLED", "1").lower() not in {"0", "false", "no", ""})
     cylinder_unwrap_enabled: bool = field(
         default_factory=lambda: _env("CYLINDER_UNWRAP_ENABLED", "0").lower() not in {"0", "false", "no", ""})
     color_tiebreak_enabled: bool = field(
@@ -103,6 +106,10 @@ class AppSettings:
         default_factory=lambda: _env_float("COLOR_TIEBREAK_MARGIN", 0.05))
     color_tiebreak_weight: float = field(
         default_factory=lambda: _env_float("COLOR_TIEBREAK_WEIGHT", 0.02))
+    # C-032: cross-encoder реранк. По умолчанию off: замер показал нулевой вклад на нашем домене.
+    text_ce_enabled: bool = field(
+        default_factory=lambda: _env("TEXT_CE_ENABLED", "0").lower() not in {"0", "false", "no", ""})
+    text_ce_mode: str = field(default_factory=lambda: _env("TEXT_CE_MODE", "off"))
     text_first_enabled: bool = field(
         default_factory=lambda: _env("TEXT_FIRST_ENABLED", "0").lower() not in {"0", "false", "no", ""})
     text_first_max_latency_ms: float = field(

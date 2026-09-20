@@ -214,6 +214,24 @@
         MARGIN_DELTA теряли смысл. Теперь базовые retrieval-скоры фиксируются в retrieval_scores до реранка,
         и уверенность считается по ним; выбор задокументирован в docstring и комментарии. Список эндпоинтов
         в /v1/health актуализирован: добавлены warmup, similar, sommelier и enotourism, тест проверяет все.</Evidence>
+          <Command>curl -s "http://127.0.0.1:8080/v1/catalog?q=%D1%80%D0%B8%D1%81%D0%BB&amp;per_page=2"</Command>
+      <Command>curl -s "http://127.0.0.1:8080/v1/demo/metrics"</Command>
+      <Scenario id="S-GW-14">Карточка отдаёт медиа-поля портала, а при отсутствии данных — пустые значения, не ошибку.</Scenario>
+      <Scenario id="S-GW-15">Сомелье возвращает карточки блюд с картинками, аналоги и детерминированную заметку, не меняя поле pairing.</Scenario>
+      <Scenario id="S-GW-16">Region энотуризма дополнен картинкой, geojson и счётчиками вин, производителей, туров и событий.</Scenario>
+      <Scenario id="S-GW-17">Explain-трейс показывает стадии с измеренной latency, методы и значения флагов, не влияя на решение.</Scenario>
+      <Scenario id="S-GW-18">GET /v1/demo/metrics и GET /v1/catalog работают без тяжёлых моделей; отсутствие отчёта не ошибка.</Scenario>
+      <Evidence note="C034-ui-backend">Медиа-ETL собрал 2035 записей из уже скачанного кэша API (картинка 2035, картинки блюд 2035,
+        geojson региона 2034; исходный кэш проверен по размеру и mtime — не изменён). Живые проверки:
+        /v1/catalog?q=рисл -&gt; total 228, page 1/114, у позиций есть image_url и category_gradient;
+        /v1/demo/metrics -&gt; sources final/real_field/readiness = ok, dashboard: proxy acc@1 0.775, acc@5 0.97,
+        real identity@1 0.5263, @5 0.6316, SLA 3000, порог гейта 0.75;
+        /v1/enotourism/nebo-rossii-glera -&gt; region Крым с image_url, geojson_url, wines_count 769, manufacturers_count 64;
+        /v1/sommelier -&gt; pairing сохранён списком строк, добавлены pairing_cards с картинками блюд, alternatives
+        (например simbioz/WINEPARK) и sensory_note «красное сухое. сорт Пино Нуар. Вкус: Ягодно-фруктовый. подходит к: …».
+        Контракт /v1/eval/predict не изменялся, ML-путь не трогался: pytest 203 passed, proxy acc@1 0.775 и реальные
+        identity@1/@5 совпадают с эталоном. Зеркало ассетов: 6 файлов (логотип, вырез бутылки, 4 региона, 2 блюда) —
+        массовая выкачка из API упирается в лимиты, поэтому UI использует абсолютные URL, а зеркало остаётся страховкой.</Evidence>
     </V-M-GATEWAY>
   </VD-M0-CODE>
 </GraceVerificationDocument>
