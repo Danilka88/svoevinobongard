@@ -1,0 +1,67 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-039>
+    <IntentSummary>Добавить аддитивный эндпоинт карточки по slug и фасеты каталога, затем собрать экран
+      каталога с поиском, фильтрами, сеткой и шторкой полной карточки.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/gateway/app/media.py</Value></MustExist>
+      <MustExist><Value>apps/web/pages/catalog.vue</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog_media.json</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>apps/web/pages/catalog.vue</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/>
+      <M-WEB/>
+      <V-M-GATEWAY/>
+      <V-M-WEB/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>services/gateway/app/</Path>
+      <Path>packages/contracts/</Path>
+      <Path>apps/web/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Карточка по slug и фасеты каталога</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>GET /v1/wine/{slug} собирает карточку теми же полями, что /v1/scan, включая медиа; неизвестный slug даёт 404.</Criterion>
+          <Criterion>При with=enotourism карточка содержит блок энотуризма; без параметра — только карточка.</Criterion>
+          <Criterion>catalog_search возвращает facets с counts по региону, категории, сорту и винодельне.</Criterion>
+          <Criterion>Существующие эндпоинты и поля ответов не изменены.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>curl -s http://127.0.0.1:8080/v1/wine/nebo-rossii-glera</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Экран каталога</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Поиск с задержкой и фильтры из фасетов, сброс, число найденных.</Criterion>
+          <Criterion>Адаптивная сетка карточек с изображением и градиентом; «Показать ещё» или пагинация.</Criterion>
+          <Criterion>Клик открывает шторку с полной карточкой и кнопками к сомелье и похожим.</Criterion>
+          <Criterion>Состояния загрузки, пустоты и ошибки; клавиатура и aria соблюдены.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-039>
+</GraceChangePlan>

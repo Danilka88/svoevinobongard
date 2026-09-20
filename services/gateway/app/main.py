@@ -12,6 +12,7 @@
 # ENCODER - имя image-энкодера из окружения
 # catalog - GET /v1/catalog: браузер каталога с фильтрами
 # demo - GET /v1/demo/metrics: метрики для дашборда
+# wine - GET /v1/wine/{slug}: полная карточка вина для каталога
 # get_media_index - медиа-индекс каталога (C-034)
 # enotourism - GET /v1/enotourism/{slug}: регион, туры и статьи портала
 # get_official - ленивая загрузка официального обогащения v3 (C-017)
@@ -58,7 +59,7 @@ from services.gateway.app.clients import ServiceClients
 from services.gateway.app.enotourism import enotourism_for, load_collections
 from services.gateway.app.media import (catalog_search, demo_metrics, load_media,
                                         media_for)
-from services.gateway.app.pipeline import build_trace, run_scan
+from services.gateway.app.pipeline import build_card, build_trace, run_scan
 from services.gateway.app.recommend import (
     build_sommelier_prompt,
     catalog_recommendations,
@@ -72,6 +73,7 @@ from services.gateway.app.recommend import (
 __all__ = [
     "app",
     "demo",
+    "wine",
     "enotourism",
     "get_media_index",
     "get_official",
@@ -213,6 +215,35 @@ def _enrich_region(payload: dict, store: CatalogStore, slug: str) -> None:
     region["tours_count"] = sum(
         1 for tour in (load_collections().get("tours") or []) if name.lower() in str(tour).lower())
     payload["region"] = region
+
+
+@app.get("/v1/wine/{slug}")
+def wine(slug: str, with_enotourism: bool = False) -> dict:
+    """Полная карточка вина по slug — для перехода из каталога.
+
+    Те же поля, что в /v1/scan.card, включая медиа портала; при with_enotourism добавляется
+    блок энотуризма. Неизвестный slug — 404.
+    """
+    store = get_store()
+    if not store.get(slug):
+        raise HTTPException(status_code=404, detail=f"unknown slug: {slug}")
+    card = build_card(store, slug, get_official().get(slug))
+    entry = media_for(slug)
+    card.category_gradient = str(entry.get("category_gradient") or "")
+    card.region_image_url = str(entry.get("region_image_url") or "")
+    card.region_geojson_url = str(entry.get("region_geojson_url") or "")
+    card.grape_images = list(entry.get("grape_images") or [])
+    card.dish_images = list(entry.get("dish_images") or [])
+    payload: dict = {"slug": slug, "card": card.model_dump()}
+    if with_enotourism:
+        record = store.get(slug) or {}
+        data = enotourism_for(slug, official=get_official().get(slug),
+                              fallback_region=str(record.get("region") or ""),
+                              fallback_winery=str(record.get("winery") or ""))
+        _enrich_region(data, store, slug)
+        payload["enotourism"] = data
+    log_marker("M-GATEWAY", "wine", "DONE", slug=slug, enotourism=with_enotourism)
+    return payload
 
 
 @app.get("/v1/demo/metrics")

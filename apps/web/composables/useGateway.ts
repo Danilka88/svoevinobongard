@@ -77,6 +77,20 @@ export function useGateway() {
     return await $fetch<ScanResponse>(`${base}/v1/scan`, { method: 'POST', body });
   }
 
+  // C-039: браузер каталога и полная карточка по slug (additive)
+  async function catalog(params: Record<string, string | number> = {}): Promise<Record<string, any>> {
+    const query = new URLSearchParams(
+      Object.entries(params).filter(([, value]) => value !== '' && value !== undefined)
+        .map(([key, value]) => [key, String(value)]) as [string, string][],
+    ).toString();
+    return await $fetch<Record<string, any>>(`${base}/v1/catalog${query ? `?${query}` : ''}`);
+  }
+
+  async function wine(slug: string, withEnotourism = false): Promise<Record<string, any>> {
+    const suffix = withEnotourism ? '?with_enotourism=true' : '';
+    return await $fetch<Record<string, any>>(`${base}/v1/wine/${encodeURIComponent(slug)}${suffix}`);
+  }
+
   // C-038: скан с витриной пути решения (additive)
   async function scanExplain(file: File): Promise<ScanResponse> {
     const body = new FormData();
@@ -105,5 +119,5 @@ export function useGateway() {
     return await $fetch<EnotourismResponse>(`${base}/v1/enotourism/${encodeURIComponent(slug)}`);
   }
 
-  return { base, scan, scanExplain, demoMetrics, similar, sommelier, enotourism };
+  return { base, scan, scanExplain, demoMetrics, catalog, wine, similar, sommelier, enotourism };
 }

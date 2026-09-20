@@ -100,6 +100,21 @@ def demo_metrics(root: Path | None = None) -> dict:
     return result
 
 
+def _facets(items: list[dict], fields: tuple[str, ...] = ("region", "category", "grape", "winery"),
+            limit: int = 40) -> dict:
+    """Счётчики значений для фильтров UI: сколько записей на регион, категорию, сорт и винодельню."""
+    facets: dict[str, list[dict]] = {}
+    for field in fields:
+        counts: dict[str, int] = {}
+        for item in items:
+            value = str(item.get(field) or "").strip()
+            if value:
+                counts[value] = counts.get(value, 0) + 1
+        facets[field] = [{"value": value, "count": count}
+                         for value, count in sorted(counts.items(), key=lambda pair: (-pair[1], pair[0]))[:limit]]
+    return facets
+
+
 def catalog_search(records: dict, media: dict, *, query: str = "", region: str = "",
                    category: str = "", grape: str = "", winery: str = "",
                    page: int = 1, per_page: int = 20, sort: str = "name") -> dict:
@@ -138,10 +153,12 @@ def catalog_search(records: dict, media: dict, *, query: str = "", region: str =
     key = {"name": lambda item: fold(item["name"]),
            "winery": lambda item: fold(item["winery"]),
            "year": lambda item: (item["year"] or 0)}.get(sort, lambda item: fold(item["name"]))
+    facets = _facets(items)
     items.sort(key=key)
     total = len(items)
     per_page = max(1, min(int(per_page), 100))
     page = max(1, int(page))
     start = (page - 1) * per_page
     return {"total": total, "page": page, "per_page": per_page,
-            "pages": max(1, -(-total // per_page)), "items": items[start:start + per_page]}
+            "pages": max(1, -(-total // per_page)), "items": items[start:start + per_page],
+            "facets": facets}
