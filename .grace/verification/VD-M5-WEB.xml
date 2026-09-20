@@ -64,6 +64,29 @@
         исправлено точной заменой тега и пересборкой.</Evidence>
       <Evidence note="C019-build">bun run build: exit code 0, «Build complete!», 2 MB (497 kB gzip).
         В собранном бандле присутствуют строки «Винные туры», «Истории в бокале» и путь /v1/enotourism/.</Evidence>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+      <Scenario id="S-WEB-8">Дизайн-система даёт светлую и тёмную темы через data-theme и системную схему; выбор сохраняется в localStorage.</Scenario>
+      <Scenario id="S-WEB-9">Токены покрывают поверхности, текст, границы, акценты, золото и статусы; старые переменные остаются алиасами и не ломают компоненты.</Scenario>
+      <Scenario id="S-WEB-10">Оболочка: шапка с логотипом и переключателем темы, боковая навигация на десктопе и таб-бар на мобиле, футер с провенансом.</Scenario>
+      <Scenario id="S-WEB-11">Экраны sommelier, how, catalog и metrics существуют и открываются, не мешая логике сканера.</Scenario>
+      <Evidence note="C035-design-system">apps/web/assets/css/main.css переписан на токены: светлая и тёмная палитры (поверхности, текст, muted,
+        границы, accent бордо #a51b3a/#741d30, золото, статусы), шкала типографики с serif для названий вин, радиусы,
+        многослойные тени, spacing-шкала, переходы с поддержкой prefers-reduced-motion. Тема переключается через
+        data-theme на html и системную схему на старте, выбор хранится в localStorage. Примитивы: кнопки трёх видов,
+        чипы, бейджи, карточки, слайдер, табы и сегменты, поля и селекты, скелетоны, тосты, модалка и нижняя шторка;
+        тач-таргеты не меньше 44 px (переменная --tap), focus-visible с контуром 3 px. Существующие классы и переменные
+        (.page, .card, .chips, .chip, .muted, .wine-title, .topbar и старые --wine-*, --sand, --ink) сохранены, поэтому
+        текущие компоненты не ломаются.</Evidence>
+      <Evidence note="C035-shell">Добавлены apps/web/layouts/default.vue (шапка с логотипом из /media/logo-svoe-vino.svg и переключателем темы,
+        боковая навигация на десктопе от 900px, таб-бар на мобиле, футер с провенансом) и четыре экрана-заглушки:
+        sommelier, how, catalog, metrics с заголовком и описанием будущего наполнения (C-037…C-039). Главная переведена
+        на оболочку и токены: дублирующая шапка заменена на hero-блок, логика скана, карточки, похожих и энотуризма не изменена.
+        nuxt.config.ts получил theme-color для светлой и тёмной схем.</Evidence>
+      <Evidence note="C035-build">bun run build: exit code 0, «Build complete!», суммарный размер 2.05 МБ (511 кБ gzip).
+        В сборке присутствуют чанки новых экранов (catalog-Q4M0lSBl.mjs, how-CmgFRugr.mjs, default-BSTkqFhU.mjs), а в клиентском
+        бандле — тексты «Цифровой сомелье» и «Метрики качества». Бэкенд не тронут: git показывает изменения только в apps/web
+        (main.css, nuxt.config.ts, index.vue) плюс новые layouts/ и pages/*.vue; composables/useGateway.ts, services/ и
+        packages/ не изменялись, pytest 203 passed, grace lint 0/0.</Evidence>
     </V-M-WEB>
   </VD-M5-WEB>
 </GraceVerificationDocument>

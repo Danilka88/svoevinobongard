@@ -13,7 +13,8 @@ export default defineNuxtConfig({
       title: 'Своё Вино — сканер этикеток',
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
-        { name: 'theme-color', content: '#5b1a2b' },
+        { name: 'theme-color', content: '#ffffff', media: '(prefers-color-scheme: light)' },
+        { name: 'theme-color', content: '#141013', media: '(prefers-color-scheme: dark)' },
         { name: 'description', content: 'Сканируйте этикетку российского вина и получайте карточку с подсказками сомелье.' }
       ]
     }

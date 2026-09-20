@@ -51,10 +51,10 @@ async function pick(slug: string) {
 
 <template>
   <div>
-    <header class="topbar">
+    <div class="hero" style="margin-bottom: 16px">
       <h1>Своё Вино</h1>
       <p>Наведите камеру на этикетку — покажем карточку, подскажем подачу и похожие вина</p>
-    </header>
+    </div>
 
     <div class="page">
       <ScanUploader :busy="busy" @selected="onFile" />

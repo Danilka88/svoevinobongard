@@ -1,0 +1,78 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-035>
+    <IntentSummary>Переписать дизайн-систему apps/web на токены light/dark, добавить примитивы и собрать
+      оболочку с адаптивной навигацией, не меняя логику работы со gateway.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>apps/web/assets/css/main.css</Value></MustExist>
+      <MustExist><Value>apps/web/pages/index.vue</Value></MustExist>
+      <MustExist><Value>apps/web/composables/useGateway.ts</Value></MustExist>
+      <MustExist><Value>apps/web/public/media/README.md</Value></MustExist>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>apps/web/layouts/default.vue</Value></MustExist>
+      <MustExist><Value>apps/web/pages/sommelier.vue</Value></MustExist>
+      <MustExist><Value>apps/web/pages/how.vue</Value></MustExist>
+      <MustExist><Value>apps/web/pages/catalog.vue</Value></MustExist>
+      <MustExist><Value>apps/web/pages/metrics.vue</Value></MustExist>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-WEB</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-WEB/>
+      <V-M-WEB/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>apps/web/</Path>
+      <File>apps/web/nuxt.config.ts</File>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Токены и примитивы дизайн-системы</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Светлая и тёмная темы заданы токенами; переключение работает через data-theme на html и системную схему; выбор сохраняется в localStorage.</Criterion>
+          <Criterion>Контраст текста и фона не ниже AA, тач-таргеты не меньше 44 px, focus-visible виден.</Criterion>
+          <Criterion>Существуют примитивы: кнопки, чипы, карточки, бейджи, слайдер, табы, поля, скелетоны, тосты, модалка и нижняя шторка.</Criterion>
+          <Criterion>Существующие классы компонентов сохраняют смысл: старые переменные остаются как алиасы новых токенов.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>App shell с адаптивной навигацией</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Шапка содержит логотип, название и переключатель темы.</Criterion>
+          <Criterion>На десктопе навигация боковая, на мобиле нижний таб-бар; пункты: Сканер, Сомелье, Как это работает, Каталог, Метрики.</Criterion>
+          <Criterion>Футер содержит провенанс данных и изображений портала.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>ls apps/web/layouts/default.vue</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Заглушки экранов и перевод главной на токены</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Страницы sommelier, how, catalog, metrics существуют и открываются с заголовком и описанием.</Criterion>
+          <Criterion>Главная использует токены и оболочку, логика скана, карточки, похожих и энотуризма не изменена.</Criterion>
+          <Criterion>useGateway.ts и бэкенд не изменялись.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>git status --short apps/web</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-035>
+</GraceChangePlan>
