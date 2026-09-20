@@ -93,6 +93,10 @@ class AppSettings:
     # плюс поиск по всему каталогу стоит секунды против SLA 3 с.
     # C-029: цветовой tie-breaker. По умолчанию выключен: цвет помогает только в зоне
     # близких скоров, и у 31% красных купажей палитры неотличимы (ΔE <= 3.5).
+    # C-031: цилиндрический unwrap. По умолчанию выключен: автопоиск маркеров без обучения
+    # нестабилен на полевых фото, и метод остаётся офлайн-инструментом.
+    cylinder_unwrap_enabled: bool = field(
+        default_factory=lambda: _env("CYLINDER_UNWRAP_ENABLED", "0").lower() not in {"0", "false", "no", ""})
     color_tiebreak_enabled: bool = field(
         default_factory=lambda: _env("COLOR_TIEBREAK_ENABLED", "0").lower() not in {"0", "false", "no", ""})
     color_tiebreak_margin: float = field(

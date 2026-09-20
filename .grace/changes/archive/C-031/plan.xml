@@ -1,0 +1,83 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-031>
+    <IntentSummary>Реализовать цилиндрический unwrap по 6 точкам с автопоиском маркеров за флагом и замерить,
+      помогает ли он OCR на реальных магазинных фото.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>reports/real_field_labels.jsonl</Value></MustExist>
+      <MustExist><Value>reports/text_only_ceiling.json</Value></MustExist>
+      <MustExist><Value>data/samples/real_field/manifest.tsv</Value></MustExist>
+      <MustVerify><Module>M-OCR</Module></MustVerify>
+      <MustVerify><Module>M-NORMALIZE</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>packages/common/cylinder.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/cylinder_eval.py</Value></MustExist>
+      <MustExist><Value>tests/test_cylinder.py</Value></MustExist>
+      <MustExist><Value>reports/cylinder.json</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-NORMALIZE</Module></MustVerify>
+      <MustVerify><Module>M-OCR</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-NORMALIZE</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-NORMALIZE/>
+      <M-OCR/>
+      <M-EVAL/>
+      <M-COMMON/>
+      <V-M-NORMALIZE/>
+      <V-M-OCR/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>tests/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>unwrap по 6 точкам и детерминированный автопоиск маркеров</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>unwrap_label строит квадратичные кривые верха и низа по трём точкам каждая и интерполирует плоскую этикетку.</Criterion>
+          <Criterion>find_label_points ищет вертикальные края и горизонтальные границы этикетки, оценивает кривизну и уверенность.</Criterion>
+          <Criterion>При низкой уверенности возвращается None, а unwrap_auto отдаёт исходный кадр.</Criterion>
+          <Criterion>Тесты покрывают геометрию unwrap, отказ автопоиска и неизменность кадра при отказе.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_cylinder.py -v</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Замер на реальных фото: OCR, потолок, стабильность, latency</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Для каждого фото сравниваются читаемость OCR до и после (строки, кириллические слова, год) и текстовый потолок.</Criterion>
+          <Criterion>Печатается доля успешного автопоиска: это главный вопрос стабильности.</Criterion>
+          <Criterion>Измеряется latency unwrap и полного прохода.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/cylinder_eval.py --out reports/cylinder.json</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Вердикт и решение о дефолте</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Флаг CYLINDER_UNWRAP_ENABLED управляет поведением; при off путь идентичен прежнему.</Criterion>
+          <Criterion>Если метод нестабилен или не помогает — он отклоняется как онлайн-путь и остаётся офлайн-инструментом.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>make gate</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-031>
+</GraceChangePlan>
