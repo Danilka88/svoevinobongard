@@ -63,7 +63,8 @@ def test_health_ok() -> None:
 
 def test_health_lists_endpoints() -> None:
     body = client.get("/v1/health").json()
-    assert body["endpoints"] == ["/v1/health", "/v1/eval/predict", "/v1/scan"]
+    assert body["endpoints"] == ["/v1/health", "/v1/warmup", "/v1/eval/predict", "/v1/scan",
+                                   "/v1/similar/{slug}", "/v1/sommelier", "/v1/enotourism/{slug}"]
 
 
 def test_scan_requires_image() -> None:

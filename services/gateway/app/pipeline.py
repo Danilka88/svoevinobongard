@@ -161,6 +161,7 @@ async def run_scan(
     ocr_latency_ms = 0.0
     degraded = False
 
+    retrieval_scores: list[float] = []
     top5 = [
         TopKItem(
             slug=item.get("slug", ""),
@@ -173,6 +174,7 @@ async def run_scan(
         for item in items[:5]
         if item.get("slug")
     ]
+    retrieval_scores = [item.score for item in top5]  # шкала для уверенности — до реранка
 
     latency_ms = (time.perf_counter() - started) * 1000.0
     if not top5:
@@ -257,7 +259,10 @@ async def run_scan(
             diagnostics.second_score = top5[1].score if len(top5) > 1 else 0.0
             margin = round(best.score - diagnostics.second_score, 6)
 
-    confidence = round(calibrated_confidence([item.score for item in top5]), 6)
+    # Уверенность считается на ОДНОЙ шкале: базовые retrieval-скоры фиксируются до реранка.
+    # Иначе после matcher-фьюжна в calibrated_confidence попадали fused-скоры, посчитанные
+    # по другой шкале (base + текстовые бонусы), и пороги SCORE_TAU/MARGIN_DELTA теряли смысл.
+    confidence = round(calibrated_confidence(retrieval_scores), 6)
     not_found = best.score < settings.score_tau
     confident = (best.score >= settings.score_tau) and (margin >= settings.margin_delta)
     path = "vlm_fallback" if vlm_used else ("ocr_fallback" if ocr_used else "retrieval")

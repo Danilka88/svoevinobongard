@@ -13,6 +13,7 @@
 # LAT_ORDER - порядок применения обратной таблицы (длинные диграфы первыми)
 # ALIASES - курируемые двусторонние соответствия: сорта, типы, цвета, регионы, термины, бренды
 # LOOKALIKES - OCR-двойники латиница -> кириллица
+# MAX_FORMS - сколько вариантов написания сравнивать в similarity
 # fold - базовая нормализация: NFKC, нижний регистр, диакритика, пунктуация, пробелы
 # delookalike - замена OCR-двойников латиницы на кириллицу
 # cyr_to_lat - перевод кириллицы в латиницу (для сопоставления со slug)
@@ -59,6 +60,8 @@ LAT_TO_RU = {
     "y": "ы", "z": "з",
 }
 LAT_ORDER = tuple(sorted(LAT_TO_RU, key=len, reverse=True))
+
+MAX_FORMS = 8  # сколько вариантов написания сравнивать (было жёсткое 5)
 
 LOOKALIKES = {
     "c": "с", "o": "о", "p": "р", "a": "а", "e": "е", "h": "н", "y": "у", "b": "в",
@@ -129,7 +132,7 @@ ALIASES: dict[str, tuple[str, ...]] = {
     "геленджик": ("gelendzhik", "геленджик"),
     "кубань вино": ("kuban vino", "kuban-vino", "кубань вино"),
 }
-__all__ = ["ALIASES", "LAT_ORDER", "LAT_TO_RU", "LOOKALIKES", "RU_TO_LAT", "apply_aliases",
+__all__ = ["ALIASES", "LAT_ORDER", "LAT_TO_RU", "LOOKALIKES", "MAX_FORMS", "RU_TO_LAT", "apply_aliases",
            "cyr_to_lat", "delookalike", "fold", "forms", "lat_to_cyr", "similarity", "tokens"]
 
 
@@ -243,7 +246,7 @@ def similarity(left: str | None, right: str | None) -> float:
     if not left_forms or not right_forms:
         return 0.0
     best = 0.0
-    for left_value in left_forms[:5]:
-        for right_value in right_forms[:5]:
+    for left_value in left_forms[:MAX_FORMS]:
+        for right_value in right_forms[:MAX_FORMS]:
             best = max(best, fuzz.token_set_ratio(left_value, right_value) / 100.0)
     return round(best, 4)

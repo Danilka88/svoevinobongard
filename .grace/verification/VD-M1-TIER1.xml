@@ -189,6 +189,12 @@
       <Evidence note="C027-geo-multiview">В geo.py добавлен verify_all_views: проверяются все виды позиции и берётся максимум
         (раньше verify_slug смотрел одно произвольное вхождение slug, а VectorIndex.score — первое, то есть два
         пути расходились).</Evidence>
+          <Command>.venv/bin/python -m pytest tests/test_c030_fixes.py -v</Command>
+      <Scenario id="S-RET-16">Скор позиции — максимум по всем видам мультивью-индекса, согласованно с GeoIndex.verify_all_views.</Scenario>
+      <Evidence note="C030-index-score">VectorIndex.score использовал self.slugs.index(slug), то есть произвольный
+        (первый) вид позиции мультивью-галереи, тогда как geo-ветка после C-027 берёт лучший вид. Теперь карта
+        slug -> [индексы] строится один раз лениво, и score возвращает максимум по всем видам; тест на индексе
+        из трёх строк с дублирующимся slug проверяет выбор лучшего вида.</Evidence>
     </V-M-RETRIEVAL>
   </VD-M1-TIER1>
 </GraceVerificationDocument>

@@ -79,12 +79,22 @@ def multi_scale_variants(image: np.ndarray, scales: tuple[int, ...] = DEFAULT_SC
 
 
 def _tile_grid(total_tiles: int) -> tuple[int, int]:
-    """Подбирает сетку тайлов, ближайшую к запрошенному числу."""
-    if total_tiles <= 2:
-        return 1, 2
-    if total_tiles <= 4:
-        return 2, 2
-    return 2, 3
+    """Подбирает сетку (строки, столбцы) с произведением, ближайшим к числу тайлов.
+
+    Поддержаны произвольные значения: 1 -> 1x1, 2 -> 1x2, 3 -> 1x3, 4 -> 2x2,
+    6 -> 2x3, 5 -> 1x5. Прежние значения (2, 4, 6) дают те же сетки, что и раньше.
+    """
+    target = max(1, int(total_tiles))
+    best_rows, best_cols = 1, target
+    # Ключ: сначала близость произведения к цели, затем предпочтение альбомной сетки
+    # (столбцов не меньше строк — так кадр режется привычно), затем симметрия.
+    best_key = (0, 0 if target >= 1 else 1, abs(target - 1))
+    for cols in range(1, 7):
+        rows = max(1, -(-target // cols))
+        key = (abs(rows * cols - target), 0 if cols >= rows else 1, abs(cols - rows))
+        if key < best_key:
+            best_key, best_rows, best_cols = key, rows, cols
+    return best_rows, best_cols
 
 
 def pan_and_scan_tiles(image: np.ndarray, tiles: int = 4, overlap: float = TILE_OVERLAP,

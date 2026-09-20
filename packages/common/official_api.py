@@ -59,14 +59,25 @@ def fetch_json(url: str, timeout: float = 25.0, retries: int = 3, pause: float =
 
 
 def cached_json(url: str, cache_path: str | Path, *, refresh: bool = False,
-                timeout: float = 25.0, retries: int = 3, pause: float = 0.15) -> object | None:
+                timeout: float = 25.0, retries: int = 3, pause: float = 0.15,
+                max_age_s: float | None = None) -> object | None:
     """Читает JSON из кэша, при отсутствии — качает и кладёт в кэш.
+
+    Args:
+        refresh: игнорировать кэш и скачать заново.
+        max_age_s: максимальный возраст кэша в секундах; None — срок не проверяется
+            (поведение по умолчанию, как раньше). Устаревший кэш перекачивается.
 
     Returns:
         Данные или None, если сети нет и кэш пуст (вызывающий решает, что делать).
     """
     target = Path(cache_path)
-    if target.is_file() and not refresh:
+    stale = False
+    if target.is_file() and max_age_s is not None:
+        import time  # noqa: PLC0415
+
+        stale = (time.time() - target.stat().st_mtime) > max_age_s
+    if target.is_file() and not refresh and not stale:
         try:
             return json.loads(target.read_text(encoding="utf-8"))
         except json.JSONDecodeError:

@@ -125,7 +125,8 @@ def health() -> dict:
         "service": "gateway",
         "stage": "M1-tier1",
         "models": {"retrieval": ENCODER, "vlm": VLM_MODEL},
-        "endpoints": ["/v1/health", "/v1/eval/predict", "/v1/scan"],
+        "endpoints": ["/v1/health", "/v1/warmup", "/v1/eval/predict", "/v1/scan",
+                      "/v1/similar/{slug}", "/v1/sommelier", "/v1/enotourism/{slug}"],
     }
 
 

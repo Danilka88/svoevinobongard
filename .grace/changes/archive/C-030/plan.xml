@@ -1,0 +1,101 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-030>
+    <IntentSummary>Починить восемь дефектов второго аудита с обязательным протоколом: baseline, фиксы, замер,
+      отсутствие регрессий.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>reports/baseline_c030_before.json</Value></MustExist>
+      <MustExist><Value>reports/real_field_c030_before.json</Value></MustExist>
+      <MustExist><Value>services/gateway/app/enotourism.py</Value></MustExist>
+      <MustExist><Value>services/retrieval/app/index.py</Value></MustExist>
+      <MustExist><Value>packages/common/official_api.py</Value></MustExist>
+      <MustExist><Value>packages/common/preprocess.py</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-RETRIEVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>tests/test_c030_fixes.py</Value></MustExist>
+      <MustExist><Value>reports/c030_after.json</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-RETRIEVAL</Module></MustVerify>
+      <MustVerify><Module>M-ENOTOURISM</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/>
+      <M-RETRIEVAL/>
+      <M-COMMON/>
+      <M-ENOTOURISM/>
+      <M-EVAL/>
+      <V-M-GATEWAY/>
+      <V-M-RETRIEVAL/>
+      <V-M-ENOTOURISM/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>services/</Path>
+      <Path>packages/common/</Path>
+      <Path>tests/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Фиксы M-ENOTOURISM: сортировка статей и определение региона</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Статьи сортируются по убыванию score, при равенстве — свежие первыми; добор latest идёт от свежих.</Criterion>
+          <Criterion>Регион определяется по границам слов или точному названию, без ложных срабатываний вроде «Крым» против «Крымский район».</Criterion>
+          <Criterion>Оба поведения покрыты тестами, включая ложный регион.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_c030_fixes.py -v</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Фиксы M-RETRIEVAL и M-GATEWAY: скор мультивью и согласованная уверенность</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>VectorIndex.score возвращает максимум по всем видам slug; карта позиций строится один раз.</Criterion>
+          <Criterion>Уверенность считается на одной шкале (base retrieval-скоры), выбор объяснён в docstring, значение в [0,1].</Criterion>
+          <Criterion>Список эндпоинтов в /v1/health включает similar, sommelier, enotourism и warmup.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_c030_fixes.py -v</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Фиксы M-COMMON: TTL кэша, лимит вариантов, произвольные тайлы</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>cached_json принимает необязательный max_age_s; при отсутствии значения поведение прежнее.</Criterion>
+          <Criterion>forms не режет варианты жёстко: лимит конфигурируемый и покрыт тестом на случай больше пяти форм.</Criterion>
+          <Criterion>Тайловка поддерживает произвольное число тайлов и выбирает ближайшую сетку; прежние значения не меняются.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_c030_fixes.py -v</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Замер после фиксов и проверка отсутствия регрессий</Title>
+        <DependsOn>T-001, T-002, T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Proxy и реальные фото замерены теми же командами, что и baseline.</Criterion>
+          <Criterion>Регрессия proxy acc@1 больше 1 п.п. или реальных identity@1/@5 не допускается; при просадке — разбор и правка.</Criterion>
+          <Criterion>Результат сравнения сохранён в reports/c030_after.json.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>make eval</Command>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/real_field_eval.py scan --out reports/real_field.json</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-030>
+</GraceChangePlan>

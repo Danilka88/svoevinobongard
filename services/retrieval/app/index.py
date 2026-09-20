@@ -54,6 +54,7 @@ class VectorIndex:
         self.backend = backend
         self.effective_backend = backend
         self.slugs: list[str] = []
+        self._positions: dict[str, list[int]] = {}
         self.dim: int = 0
         self._matrix: np.ndarray | None = None
         self._faiss_index = None
@@ -113,14 +114,26 @@ class VectorIndex:
         return pairs
 
     def score(self, slug: str, query: np.ndarray) -> float:
-        """Косинусный скор конкретного slug (для self-retrieval проверок)."""
+        """Косинусный скор конкретного slug (для self-retrieval проверок).
+
+        Мультивью-галерея хранит несколько векторов на позицию, поэтому берётся максимум
+        по всем видам: это согласовано с GeoIndex.verify_all_views, где тоже выбирается
+        лучший вид. Раньше брался первый индекс slug, то есть произвольный вид.
+        """
         if self._matrix is None or slug not in self.slugs:
             return 0.0
         vector = np.asarray(query, dtype=np.float32).reshape(-1)
         norm = float(np.linalg.norm(vector))
         if norm == 0.0:
             return 0.0
-        return float(self._matrix[self.slugs.index(slug)] @ (vector / norm))
+        unit = vector / norm
+        if not self._positions:  # карта позиций строится один раз при первом запросе
+            for index, value in enumerate(self.slugs):
+                self._positions.setdefault(value, []).append(index)
+        positions = self._positions.get(slug)
+        if not positions:
+            return 0.0
+        return float(max(self._matrix[position] @ unit for position in positions))
 
 
 def save_index(directory: str | Path, index: VectorIndex, meta: dict | None = None) -> None:

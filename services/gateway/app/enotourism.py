@@ -29,10 +29,12 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from packages.common.logging import log_marker
 from packages.common.official_api import absolute_url
+from packages.common.text_norm import fold
 
 COLLECTIONS = ("tours", "regions", "articles")
 DEFAULT_CACHE = "data/api_cache"
@@ -105,10 +107,18 @@ def region_of(official: dict | None, fallback: str = "") -> str:
 
 
 def _region_fact(regions: list[dict], region: str) -> dict:
-    """Факт и события региона по его названию."""
-    needle = (region or "").strip().lower()
+    """Факт и события региона по его названию.
+
+    Сопоставление идёт по границам слов или точному названию: подстрочный поиск ловил
+    ложные срабатывания вида «Крым» в «Крымский район» и подставлял факт не того региона.
+    """
+    needle = fold(region)
     for item in regions:
-        if needle and needle in _text_of(item):
+        name = fold(item.get("name"))
+        haystack = fold(_text_of(item))
+        exact = bool(needle) and (needle == name or all(word in name.split() for word in needle.split()))
+        bounded = bool(needle) and re.search(rf"(?<![0-9a-zа-я]){re.escape(needle)}(?![0-9a-zа-я])", haystack)
+        if exact or bounded:
             return {
                 "name": str(item.get("name") or region),
                 "fact": str(item.get("fact") or ""),
@@ -172,7 +182,10 @@ def articles_for(articles: list[dict], region: str, category: str = "", grape: s
     if not hay_signal:
         # не о чем судить: у вина нет ни региона, ни категории — показывать «свежее» было бы нерелевантно
         return []
-    scored.sort(key=lambda pair: (-pair[0], str(pair[1].get("firstPublishedAt") or "")), reverse=False)
+    # Двухпроходная сортировка: сначала свежие первыми, затем устойчиво по убыванию score.
+    # Так при равном score выше оказывается более свежая статья, а не более старая.
+    scored.sort(key=lambda pair: str(pair[1].get("firstPublishedAt") or ""), reverse=True)
+    scored.sort(key=lambda pair: pair[0], reverse=True)
     matched = [item for score, item in scored if score > 0]
     latest = [item for score, item in scored if score == 0]
     picked = matched[:limit]

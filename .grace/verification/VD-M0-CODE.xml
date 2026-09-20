@@ -206,6 +206,14 @@
         Теперь f1_top1 = уверенность решения по первому кандидату, f1_top5 = средний скор пятёрки; обе — рантайм-прокси,
         а не измеренный F1 (измеренный F1 считается офлайн в scripts/eval). Тест test_run_scan_rich_response
         обновлён: проверяет равенство f1_top1 уверенности, соответствие f1_top5 среднему скору top5 и их различие.</Evidence>
+          <Command>.venv/bin/python -m pytest tests/test_c030_fixes.py tests/test_gateway_health.py -v</Command>
+      <Scenario id="S-GW-12">Уверенность считается на одной шкале (базовые retrieval-скоры), значение остаётся в [0,1].</Scenario>
+      <Scenario id="S-GW-13">/v1/health перечисляет все публичные эндпоинты, включая similar, sommelier и enotourism.</Scenario>
+      <Evidence note="C030-confidence-scale">calibrated_confidence получал [item.score] из top5, а после реранка
+        matcher это уже fused-скоры другой шкалы (base + текстовые бонусы), из-за чего пороги SCORE_TAU и
+        MARGIN_DELTA теряли смысл. Теперь базовые retrieval-скоры фиксируются в retrieval_scores до реранка,
+        и уверенность считается по ним; выбор задокументирован в docstring и комментарии. Список эндпоинтов
+        в /v1/health актуализирован: добавлены warmup, similar, sommelier и enotourism, тест проверяет все.</Evidence>
     </V-M-GATEWAY>
   </VD-M0-CODE>
 </GraceVerificationDocument>

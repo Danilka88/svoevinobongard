@@ -34,6 +34,15 @@
         факт про креплёные вина, eventsCount 2, туров 0 — по данным портала все 9 туров кубанские, это не дефект кода.
         Неизвестный slug: эндпоинт отвечает 200 с пустыми турами и статьями и note об отсутствии данных,
         то есть фича деградирует, не ломая скан.</Evidence>
+          <Command>.venv/bin/python -m pytest tests/test_c030_fixes.py -v</Command>
+      <Scenario id="S-ENO-6">Статьи сортируются по убыванию score, при равном score свежие идут первыми; добор latest тоже от свежих.</Scenario>
+      <Scenario id="S-ENO-7">Регион определяется по границам слов или точному названию, без подстрочных ложных срабатываний.</Scenario>
+      <Evidence note="C030-enotourism-fixes">Два фикса второго аудита. Сортировка статей была инвертирована
+        (при равном score выше оказывалась более старая); теперь двухпроходная устойчивая сортировка: сначала свежие
+        по firstPublishedAt, затем по убыванию score — при равенстве выше более свежая. _region_fact переведён
+        с подстроки на границы слов и точное название: раньше «Крым» матчился в «Крымский район» и подставлял
+        факт не того региона. Оба поведения покрыты тестами (test_articles_sorted_fresh_first,
+        test_latest_fill_prefers_fresh, test_region_requires_word_boundary, test_region_exact_name_matches).</Evidence>
     </V-M-ENOTOURISM>
   </VD-M7-ENOTOURISM>
 </GraceVerificationDocument>
