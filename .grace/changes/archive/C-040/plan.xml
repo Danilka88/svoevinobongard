@@ -1,0 +1,80 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-040>
+    <IntentSummary>Добавить поэтапные тайминги в трейс, показать их на экране, отполировать UI и оболочку,
+      прогнать полный e2e на собранной сборке и закрыть verification-пробел C-039.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/gateway/app/pipeline.py</Value></MustExist>
+      <MustExist><Value>apps/web/pages/how.vue</Value></MustExist>
+      <MustExist><Value>reports/final.json</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustPassCommand><Command>make gate</Command></MustPassCommand>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/>
+      <M-WEB/>
+      <M-DEPLOY/>
+      <V-M-GATEWAY/>
+      <V-M-WEB/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>services/gateway/app/</Path>
+      <Path>apps/web/</Path>
+      <Path>.grace/</Path>
+      <File>README.md</File>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Поэтапные тайминги в трейсе</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Диагностика хранит отдельно normalize_ms, retrieval_latency_ms, ocr_ms, vlm_ms.</Criterion>
+          <Criterion>build_trace собирает stages только из измеренных этапов и пропускает неприменимые (например VLM при выключенном флаге).</Criterion>
+          <Criterion>На решение тайминги не влияют, существующие поля ответа сохранены.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>curl -s -X POST "http://127.0.0.1:8080/v1/scan?explain=1" -F "image=@data/samples/eval_queries/019c68d0.jpg"</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Полировка UI и подписи этапов</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Экран «Как это работает» показывает гранулярные этапы с человеческими подписями.</Criterion>
+          <Criterion>Пройдены пять экранов и оболочка: единообразие отступов, alt у изображений, aria, состояния загрузки, пустоты и ошибки.</Criterion>
+          <Criterion>Адаптив проверен на ширинах около 360, 768 и 1280 пикселей.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Полный e2e и закрытие verification-пробела</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Весь стек и собранный UI поднимаются, все пять маршрутов отвечают 200 без ошибок SSR.</Criterion>
+          <Criterion>Живые API отвечают: scan с explain, demo metrics, catalog, wine, sommelier без slug.</Criterion>
+          <Criterion>make gate пройден, контракт плоский, метрики ML не изменились.</Criterion>
+          <Criterion>Verification-записи C-039 добавлены, README содержит быстрый старт для полного демо.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>make gate</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-040>
+</GraceChangePlan>

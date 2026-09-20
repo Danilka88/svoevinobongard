@@ -47,7 +47,10 @@ class PipelineTrace:
 
     normalize_method: str = "skipped"
     normalize_ok: bool = False
+    normalize_ms: float = 0.0
     retrieval_latency_ms: float = 0.0
+    ocr_ms: float = 0.0
+    vlm_ms: float = 0.0
     top1_score: float = 0.0
     second_score: float = 0.0
     notes: list[str] = field(default_factory=list)
@@ -100,12 +103,12 @@ def text_first_ranking(store: CatalogStore, fields: dict, visual: list[str], *,
     return rrf([visual, ranked], weights=[1.0, 0.5])
 
 
-def build_trace(response) -> dict:
-    """Собирает витрину пути решения из готового ответа.
+def build_trace(response, diagnostics=None) -> dict:
+    """Собирает витрину пути решения: поэтапные тайминги и параметры.
 
-    Никаких локальных переменных стадий: всё берётся из самого ответа (он уже содержит
-    latency, path, уверенность, запас и top-5 со скорами и geo-полями) и из настроек.
-    Трейс не участвует в решении и не содержит секретов; при EXPLAIN_ENABLED=0 возвращает {}.
+    Этапы берутся из реально измеренной диагностики (normalize, retrieval, ocr, vlm)
+    и из самого ответа (общая задержка решения). Неприменимые этапы пропускаются: например,
+    VLM при выключенном флаге в списке не появляется. На решение трейс не влияет.
     """
     if not settings.explain_enabled:
         return {}
@@ -116,17 +119,27 @@ def build_trace(response) -> dict:
             meta_views = int(json.loads(meta_path.read_text(encoding="utf-8")).get("views") or 1)
         except (json.JSONDecodeError, TypeError, ValueError):
             meta_views = 1
+
     total_ms = float(getattr(response, "latency_ms", 0.0) or 0.0)
+    stages: list[dict] = []
+    if diagnostics is not None:
+        measured = [
+            ("normalize", float(getattr(diagnostics, "normalize_ms", 0.0) or 0.0)),
+            ("retrieval+geo", float(getattr(diagnostics, "retrieval_latency_ms", 0.0) or 0.0)),
+            ("ocr", float(getattr(diagnostics, "ocr_ms", 0.0) or 0.0)),
+            ("vlm", float(getattr(diagnostics, "vlm_ms", 0.0) or 0.0)),
+        ]
+        stages = [{"name": name, "latency_ms": round(value, 1)} for name, value in measured if value > 0]
+    stages.append({"name": "decision", "latency_ms": round(total_ms, 1)})
     return {
-        "stages": [
-            {"name": "normalize+retrieval+geo", "latency_ms": round(total_ms, 1)},
-            {"name": "decision", "latency_ms": round(total_ms, 1)},
-        ],
+        "stages": stages,
         "methods": {
             "encoder": getattr(settings, "encoder", "siglip2"),
             "geo": "orb",
             "ocr": settings.ocr_engine or "rapidocr",
             "normalization": "letterbox+pas",
+            "detection": str(getattr(diagnostics, "normalize_method", "") or "none")
+            if diagnostics is not None else "none",
         },
         "flags": {
             "TEXT_FUSION_MODE": settings.text_fusion_mode,
@@ -146,7 +159,7 @@ def build_trace(response) -> dict:
         "confidence": float(getattr(response, "confidence", 0.0) or 0.0),
         "margin": float(getattr(response, "margin", 0.0) or 0.0),
         "path": str(getattr(response, "path", "") or ""),
-        "notes": [],
+        "notes": list(getattr(diagnostics, "notes", []) or []) if diagnostics is not None else [],
     }
 
 
@@ -215,7 +228,9 @@ async def run_scan(
     diagnostics = trace if trace is not None else PipelineTrace()
     active_clients = clients or ServiceClients()
 
+    normalize_started = time.perf_counter()
     normalized = await active_clients.normalize(image_bytes, filename)
+    diagnostics.normalize_ms = (time.perf_counter() - normalize_started) * 1000.0
     payload = image_bytes
     if normalized and normalized.get("crops"):
         diagnostics.normalize_ok = True
@@ -384,4 +399,10 @@ async def run_scan(
         logged = await run_in_threadpool(append_query_log, record, settings.flywheel_log_path)
         if not logged:
             log_marker("M-GATEWAY", "run_scan", "FLYWHEEL_LOG_FAILED")
+
+    # C-040: витрина пути решения с поэтапными таймингами (normalize/retrieval/ocr/vlm).
+    # Собирается из измеренной диагностики; на решение не влияет.
+    diagnostics.ocr_ms = ocr_latency_ms
+    diagnostics.vlm_ms = vlm_latency_ms
+    response.trace = build_trace(response, diagnostics)
     return response

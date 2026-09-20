@@ -1,0 +1,31 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-040>
+    <Summary>Финал: гранулярные тайминги этапов в explain-трейсе, полировка пяти экранов и оболочки,
+      полный e2e с собранным UI и закрытие verification-пробела C-039.</Summary>
+    <Goals>Довести проект до состояния «запускается и демонстрируется без сюрпризов»: показать на экране
+      «Как это работает» реальные тайминги каждой стадии, а не суммарную, проверить все маршруты на живой
+      сборке, обновить быстрый старт и восстановить целостность артефактов.</Goals>
+    <Constraints>Трейс расширяется аддитивно: существующие поля ответа не меняются, на решение тайминги не влияют.
+      UI правится только в apps/web, без внешних CDN. Контракт организатора не затрагивается. Порядок проверок
+      строгий: сначала pytest и сборка, затем живой e2e и make gate, и только потом архив; после гейтов код не
+      меняется. Артефакты и документацию (включая verification-записи C-039 и README) трогать можно — это
+      единственное исключение в рамках этого change. old/ и my/ не трогаются, catalog*.jsonl не
+      перезаписываются, services/* не импортируют друг друга, коммит не создаётся.</Constraints>
+    <NonGoals>Изменение ML-логики, порогов и моделей. Новые экраны и эндпоинты. Пересборка индекса.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>trace.stages содержит отдельные измеренные этапы (normalize, retrieval, geo, ocr, vlm, decision) и пропускает неприменимые.</Criterion>
+      <Criterion>На решение тайминги не влияют, существующие поля ответа сохранены.</Criterion>
+      <Criterion>Экран «Как это работает» показывает гранулярные этапы.</Criterion>
+      <Criterion>Все пять маршрутов UI на собранной сборке отвечают 200 без ошибок SSR.</Criterion>
+      <Criterion>Живые API отвечают: scan с explain, demo metrics, catalog, wine, sommelier без slug.</Criterion>
+      <Criterion>make gate пройден, контракт плоский, метрики ML не изменились (proxy acc@1 0.775).</Criterion>
+      <Criterion>Verification-записи для C-039 добавлены; README содержит актуальный быстрый старт для полного демо.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-GATEWAY/>
+      <M-WEB/>
+      <M-DEPLOY/>
+    </AffectedAreas>
+    <VerificationIntent>Дописать V-M-GATEWAY гранулярным трейсом, V-M-WEB полировкой и e2e, закрыть пробел C-039.</VerificationIntent>
+  </C-040>
+</GraceChangeSpec>

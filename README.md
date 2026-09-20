@@ -454,3 +454,28 @@ docs/{METRICS,LIMITATIONS,DEMO,DATA}.md
 
 Все обязательные компоненты — permissive (Apache-2.0 / MIT). AGPL-компоненты не используются.
 Материалы и данные конкурса находятся вне репозитория (`data/`, `models/` — gitignored).
+
+## Быстрый старт полного демо (gateway + UI)
+
+```bash
+# 1. каталог и индекс (один раз; сборка галереи 6 видов занимает ~50 минут)
+make etl && make index
+
+# 2. стек сервисов: normalize, retrieval, matcher, gateway
+.venv/bin/python -m uvicorn services.normalize.app.main:app --port 8081 &
+.venv/bin/python -m uvicorn services.retrieval.app.main:app --port 8082 &
+.venv/bin/python -m uvicorn services.matcher.app.main:app   --port 8084 &
+.venv/bin/python -m uvicorn services.gateway.app.main:app   --port 8080 &
+curl -s http://127.0.0.1:8080/v1/warmup          # прогрев retrieval, ~40 с
+
+# 3. UI: dev-режим или собранная сборка
+cd apps/web && bun install && bun run dev        # http://127.0.0.1:3000
+# либо прод-сборка:
+# cd apps/web && bun run build
+# NUXT_PUBLIC_API_BASE=http://127.0.0.1:8080 PORT=3000 node .output/server/index.mjs
+
+# 4. проверка готовности
+make gate                                        # lint + тесты + eval + контракт организатора
+```
+UI общается только с gateway; экраны: Сканер `/`, Сомелье `/sommelier`, Как это работает `/how`,
+Каталог `/catalog`, Метрики `/metrics`.

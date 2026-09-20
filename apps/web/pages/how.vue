@@ -29,6 +29,14 @@ const flagNames: Record<string, string> = {
   NORMALIZE_CROP: 'Кроп этикетки',
   VIEWS: 'Видов в галерее',
 };
+const stageLabels: Record<string, string> = {
+  normalize: 'Нормализация кадра',
+  'retrieval+geo': 'Визуальный поиск + геоверификация',
+  ocr: 'OCR этикетки',
+  vlm: 'VLM (офлайн)',
+  decision: 'Решение и пороги',
+};
+const stageLabel = (name: string) => stageLabels[name] || name;
 const flagLabel = (key: string) => flagNames[key] || key;
 const flagValue = (value: unknown) => (typeof value === 'boolean' ? (value ? 'включено' : 'выключено') : String(value));
 
@@ -99,7 +107,7 @@ async function onFile(file: File) {
         <ol class="timeline">
           <li v-for="stage in stages" :key="stage.name">
             <span class="dot" :class="{ slow: stage.latency_ms > 300 }" aria-hidden="true" />
-            <span class="stage-name">{{ stage.name }}</span>
+            <span class="stage-name">{{ stageLabel(stage.name) }}</span>
             <span class="stage-ms">{{ stage.latency_ms }} мс</span>
           </li>
         </ol>

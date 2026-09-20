@@ -445,7 +445,8 @@ async def scan(image: UploadFile = File(...)) -> ScanResponse:
         store = get_store()
         response = await run_scan(data, store, filename=image.filename or "query.jpg",
                                   official_index=get_official())
-        response.trace = build_trace(response)  # C-038: витрина пути решения
+        if not response.trace:  # C-038/C-040: витрина уже собрана в пайплайне
+            response.trace = build_trace(response)
         if response.card is not None and response.slug:
             entry = media_for(response.slug)
             response.card.category_gradient = str(entry.get("category_gradient") or "")
