@@ -28,6 +28,7 @@ import numpy as np
 from fastapi.concurrency import run_in_threadpool
 
 from packages.common.catalog import CatalogStore
+from packages.common.text_rank import fields_from_ocr, rrf, text_index, text_search
 from packages.common.config import settings
 from packages.common.logging import log_marker
 from packages.contracts.schemas import Card, ScanResponse, TopKItem
@@ -66,6 +67,34 @@ def calibrated_confidence(scores: list[float], temperature: float | None = None)
     if total <= 0.0:
         return 0.0
     return float(weights[0] / total)
+
+
+_text_first_state: dict = {}
+
+
+def text_first_ranking(store: CatalogStore, fields: dict, visual: list[str], *,
+                       limit: int = 100) -> list[str] | None:
+    """Ранжирование text-first с RRF; None, если флаг выключен или поиск не уложился в бюджет.
+
+    Текст служит отдельным источником кандидатов по **всему** каталогу: при 32% фото,
+    где правильного вина нет в визуальном top-100, реранк поверх визуальной выдачи помочь
+    не может. Вес текста в RRF ниже визуального, чтобы не вытеснять уверенный визуальный top-1.
+    """
+    if not settings.text_first_enabled:
+        return None
+    if "index" not in _text_first_state:
+        _text_first_state["index"] = text_index(store.slug_to_record())
+    started = time.perf_counter()
+    ranked = [slug for slug, _ in text_search(fields, store.slug_to_record(), limit=limit,
+                                              index=_text_first_state["index"])]
+    elapsed_ms = (time.perf_counter() - started) * 1000.0
+    if elapsed_ms > settings.text_first_max_latency_ms:
+        log_marker("M-TEXT", "text_first", "BUDGET_EXCEEDED", latency_ms=round(elapsed_ms, 1),
+                   budget_ms=settings.text_first_max_latency_ms)
+        return None
+    log_marker("M-TEXT", "text_first", "DONE", text_candidates=len(ranked),
+               latency_ms=round(elapsed_ms, 1))
+    return rrf([visual, ranked], weights=[1.0, 0.5])
 
 
 def build_card(store: CatalogStore, slug: str, official: dict | None = None) -> Card:
@@ -158,6 +187,7 @@ async def run_scan(
     vlm_used = False
     vlm_latency_ms = 0.0
     ocr_used = False
+    text_first_used = False
     ocr_latency_ms = 0.0
     degraded = False
 
@@ -265,7 +295,8 @@ async def run_scan(
     confidence = round(calibrated_confidence(retrieval_scores), 6)
     not_found = best.score < settings.score_tau
     confident = (best.score >= settings.score_tau) and (margin >= settings.margin_delta)
-    path = "vlm_fallback" if vlm_used else ("ocr_fallback" if ocr_used else "retrieval")
+    path = ("text_first" if text_first_used else
+            ("vlm_fallback" if vlm_used else ("ocr_fallback" if ocr_used else "retrieval")))
 
     log_marker("M-GATEWAY", "run_scan", "DECISION", slug=best.slug if not not_found else "none",
                score=round(best.score, 4), margin=margin, confidence=confidence,

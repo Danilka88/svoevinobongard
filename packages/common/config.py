@@ -88,6 +88,13 @@ class AppSettings:
     ocr_rec_width: int = field(default_factory=lambda: _env_int("OCR_REC_WIDTH", 640))
     ocr_rec_keys: str = field(default_factory=lambda: _env("OCR_REC_KEYS", ""))
     ocr_url: str = field(default_factory=lambda: _env("OCR_URL", "http://127.0.0.1:8085"))
+    # C-028: text-first поиск + RRF. По умолчанию выключен: замер на реальных фото показал,
+    # что при весах, сохраняющих identity@1, текст не добавляет, а при равных — роняет @1,
+    # плюс поиск по всему каталогу стоит секунды против SLA 3 с.
+    text_first_enabled: bool = field(
+        default_factory=lambda: _env("TEXT_FIRST_ENABLED", "0").lower() not in {"0", "false", "no", ""})
+    text_first_max_latency_ms: float = field(
+        default_factory=lambda: _env_float("TEXT_FIRST_MAX_LATENCY_MS", 3000.0))
     ocr_enabled: bool = field(
         default_factory=lambda: _env("OCR_ENABLED", "1") not in {"0", "false", "no"})
     ocr_max_side: int = field(default_factory=lambda: _env_int("OCR_MAX_SIDE", 768))

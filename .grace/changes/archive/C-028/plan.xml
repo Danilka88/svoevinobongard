@@ -1,0 +1,86 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-028>
+    <IntentSummary>Реализовать text-first поиск по всему каталогу и RRF-слияние с визуальным ранжированием,
+      замерить на реальных фото и принять решение о дефолте по факту.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>reports/c028_baseline.json</Value></MustExist>
+      <MustExist><Value>packages/common/text_norm.py</Value></MustExist>
+      <MustExist><Value>reports/real_field_labels.jsonl</Value></MustExist>
+      <MustVerify><Module>M-TEXT</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>packages/common/text_rank.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/text_first_eval.py</Value></MustExist>
+      <MustExist><Value>tests/test_text_first.py</Value></MustExist>
+      <MustExist><Value>reports/text_first.json</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-TEXT</Module></MustVerify>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-TEXT</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-TEXT/>
+      <M-MATCHER/>
+      <M-GATEWAY/>
+      <M-EVAL/>
+      <V-M-TEXT/>
+      <V-M-GATEWAY/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>services/gateway/app/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>tests/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Модуль text_rank: поиск по всему каталогу и RRF</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>text_search сравнивает поля через text_norm (транслит, алиасы) и добавляет бонусы за год и тип.</Criterion>
+          <Criterion>text_index предвычисляет формы каталога один раз: без него поиск стоил 32 с на запрос.</Criterion>
+          <Criterion>rrf работает только с порядком позиций и поддерживает веса.</Criterion>
+          <Criterion>Тесты покрывают транслит, атрибутивные бонусы, совпадение кэша и порядок слияния.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_text_first.py -v</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Замер text-first и RRF на реальных фото</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Сравниваются visual-only, text-only и RRF по identity@1/@5, достижимости top-100 и latency.</Criterion>
+          <Criterion>Проверяется гипотеза о новых кандидатах: растёт ли достижимость top-100.</Criterion>
+          <Criterion>Замер повторяется после фикса латентности (кэш форм каталога).</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/text_first_eval.py --out reports/text_first.json</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Интеграция за флагом и решение о дефолте</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Флаг TEXT_FIRST_ENABLED управляет путём; при выключенном флаге поведение идентично прежнему.</Criterion>
+          <Criterion>Поиск ограничен бюджетом TEXT_FIRST_MAX_LATENCY_MS и не ломает решение при перерасходе.</Criterion>
+          <Criterion>path отражает новый путь при использовании text-first.</Criterion>
+          <Criterion>Дефолт меняется только при выполнении критерия приёмки.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>make gate</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-028>
+</GraceChangePlan>
