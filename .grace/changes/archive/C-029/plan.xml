@@ -1,0 +1,83 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-029>
+    <IntentSummary>Считать палитры эталонов в CIELAB, сравнивать с палитрой запроса и применять малый бонус
+      только в зоне близких визуальных скоров, за флагом по умолчанию выключенным.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>reports/c029_baseline.json</Value></MustExist>
+      <MustExist><Value>reports/real_field_c029_before.json</Value></MustExist>
+      <MustExist><Value>data/catalog/slug_to_image.json</Value></MustExist>
+      <MustVerify><Module>M-RETRIEVAL</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>packages/common/palette.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/color_tiebreak_eval.py</Value></MustExist>
+      <MustExist><Value>tests/test_color_tiebreak.py</Value></MustExist>
+      <MustExist><Value>reports/color_tiebreak.json</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-RETRIEVAL</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-RETRIEVAL</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-RETRIEVAL/>
+      <M-EVAL/>
+      <M-COMMON/>
+      <V-M-RETRIEVAL/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>tests/</Path>
+      <Path>data/index/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Палитры эталонов в CIELAB (офлайн) и метрика ΔE</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Доминирующие цвета считаются k-means в CIELAB (K=5), артефакт сохраняется в data/ (gitignored).</Criterion>
+          <Criterion>Сравнение палитр — минимальное ΔE по парам доминирующих цветов.</Criterion>
+          <Criterion>Повторный запуск сборки не пересчитывает уже готовые позиции (--resume).</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/color_tiebreak_eval.py --build --limit 50 --out /tmp/color_probe.json</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Tie-breaker за флагом</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Бонус применяется только когда разрыв top-1/top-2 меньше COLOR_TIEBREAK_MARGIN.</Criterion>
+          <Criterion>Вес бонуса задаётся COLOR_TIEBREAK_WEIGHT и не меняет порядок вне tie-зоны.</Criterion>
+          <Criterion>При COLOR_TIEBREAK_ENABLED=off функция tie-break не вызывается, и путь идентичен прежнему.</Criterion>
+          <Criterion>Тесты покрывают зону, вес и поведение при выключенном флаге.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_color_tiebreak.py -v</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Замер baseline против on на реальных фото</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Сравниваются identity@1/@5, число улучшенных и ухудшенных рангов и latency.</Criterion>
+          <Criterion>Печатается, в скольких случаях tie-зона вообще срабатывала.</Criterion>
+          <Criterion>Решение о дефолте принимается по критерию «on не хуже off и даёт прирост».</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/color_tiebreak_eval.py --out reports/color_tiebreak.json</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-029>
+</GraceChangePlan>

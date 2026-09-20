@@ -91,6 +91,14 @@ class AppSettings:
     # C-028: text-first поиск + RRF. По умолчанию выключен: замер на реальных фото показал,
     # что при весах, сохраняющих identity@1, текст не добавляет, а при равных — роняет @1,
     # плюс поиск по всему каталогу стоит секунды против SLA 3 с.
+    # C-029: цветовой tie-breaker. По умолчанию выключен: цвет помогает только в зоне
+    # близких скоров, и у 31% красных купажей палитры неотличимы (ΔE <= 3.5).
+    color_tiebreak_enabled: bool = field(
+        default_factory=lambda: _env("COLOR_TIEBREAK_ENABLED", "0").lower() not in {"0", "false", "no", ""})
+    color_tiebreak_margin: float = field(
+        default_factory=lambda: _env_float("COLOR_TIEBREAK_MARGIN", 0.05))
+    color_tiebreak_weight: float = field(
+        default_factory=lambda: _env_float("COLOR_TIEBREAK_WEIGHT", 0.02))
     text_first_enabled: bool = field(
         default_factory=lambda: _env("TEXT_FIRST_ENABLED", "0").lower() not in {"0", "false", "no", ""})
     text_first_max_latency_ms: float = field(
