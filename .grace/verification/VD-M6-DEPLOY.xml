@@ -71,6 +71,18 @@
         aristov-anima-millesimato-beloe-bryut, то есть top-1 указывает на родственную, но не ту же позицию).
         Это честно зафиксировано в docs/LIMITATIONS.md и docs/DEMO.md: единственный официальный набор не даёт
         надёжной точки проверки качества.</Evidence>
+          <Command>PYTHONPATH=. .venv/bin/python -c "import json; d=json.load(open('reports/c033_path_check.json')); print(d['missing'])"</Command>
+      <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+      <Scenario id="S-DEPLOY-9">Все пути Test и Source в графе существуют в репозитории; составные значения не остаются.</Scenario>
+      <Scenario id="S-DEPLOY-10">Статусы модулей соответствуют фактическому состоянию: реализованные модули не помечены скелетами.</Scenario>
+      <Scenario id="S-DEPLOY-11">Таблица изменений в AGENTS.md покрывает весь состав архива и число архивных изменений актуально.</Scenario>
+      <Evidence note="C033-hygiene">Проверка путей: 30 тегов Test и 16 Source проверены на существование, несуществующих 0
+        (было 12 каталогов вида tests/gateway/, которых в репозитории нет: тесты лежат плоскими файлами tests/test_*.py).
+        M-ACTIVE-LEARNING переведён из skeleton в built (код services/active_learning/ и tests/test_flywheel.py существуют).
+        Составной Source M-TEXT разбит: путь в теге один, второй указан в примечании. Устаревшее примечание
+        «/v1/eval/predict и /v1/scan возвращают 501 — подключаются в C-002» заменено фактическим состоянием.
+        AGENTS.md: число архивных изменений 32, таблица дополнена до C-033 и сверена с содержимым архива.
+        Код не изменялся: pytest остаётся 195 passed, метрики не пересчитывались.</Evidence>
     </V-M-DEPLOY>
   </VD-M6-DEPLOY>
 </GraceVerificationDocument>

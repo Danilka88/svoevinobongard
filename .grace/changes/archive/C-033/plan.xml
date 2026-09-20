@@ -1,0 +1,77 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-033>
+    <IntentSummary>Привести .grace-артефакты и AGENTS.md в соответствие с фактическим состоянием репозитория,
+      не касаясь кода и метрик.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/graph/modules.xml</Value></MustExist>
+      <MustExist><Value>AGENTS.md</Value></MustExist>
+      <MustExist><Value>tests/</Value></MustExist>
+      <MustVerify><Module>M-DEPLOY</Module></MustVerify>
+      <MustVerify><Module>M-DATA</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>reports/c033_path_check.json</Value></MustExist>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-DEPLOY</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-DEPLOY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-DEPLOY/>
+      <M-DATA/>
+      <M-EVAL/>
+      <V-M-DEPLOY/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>.grace/</Path>
+      <Path>reports/</Path>
+      <File>AGENTS.md</File>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Фактические пути тестов и статус модулей в графе</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Каждый Test в modules.xml заменён на существующий файл из tests/, сверенный через ls.</Criterion>
+          <Criterion>M-ACTIVE-LEARNING получает статус built.</Criterion>
+          <Criterion>Примечания модулей, ссылающиеся на применённые changes как на будущие, актуализированы.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/_c033_path_check.py</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Актуализация AGENTS.md</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Число архивных изменений соответствует содержимому .grace/changes/archive.</Criterion>
+          <Criterion>Таблица изменений покрывает C-001…C-033 и сгруппирована по этапам.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -c "^| C-" AGENTS.md</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Проверка: lint, status, pytest и существование путей</Title>
+        <DependsOn>T-001, T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>grace lint даёт 0 ошибок и 0 предупреждений.</Criterion>
+          <Criterion>grace status показывает 16 модулей и отсутствие drift.</Criterion>
+          <Criterion>Все пути Test и Source существуют, результат проверки сохранён в отчёт.</Criterion>
+          <Criterion>pytest остаётся 195 passed (код не менялся).</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>.venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-033>
+</GraceChangePlan>

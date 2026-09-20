@@ -1,0 +1,28 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-033>
+    <Summary>Гигиена артефактов и документации: фактические пути тестов в графе, статус M-ACTIVE-LEARNING,
+      актуальная таблица изменений в AGENTS.md и устаревшие примечания модулей.</Summary>
+    <Goals>Устранить расхождения между .grace-артефактами и состоянием репозитория, найденные проверкой
+      статуса: ссылки на несуществующие каталоги тестов, скелетный статус давно реализованного модуля и
+      таблица изменений, обрывающаяся на C-024.</Goals>
+    <Constraints>Только артефакты и документация: код в packages/, services/, scripts/ и тесты не
+      изменяются, поэтому метрики обязаны остаться прежними (proxy acc@1 0.775, реальные identity@1 0.5263 /
+      @5 0.6316, pytest 195 passed). Все заменяемые пути сверяются с фактическим содержимым репозитория,
+      несуществующие пути не остаются. catalog*.jsonl, old/, my/ и материалы конкурса не трогаются.
+      Коммит не создаётся.</Constraints>
+    <NonGoals>Изменение кода и логики. Повторные замеры. Обновление метрик. Новые модули.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>Все теги Test в modules.xml указывают на существующие файлы; несуществующих путей не остаётся.</Criterion>
+      <Criterion>M-ACTIVE-LEARNING помечен как built (код и тесты существуют).</Criterion>
+      <Criterion>AGENTS.md содержит актуальное число архивных изменений и полную таблицу C-001…C-033, сверенную с содержимым архива.</Criterion>
+      <Criterion>Устаревшие примечания модулей, ссылающиеся на применённые changes как на будущие, обновлены.</Criterion>
+      <Criterion>grace lint даёт 0/0, grace status показывает 16 модулей и отсутствие drift, pytest остаётся 195 passed.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-DEPLOY/>
+      <M-DATA/>
+      <M-EVAL/>
+    </AffectedAreas>
+    <VerificationIntent>Обновить V-M-DEPLOY гигиеной артефактов и проверкой существования путей.</VerificationIntent>
+  </C-033>
+</GraceChangeSpec>
