@@ -1,0 +1,71 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-041>
+    <IntentSummary>Скопировать 100 фото организатора, разметить их 26b и OCR с чекпоинтом и возобновлением,
+      сопоставить поля с каталогом и собрать таблицы и список спорных кейсов.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>packages/common/text_norm.py</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog.jsonl</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog_media.json</Value></MustExist>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>scripts/eval/label_real_photos.py</Value></MustExist>
+      <MustExist><Value>data/samples/real100/manifest.tsv</Value></MustExist>
+      <MustExist><Value>reports/real100_labels.jsonl</Value></MustExist>
+      <MustExist><Value>reports/real100_labels.csv</Value></MustExist>
+      <MustExist><Value>reports/real100_review.csv</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-DATA</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-EVAL/>
+      <M-VLM/>
+      <M-DATA/>
+      <M-TEXT/>
+      <V-M-EVAL/>
+      <V-M-DATA/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>scripts/eval/</Path>
+      <Path>data/samples/real100/</Path>
+      <Path>reports/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Ингест 100 фото и разметка 26b с чекпоинтом</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Фото копируются в data/samples/real100 с manifest.tsv; исходная папка не изменяется.</Criterion>
+          <Criterion>Для каждого фото сохраняются поля 26b, текст и строки OCR fusion.</Criterion>
+          <Criterion>Запись идёт построчно с flush, прогон возобновляется по имени файла и останавливается по time-box.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/label_real_photos.py run --limit 2 --resume</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Сопоставление с каталогом и таблицы</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>in_catalog равен strong при совпадении винодельни и названия или сорта с уникальным slug каталога; weak — при частичном совпадении; none — иначе.</Criterion>
+          <Criterion>slug_candidates содержит до трёх кандидатов со скорами; сравнение идёт через text_norm.</Criterion>
+          <Criterion>Собранные JSON и CSV содержат человекочитаемую таблицу и сводку по strong/weak/none.</Criterion>
+          <Criterion>Отдельный файл содержит 10-12 самых спорных кейсов.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/label_real_photos.py report --labels reports/real100_labels.jsonl --out reports/real100_labels.json</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-041>
+</GraceChangePlan>

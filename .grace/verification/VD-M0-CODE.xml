@@ -142,6 +142,17 @@
         acc@5 0.965 -&gt; 0.970, p50 116.7 -&gt; 123.4 мс. Вероятная причина — исправление winery_hint
         (было lines[0], стало самая «словесная» строка). Гейт проходит (0.775 ≥ 0.75), регрессия disclosed
         в docs/METRICS.md и docs/LIMITATIONS.md, решение об откате оставлено владельцу.</Evidence>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/label_real_photos.py report</Command>
+      <Scenario id="S-EVAL-09">100 реальных фото организатора размечены офлайн-моделью и OCR: 16 strong, 62 weak, 22 none.</Scenario>
+      <Evidence note="C041-real100">C-041: 100 webp организатора скопированы в data/samples/real100 (manifest.tsv, исходная папка не изменена),
+        размечены gemma4:26b-mlx по полному кадру и OCR fusion — 100 из 100, средняя задержка модели 26.7 с на фото,
+        прогон с чекпоинтом JSONL и возобновлением уложился в time-box 75 минут без срабатывания.
+        Сопоставление с каталогом через text_norm с дешёвым префильтром: strong 16, weak 62, none 22.
+        Подтверждённые примеры: МАССАНДРА / Мускатель Массандра белое 2023 — strong (massandra-muskatel-belyy-belye-sorta-vin, 1.0);
+        СКАЛИСТЫЙ БЕРЕГ / Шёпот цветов — weak, потому что в каталоге несколько близких slug (правило уникальности);
+        ALVEUS / Ультра Кюве Оранж Брют — none, лучший кандидат 0.608 ниже порога 0.62.
+        Отчёты: reports/real100_labels.json (сводка и строки), reports/real100_labels.csv (человекочитаемая таблица),
+        reports/real100_review.csv (12 спорных кейсов для ручной проверки). ML-метрики не затронуты, коммит не создавался.</Evidence>
     </V-M-EVAL>
 
     <V-M-GATEWAY>

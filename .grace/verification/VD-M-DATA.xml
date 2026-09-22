@@ -62,6 +62,11 @@
         в галерею и не используются для обучения — только как тестовый набор. Firewall: реальные данные остаются локально
         в gitignored каталоге. 4 фото опознаны как не-российские (Bosca, DaschBosch, Toskana, казахстанский Бахус) и служат
         негативами для проверки отказа.</Evidence>
+          <Command>ls data/samples/real100 | head -3 &amp;&amp; wc -l &lt; data/samples/real100/manifest.tsv</Command>
+      <Scenario id="S-DATA-06">Реальные фото организатора хранятся в gitignored каталоге с манифестом, исходники не изменены.</Scenario>
+      <Evidence note="C041-real100-provenance">C-041: 100 webp получены от организатора (имена вида score_дата_время, меток не содержат),
+        скопированы в data/samples/real100 (data/ в .gitignore), манифест manifest.tsv связывает имя файла с исходным;
+        каталог материалов конкурса открыт только на чтение. Фото полевые — используются только для оценки, не для обучения и не в галерею.</Evidence>
     </V-M-DATA>
   </VD-M-DATA>
 </GraceVerificationDocument>
