@@ -32,12 +32,14 @@ Rich-ответ: slug, confidence, f1_top1, f1_top5, margin, path, latency_ms, t
 """
 from __future__ import annotations
 
+import io
 import os
 
 import json
 from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from PIL import Image
 from fastapi.concurrency import run_in_threadpool
 
 from packages.common.catalog import CatalogStore, load_official_v3
@@ -421,26 +423,60 @@ async def sommelier(request: SommelierRequest) -> SommelierResponse:
     )
 
 
-@app.post("/v1/eval/predict")
-async def eval_predict(image: UploadFile = File(...)) -> EvalPredictResponse:
-    """Контракт организатора: image → плоский slug."""
-    data = await image.read()
+_MAX_IMAGE_BYTES = 12 * 1024 * 1024
+_IMAGE_SIGNATURES = (b"\xff\xd8\xff", b"\x89PNG\r\n\x1a\n", b"RIFF", b"GIF87a", b"GIF89a", b"BM")
+
+
+def _looks_like_image(data: bytes) -> bool:
+    """Проверяет, что файл похож на изображение: по сигнатуре, при неизвестной — разбором."""
+    if any(data.startswith(signature) for signature in _IMAGE_SIGNATURES):
+        return True
+    try:
+        probe = Image.open(io.BytesIO(data))
+        probe.verify()
+        return True
+    except Exception:  # noqa: BLE001 - неизвестный формат считаем не изображением
+        return False
+
+
+async def _read_image_upload(upload: UploadFile) -> bytes:
+    """Читает файл и отклоняет пустой, слишком большой и не-изображение (C-043)."""
+    data = await upload.read()
     if not data:
         raise HTTPException(status_code=400, detail="empty image")
+    if len(data) > _MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=400, detail="image too large")
+    if not _looks_like_image(data):
+        raise HTTPException(status_code=400, detail="file does not look like an image")
+    return data
+
+
+@app.post("/v1/eval/predict")
+async def eval_predict(image: UploadFile = File(...)) -> EvalPredictResponse:
+    """Контракт организатора: image → плоский slug.
+
+    C-043: обещание держим жёстко — на плохой файл скрипт организатора не должен получать 5xx.
+    Пустой файл, слишком большой или не-изображение отклоняются кодом 400 с понятной деталью,
+    а внутренние сбои дают плоский ответ со значением null вместо ошибки.
+    """
+    data = await _read_image_upload(image)
     try:
         result = await run_scan(data, get_store(), filename=image.filename or "query.jpg")
     except RuntimeError as error:
         log_marker("M-GATEWAY", "eval_predict", "PIPELINE_UNAVAILABLE", error=str(error))
         raise HTTPException(status_code=503, detail=str(error)) from error
+    except HTTPException:
+        raise
+    except Exception as error:  # noqa: BLE001 - чужой скрипт не должен падать из-за нашего сбоя
+        log_marker("M-GATEWAY", "eval_predict", "DEGRADED", error=type(error).__name__)
+        return EvalPredictResponse(slug=None)
     return EvalPredictResponse(slug=result.slug)
 
 
 @app.post("/v1/scan")
 async def scan(image: UploadFile = File(...)) -> ScanResponse:
     """Rich-ответ основного сценария сканирования."""
-    data = await image.read()
-    if not data:
-        raise HTTPException(status_code=400, detail="empty image")
+    data = await _read_image_upload(image)
     try:
         store = get_store()
         response = await run_scan(data, store, filename=image.filename or "query.jpg",
@@ -458,3 +494,11 @@ async def scan(image: UploadFile = File(...)) -> ScanResponse:
     except RuntimeError as error:
         log_marker("M-GATEWAY", "scan", "PIPELINE_UNAVAILABLE", error=str(error))
         raise HTTPException(status_code=503, detail=str(error)) from error
+    except HTTPException:
+        raise
+    except Exception as error:  # noqa: BLE001 - C-043: сбой не должен превращаться в 500
+        log_marker("M-GATEWAY", "scan", "DEGRADED", error=type(error).__name__)
+        degraded_response = ScanResponse(slug=None, not_found=True, degraded=True, path="degraded",
+                                         reason="internal_error", top5=[], card=None)
+        degraded_response.trace = build_trace(degraded_response)
+        return degraded_response

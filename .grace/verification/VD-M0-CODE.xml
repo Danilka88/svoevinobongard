@@ -269,6 +269,15 @@
         build_trace собирает stages только из реально измеренных этапов и всегда добавляет decision. Тайминги не влияют на решение,
         существующие поля ответа сохранены. На живом скане этапы выводятся по отдельности, VLM отсутствует (флаг выключен) —
         проверено curl-запросом и выводом в отчёте change.</Evidence>
+          <Command>curl -s -X POST "http://127.0.0.1:8080/v1/scan" -F "image=@data/samples/real100/1.73_06-09-2026_14-54-06.webp"</Command>
+      <Scenario id="S-GW-24">Плохие входы не роняют сканер: ответ объясняет отказ, несёт распознанный текст и никогда не даёт 500.</Scenario>
+      <Evidence note="C043-robustness">C-043: живой прогон на новом коде. Фото вне каталога: not_found True, reason no_catalog_match, recognized_fields с прочитанной винодельней, пять кандидатов в top5.
+        Не-вино (шумовое изображение): not_found, reason no_catalog_match, кандидаты показаны, без исключений.
+        Пустой файл: 400 empty image. Битый файл: 400 file does not look like an image на обоих эндпоинтах.
+        Плоский контракт организатора на валидном фото вернул {"slug":"massandra-muskatel-belyy-belye-sorta-vinograda-beloe-sladkoe-16"}.
+        Подсчёт ошибок 5xx на трёх плохих входах: ноль. Недоступность retrieval остаётся 503, недоступный OCR даёт reason ocr_unavailable.
+        Обнаружены и исправлены две собственные ошибки: тест контракта зависел от живой сети (переписан на подставной пайплайн),
+        и main.py не импортировал io и PIL для запасного разбора изображения. Регрессии ML нет: proxy acc@1 0.775, acc@5 0.97.</Evidence>
     </V-M-GATEWAY>
   </VD-M0-CODE>
 </GraceVerificationDocument>

@@ -100,6 +100,9 @@ class ScanResponse(BaseModel):
     degraded: bool = False
     card: Card | None = None
     trace: dict = Field(default_factory=dict)  # C-034: витрина пути решения, на решение не влияет
+    # C-043: что прочитано с этикетки и почему нет точного ответа (аддитивно)
+    recognized_fields: dict = Field(default_factory=dict)
+    reason: str = ""
 
 
 class EvalPredictResponse(BaseModel):

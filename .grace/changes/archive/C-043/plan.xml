@@ -1,0 +1,69 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-043>
+    <IntentSummary>Добавить в ответ распознанный текст и причину отказа, сделать входы безопасными на обоих
+      эндпоинтах и переработать экран отказа в UI.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>packages/contracts/schemas.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/pipeline.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/main.py</Value></MustExist>
+      <MustExist><Value>apps/web/components/NotFoundBlock.vue</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-CONTRACTS</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>tests/test_c043_robustness.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/>
+      <M-CONTRACTS/>
+      <M-WEB/>
+      <V-M-GATEWAY/>
+      <V-M-WEB/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/contracts/</Path>
+      <Path>services/gateway/app/</Path>
+      <Path>apps/web/</Path>
+      <Path>tests/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Аддитивные поля и безопасные входы на бэкенде</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Ответ сканирования несёт recognized_fields и reason; поля заполняются и при отказе.</Criterion>
+          <Criterion>Пустой файл, не-изображение и слишком большой файл отклоняются с понятным кодом и деталью.</Criterion>
+          <Criterion>Внутренняя ошибка даёт деградированный ответ, недоступность retrieval остаётся 503.</Criterion>
+          <Criterion>Контракт организатора остаётся плоским и не отвечает 5xx на битый файл.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c043_robustness.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Экран отказа в UI</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Блок различает состояние нет в каталоге, неуверенность и недоступный сервис с разными текстами.</Criterion>
+          <Criterion>Показываются распознанные поля, кандидаты со скорами и ручной поиск на портале.</Criterion>
+          <Criterion>Есть советы по пересъёмке; сборка UI проходит.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-043>
+</GraceChangePlan>

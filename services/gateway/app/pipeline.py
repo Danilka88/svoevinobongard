@@ -201,6 +201,53 @@ def build_card(store: CatalogStore, slug: str, official: dict | None = None) -> 
     )
 
 
+RECOGNIZED_KEYS = ("winery", "wine_name", "vintage", "grape", "sweetness", "region")
+
+
+def _collect_recognized_fields(ocr_result: dict | None, vlm_result: dict | None) -> dict:
+    """Собирает распознанные с этикетки поля, уточняя OCR данными модели.
+
+    Пустые значения не попадают в результат, год приводится к числу: UI показывает только то,
+    что действительно прочитано, и не создаёт пустых строк.
+    """
+    def _fields(payload: dict | None) -> dict:
+        if not payload or not payload.get("ok"):
+            return {}
+        raw = payload.get("fields") or {}
+        merged: dict = {}
+        for key, value in raw.items():
+            target = {"name": "wine_name", "wine_type": "grape"}.get(key, key)
+            if target in RECOGNIZED_KEYS and value not in (None, "") and str(value).strip():
+                merged[target] = value
+        return merged
+
+    result: dict = {}
+    for source in (_fields(ocr_result), _fields(vlm_result)):
+        result.update(source)
+    if "vintage" in result:
+        digits = str(result["vintage"])
+        if digits.isdigit():
+            result["vintage"] = int(digits)
+        else:
+            result.pop("vintage")
+    for key in list(result):
+        if isinstance(result[key], str):
+            result[key] = result[key].strip()
+            if not result[key]:
+                result.pop(key)
+    return result
+
+
+def _resolve_scan_reason(not_found: bool, confident: bool, recognized_fields: dict,
+                         candidates: int) -> str:
+    """Объясняет отказ: нет кандидатов, нет совпадения в каталоге или низкая уверенность."""
+    if not_found:
+        return "no_catalog_match" if candidates else "no_candidates"
+    if not confident:
+        return "low_confidence"
+    return ""
+
+
 async def run_scan(
     image_bytes: bytes,
     store: CatalogStore,
@@ -258,6 +305,9 @@ async def run_scan(
     text_first_used = False
     ocr_latency_ms = 0.0
     degraded = False
+    recognized_fields: dict = {}
+    scan_reason = ""
+    ocr_result: dict | None = None
 
     retrieval_scores: list[float] = []
     top5 = [
@@ -278,7 +328,8 @@ async def run_scan(
     if not top5:
         log_marker("M-GATEWAY", "run_scan", "NO_CANDIDATES", latency_ms=round(latency_ms, 1))
         return ScanResponse(slug=None, not_found=True, path="retrieval",
-                            latency_ms=round(latency_ms, 1), top5=[], card=None)
+                            latency_ms=round(latency_ms, 1), top5=[], card=None,
+                            reason="no_candidates")
 
     best = top5[0]
     diagnostics.top1_score = best.score
@@ -290,8 +341,10 @@ async def run_scan(
     if not confident and settings.ocr_enabled:
         ocr_started = time.perf_counter()
         recognized = await active_clients.ocr(payload)
+        ocr_result = recognized
         ocr_latency_ms = (time.perf_counter() - ocr_started) * 1000.0
         fields = (recognized or {}).get("fields") or {}
+        recognized_fields = _collect_recognized_fields(recognized, None)
         if recognized and recognized.get("ok") and (fields.get("vintage") or fields.get("wine_type")):
             reranked = await active_clients.rerank(
                 [{"slug": item.get("slug"), "score": float(item.get("score", 0.0))}
@@ -305,6 +358,9 @@ async def run_scan(
                 degraded = True
                 diagnostics.notes.append("matcher unavailable; Tier-1 kept")
         else:
+            if recognized is None:
+                scan_reason = "ocr_unavailable"
+                diagnostics.notes.append("ocr unavailable; recognized fields skipped")
             reason = (recognized or {}).get("reason", "ocr gave no usable fields")
             diagnostics.notes.append(f"ocr no signal: {reason}")
             log_marker("M-GATEWAY", "run_scan", "OCR_NO_SIGNAL", reason=str(reason)[:120])
@@ -316,6 +372,7 @@ async def run_scan(
         vlm_latency_ms = (time.perf_counter() - vlm_started) * 1000.0
         if extracted and extracted.get("ok"):
             fields = extracted.get("fields") or {}
+            recognized_fields = _collect_recognized_fields(ocr_result, extracted)
             reranked = await active_clients.rerank(
                 [{"slug": item.get("slug"), "score": float(item.get("score", 0.0))}
                  for item in items if item.get("slug")],
@@ -389,6 +446,8 @@ async def run_scan(
         ocr_used=ocr_used,
         ocr_latency_ms=round(ocr_latency_ms, 1),
         degraded=degraded,
+        recognized_fields=recognized_fields,
+        reason=scan_reason or _resolve_scan_reason(not_found, confident, recognized_fields, len(top5)),
         card=build_card(store, best.slug, (official_index or {}).get(best.slug)),
     )
 

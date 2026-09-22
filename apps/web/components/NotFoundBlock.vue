@@ -1,13 +1,88 @@
 <script setup lang="ts">
 import type { TopKItem } from '~/composables/useGateway';
 
-// Честный отказ (C-036): объясняем, почему не уверены, и показываем кандидатов
-// с их относительными скорами — решение остаётся за человеком.
-const props = defineProps<{ candidates: TopKItem[] }>();
+// Честный отказ (C-036 → C-043): экран «никогда не тупик».
+// Показываем три разные ситуации (нет в каталоге / не уверены / сервис недоступен),
+// распознанный с этикетки текст, ближайших кандидатов и путь к ручному поиску на портале.
+const props = defineProps<{
+  candidates: TopKItem[];
+  recognizedFields?: Record<string, string | number | null> | null;
+  reason?: string;
+  degraded?: boolean;
+  notFound?: boolean;
+}>();
 const emit = defineEmits<{ (event: 'pick', slug: string): void }>();
+
+const PORTAL_SEARCH = 'https://vino-svoe.ru/wines';
 
 const top = computed(() => (props.candidates || []).slice(0, 5));
 const maxScore = computed(() => Math.max(...top.value.map(item => Number(item.score) || 0), 0.0001));
+
+// Состояние отказа: сначала недоступность сервиса, затем «нет в каталоге», иначе неуверенность.
+const state = computed<'degraded' | 'not_found' | 'uncertain'>(() => {
+  const reason = String(props.reason || '');
+  // «Сервис недоступен» — только при явной причине сбоя сервиса, а не при любом degraded:
+  // backend ставит degraded и для «нет совпадения в каталоге», где падать нечему.
+  if (!props.notFound && ['normalize_unavailable', 'ocr_unavailable'].includes(reason)) return 'degraded';
+  if (props.notFound || ['no_catalog_match', 'no_candidates'].includes(reason)) return 'not_found';
+  return 'uncertain';
+});
+
+const REASONS: Record<string, string> = {
+  no_catalog_match: 'Этикетка прочитана, но среди российских вин портала совпадения нет.',
+  no_candidates: 'Этикетка прочитана, но похожих вин в каталоге не нашлось.',
+  low_confidence: 'Вина с похожей этикеткой есть, но разрыв между вариантами слишком мал.',
+  ocr_unavailable: 'Распознавание текста было недоступно, поэтому часть подсказок потерялась.',
+  normalize_unavailable: 'Сервис подготовки изображения недоступен — попробуйте ещё раз.',
+  internal_error: 'Внутренняя ошибка: ответ неполный, но сервис продолжает работать.',
+};
+
+const headline = computed(() => {
+  if (state.value === 'degraded') return 'Сервис сейчас недоступен';
+  if (state.value === 'not_found') return 'Такого вина нет на «Своё Вино»';
+  return 'Не уверены — возможно, дело в фото';
+});
+
+const lead = computed(() => {
+  if (state.value === 'degraded') {
+    return 'Мы не смогли обработать снимок полностью. Попробуйте повторить через минуту — остальные данные портала доступны.';
+  }
+  if (state.value === 'not_found') {
+    return 'Скорее всего, вино не представлено на портале «Своё Вино»: например, оно не российское или выпущено малым тиражом. Ниже — что удалось прочитать и похожие вина из каталога.';
+  }
+  return 'Этикетка прочитана, но уверенности для точного ответа не хватило: снимок под неудобным углом, блики или несколько бутылок. Если среди вариантов ниже есть ваше вино — выберите его.';
+});
+
+const reasonText = computed(() => REASONS[String(props.reason || '')] || '');
+
+// Распознанные поля показываем только заполненными: пустые строки не создают «шум» в интерфейсе.
+const readFields = computed(() => {
+  const labels: Record<string, string> = {
+    winery: 'Винодельня', wine_name: 'Название', vintage: 'Год',
+    grape: 'Сорт', sweetness: 'Сладость', region: 'Регион',
+  };
+  return Object.entries(props.recognizedFields || {})
+    .filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '')
+    .map(([key, value]) => ({ label: labels[key] || key, value: String(value) }));
+});
+
+const query = computed(() => {
+  const fields = readFields.value;
+  const name = fields.find(item => item.label === 'Название')?.value || '';
+  const winery = fields.find(item => item.label === 'Винодельня')?.value || '';
+  return name || winery;
+});
+
+const portalUrl = computed(() =>
+  query.value ? `${PORTAL_SEARCH}?search=${encodeURIComponent(query.value)}` : PORTAL_SEARCH);
+
+const TIPS = [
+  'Снимайте этикетку целиком, не обрезая края',
+  'Держите бутылку против света, чтобы не было бликов',
+  'Заполните кадр этикеткой — фон не нужен',
+  'Одна бутылка в кадре: несколько этикеток сбивают поиск',
+  'Протрите объектив и подождите фокус перед съёмкой',
+];
 
 function width(score: number) {
   return `${Math.max(6, Math.round((Number(score) / maxScore.value) * 100))}%`;
@@ -16,39 +91,75 @@ function width(score: number) {
 
 <template>
   <section class="card" aria-labelledby="nf-title">
-    <h2 id="nf-title">Не уверен в ответе</h2>
-    <p class="muted">
-      Этикетка прочитана, но уверенности для точного ответа не хватило: возможно, вина нет в каталоге
-      (например, оно не российское), либо снимок под неудобным углом. Ниже — ближайшие варианты: если
-      среди них есть ваше вино, выберите его, и карточка откроется.
+    <p class="state-badge" :class="`state-${state}`">
+      {{ state === 'degraded' ? 'Сервис недоступен' : (state === 'not_found' ? 'Нет в каталоге' : 'Низкая уверенность') }}
+    </p>
+    <h2 id="nf-title">{{ headline }}</h2>
+    <p class="muted">{{ lead }}</p>
+    <p v-if="reasonText" class="muted small">{{ reasonText }}</p>
+
+    <section v-if="readFields.length" class="recognized" aria-labelledby="nf-read">
+      <h3 id="nf-read" class="recognized-title">Мы прочитали с этикетки</h3>
+      <ul class="recognized-list">
+        <li v-for="field in readFields" :key="field.label">
+          <span class="recognized-label">{{ field.label }}</span>
+          <span class="recognized-value">{{ field.value }}</span>
+        </li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="nf-next">
+      <h3 id="nf-next" class="recognized-title">Что попробовать дальше</h3>
+      <ul class="candidates" v-if="top.length">
+        <li v-for="(item, index) in top" :key="item.slug" class="candidate">
+          <div class="candidate-head">
+            <span class="candidate-rank">{{ index + 1 }}</span>
+            <div style="min-width: 0">
+              <p class="candidate-name">{{ item.name || item.slug }}</p>
+              <p class="candidate-winery muted small">{{ item.winery || 'винодельня не определена' }}</p>
+            </div>
+          </div>
+          <div class="score-bar" :aria-label="`относительный скор ${Math.round(Number(item.score) * 100) / 100}`">
+            <span :style="{ width: width(item.score) }" />
+          </div>
+          <button class="secondary" type="button" @click="emit('pick', item.slug)">Открыть карточку</button>
+        </li>
+      </ul>
+      <p v-else class="muted small">Кандидатов нет — это нормально, если вина нет в каталоге.</p>
+    </section>
+
+    <p class="actions">
+      <a class="primary" :href="portalUrl" target="_blank" rel="noopener noreferrer">Найти вручную на «Своё Вино»</a>
     </p>
 
-    <ul class="chips" v-if="top.length">
-      <li class="chip">Проверьте бренд и год</li>
-      <li class="chip">Снимите этикетку целиком, без обрезки</li>
-    </ul>
-
-    <ul class="candidates" v-if="top.length">
-      <li v-for="(item, index) in top" :key="item.slug" class="candidate">
-        <div class="candidate-head">
-          <span class="candidate-rank">{{ index + 1 }}</span>
-          <div style="min-width: 0">
-            <p class="candidate-name">{{ item.name || item.slug }}</p>
-            <p class="candidate-winery muted small">{{ item.winery || 'винодельня не определена' }}</p>
-          </div>
-        </div>
-        <div class="score-bar" :aria-label="`относительный скор ${Math.round(Number(item.score) * 100) / 100}`">
-          <span :style="{ width: width(item.score) }" />
-        </div>
-        <button class="secondary" type="button" @click="emit('pick', item.slug)">Открыть</button>
-      </li>
-    </ul>
-
-    <p v-else class="muted small">Кандидатов нет — попробуйте другое фото.</p>
+    <section class="tips" aria-labelledby="nf-tips">
+      <h3 id="nf-tips" class="recognized-title">Как переснять, чтобы получилось</h3>
+      <ul class="chips">
+        <li v-for="tip in TIPS" :key="tip" class="chip">{{ tip }}</li>
+      </ul>
+    </section>
   </section>
 </template>
 
 <style scoped>
+.state-badge {
+  display: inline-block; margin: 0 0 var(--space-2);
+  padding: 2px 10px; border-radius: 999px;
+  font-size: .74rem; font-weight: 700; letter-spacing: .02em; text-transform: uppercase;
+}
+.state-not_found { background: var(--accent-soft); color: var(--accent); }
+.state-uncertain { background: var(--surface-2); color: var(--muted); }
+.state-degraded { background: #7f1d1d22; color: #b91c1c; }
+.recognized { margin-top: var(--space-4); }
+.recognized-title { margin: 0 0 var(--space-2); font-size: .95rem; }
+.recognized-list {
+  list-style: none; padding: var(--space-3); margin: 0;
+  display: grid; gap: 6px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface-2);
+}
+.recognized-list li { display: flex; gap: var(--space-3); justify-content: space-between; }
+.recognized-label { color: var(--muted); font-size: .86rem; }
+.recognized-value { font-weight: 600; text-align: right; }
 .candidates { list-style: none; padding: 0; margin: var(--space-4) 0 0; display: grid; gap: var(--space-3); }
 .candidate {
   display: grid; gap: var(--space-2);
@@ -65,4 +176,7 @@ function width(score: number) {
 .candidate-winery { margin: 2px 0 0; }
 .score-bar { height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; }
 .score-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--gold)); }
+.actions { margin: var(--space-4) 0 0; }
+.actions .primary { display: inline-block; text-decoration: none; }
+.tips { margin-top: var(--space-4); }
 </style>
