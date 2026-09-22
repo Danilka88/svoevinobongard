@@ -2,6 +2,7 @@
 import type { ScanResponse, SimilarItem } from '~/composables/useGateway';
 
 const { scan, similar } = useGateway();
+const telemetry = useTelemetry();
 
 const busy = ref(false);
 const error = ref('');
@@ -12,11 +13,19 @@ const similarLoading = ref(false);
 async function onFile(file: File) {
   busy.value = true;
   error.value = '';
+  // Размер снимка в килобайтах: имя файла не отправляем, это пользовательские данные.
+  telemetry.track('scan', { action: 'scan_start', value: Math.round(file.size / 1024) });
   current.value = null;
   similarItems.value = [];
   try {
     const result = await scan(file);
     current.value = result;
+    telemetry.track('scan', {
+      action: result.not_found ? 'scan_not_found' : 'scan_done',
+      ok: !result.not_found,
+      value: result.reason || result.path,
+      detail: result.degraded ? 'degraded' : undefined,
+    });
     if (result.slug && !result.not_found) {
       await loadSimilar(result.slug);
     }
@@ -39,6 +48,7 @@ async function loadSimilar(slug: string) {
 }
 
 async function pick(slug: string) {
+  telemetry.track('action', { action: 'pick_candidate', value: slug.slice(0, 40) });
   try {
     const card = await $fetch<ScanResponse['card']>(`${useGateway().base}/v1/scan`, { method: 'POST' });
     void card;

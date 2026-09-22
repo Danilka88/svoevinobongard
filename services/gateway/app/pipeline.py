@@ -255,6 +255,7 @@ async def run_scan(
     filename: str = "query.jpg",
     official_index: dict[str, dict] | None = None,
     trace: PipelineTrace | None = None,
+    session_id: str = "",
 ) -> ScanResponse:
     """Прогоняет изображение по пайплайну Tier-1.
 
@@ -455,6 +456,10 @@ async def run_scan(
     if settings.flywheel_enabled:
         record = build_log_record(image_bytes, response, margin_threshold=settings.margin_delta,
                                  normalize_method=diagnostics.normalize_method)
+        # C-044: сквозная связь «действие в интерфейсе ↔ вызов API». Только обезличенный идентификатор
+        # сессии: ни изображений, ни пользовательских данных в лог не добавляется.
+        if isinstance(record, dict) and session_id:
+            record["session_id"] = session_id[:40]
         logged = await run_in_threadpool(append_query_log, record, settings.flywheel_log_path)
         if not logged:
             log_marker("M-GATEWAY", "run_scan", "FLYWHEEL_LOG_FAILED")

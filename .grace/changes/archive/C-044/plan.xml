@@ -1,0 +1,72 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-044>
+    <IntentSummary>Добавить обезличенную телеметрию интерфейса: клиентский сбор батчами, приём и санитайз на
+      gateway, сводку агрегатов и сквозную связь сессии с API-логами.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/gateway/app/main.py</Value></MustExist>
+      <MustExist><Value>apps/web/composables/useGateway.ts</Value></MustExist>
+      <MustExist><Value>packages/common/logging.py</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>packages/common/telemetry.py</Value></MustExist>
+      <MustExist><Value>apps/web/composables/useTelemetry.ts</Value></MustExist>
+      <MustExist><Value>apps/web/plugins/telemetry.client.ts</Value></MustExist>
+      <MustExist><Value>tests/test_c044_telemetry.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/>
+      <M-WEB/>
+      <M-DATA/>
+      <V-M-GATEWAY/>
+      <V-M-WEB/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>services/gateway/app/</Path>
+      <Path>apps/web/</Path>
+      <Path>tests/</Path>
+      <Path>data/telemetry/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Модуль телеметрии и приём на gateway</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Событие проходит санитайз: неизвестные поля и типы отбрасываются, строки обрезаются, батч ограничен по числу и размеру.</Criterion>
+          <Criterion>Запись идёт в ротируемый JSONL с серверными отметками; при любой ошибке ответ остаётся успешным.</Criterion>
+          <Criterion>Сводка отдаёт сессии, события, разбивку по маршрутам и действиям, счётчики ошибок и сценариев, задержки p50/p95 и последние ошибки.</Criterion>
+          <Criterion>Идентификатор сессии из заголовка попадает в flywheel-лог вместе с записью запроса.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c044_telemetry.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Клиентский сбор и инструментирование UI</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Клиент ведёт очередь, отправляет батчи по порогу и таймеру, а на уходе со страницы использует sendBeacon.</Criterion>
+          <Criterion>Отслеживаются просмотры страниц, сканы, вызовы каталога и сомелье, переключение темы, ошибки скрипта и API.</Criterion>
+          <Criterion>Заголовок X-Session-Id уходит во всех вызовах gateway; в подвале есть строка о прозрачности.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-044>
+</GraceChangePlan>

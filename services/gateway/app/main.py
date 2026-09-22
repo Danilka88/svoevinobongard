@@ -38,7 +38,7 @@ import os
 import json
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Header, HTTPException, UploadFile
 from PIL import Image
 from fastapi.concurrency import run_in_threadpool
 
@@ -47,6 +47,7 @@ from packages.common.config import settings
 from packages.common.llm.errors import LLMError
 from packages.common.llm.router import LLMRouter
 from packages.common.logging import log_marker
+from packages.common.telemetry import MAX_EVENTS_PER_BATCH, append_events, telemetry_summary
 from packages.contracts.schemas import (
     EnotourismResponse,
     EvalPredictResponse,
@@ -451,8 +452,47 @@ async def _read_image_upload(upload: UploadFile) -> bytes:
     return data
 
 
+_TELEMETRY_PATH = Path("data") / "telemetry" / "ui.jsonl"
+
+
+def _telemetry_path() -> str:
+    """Путь файла обезличенных событий интерфейса."""
+    return str(_TELEMETRY_PATH)
+
+
+@app.post("/v1/telemetry")
+async def _telemetry_ingest(payload: dict) -> dict:
+    """Принимает обезличенный батч событий интерфейса.
+
+    Приватность по умолчанию: поля вне белого списка отбрасываются, строки обрезаются, число
+    событий ограничено. Ответ всегда успешный — телеметрия не имеет права ломать интерфейс.
+    """
+    try:
+        events = payload.get("events") if isinstance(payload, dict) else None
+        if not isinstance(events, list):
+            return {"accepted": 0, "dropped": 0}
+        session = str(payload.get("session_id") or "unknown")[:40]
+        batch = list(events[:MAX_EVENTS_PER_BATCH])
+        accepted = await run_in_threadpool(append_events, batch, session, _telemetry_path())
+        return {"accepted": accepted, "dropped": max(0, len(events) - MAX_EVENTS_PER_BATCH)}
+    except Exception as error:  # noqa: BLE001 - приём телеметрии best-effort
+        log_marker("M-GATEWAY", "telemetry", "INGEST_FAILED", error=type(error).__name__)
+        return {"accepted": 0, "dropped": 0}
+
+
+@app.get("/v1/telemetry/summary")
+async def _telemetry_aggregate() -> dict:
+    """Сводка по обезличенным событиям: сессии, действия, ошибки, сценарии и задержки."""
+    try:
+        return await run_in_threadpool(telemetry_summary, _telemetry_path())
+    except Exception as error:  # noqa: BLE001 - сводка best-effort
+        log_marker("M-GATEWAY", "telemetry", "SUMMARY_FAILED", error=type(error).__name__)
+        return {"events": 0, "sessions": 0, "note": "telemetry unavailable"}
+
+
 @app.post("/v1/eval/predict")
-async def eval_predict(image: UploadFile = File(...)) -> EvalPredictResponse:
+async def eval_predict(image: UploadFile = File(...),
+                       x_session_id: str = Header(default="", alias="X-Session-Id")) -> EvalPredictResponse:
     """Контракт организатора: image → плоский slug.
 
     C-043: обещание держим жёстко — на плохой файл скрипт организатора не должен получать 5xx.
@@ -461,7 +501,8 @@ async def eval_predict(image: UploadFile = File(...)) -> EvalPredictResponse:
     """
     data = await _read_image_upload(image)
     try:
-        result = await run_scan(data, get_store(), filename=image.filename or "query.jpg")
+        result = await run_scan(data, get_store(), filename=image.filename or "query.jpg",
+                                session_id=x_session_id[:40])
     except RuntimeError as error:
         log_marker("M-GATEWAY", "eval_predict", "PIPELINE_UNAVAILABLE", error=str(error))
         raise HTTPException(status_code=503, detail=str(error)) from error
@@ -474,13 +515,14 @@ async def eval_predict(image: UploadFile = File(...)) -> EvalPredictResponse:
 
 
 @app.post("/v1/scan")
-async def scan(image: UploadFile = File(...)) -> ScanResponse:
+async def scan(image: UploadFile = File(...),
+               x_session_id: str = Header(default="", alias="X-Session-Id")) -> ScanResponse:
     """Rich-ответ основного сценария сканирования."""
     data = await _read_image_upload(image)
     try:
         store = get_store()
         response = await run_scan(data, store, filename=image.filename or "query.jpg",
-                                  official_index=get_official())
+                                  official_index=get_official(), session_id=x_session_id[:40])
         if not response.trace:  # C-038/C-040: витрина уже собрана в пайплайне
             response.trace = build_trace(response)
         if response.card is not None and response.slug:

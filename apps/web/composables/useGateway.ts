@@ -70,11 +70,15 @@ export interface EnotourismResponse {
 export function useGateway() {
   const config = useRuntimeConfig();
   const base = String(config.public.apiBase || '').replace(/\/$/, '');
+  // C-044: обезличенная сессия связывает действия в интерфейсе с вызовами API и логами gateway.
+  const telemetry = useTelemetry();
+  const hdr = () => ({ 'X-Session-Id': telemetry.sessionId() });
 
   async function scan(file: File): Promise<ScanResponse> {
     const body = new FormData();
     body.append('image', file, file.name || 'label.jpg');
-    return await $fetch<ScanResponse>(`${base}/v1/scan`, { method: 'POST', body });
+    return await telemetry.time('scan', 'scan_request',
+      async () => await $fetch<ScanResponse>(`${base}/v1/scan`, { method: 'POST', body, headers: hdr() }));
   }
 
   // C-039: браузер каталога и полная карточка по slug (additive)
@@ -83,40 +87,45 @@ export function useGateway() {
       Object.entries(params).filter(([, value]) => value !== '' && value !== undefined)
         .map(([key, value]) => [key, String(value)]) as [string, string][],
     ).toString();
-    return await $fetch<Record<string, any>>(`${base}/v1/catalog${query ? `?${query}` : ''}`);
+    return await telemetry.time('catalog', 'catalog_request',
+      async () => await $fetch<Record<string, any>>(`${base}/v1/catalog${query ? `?${query}` : ''}`, { headers: hdr() }));
   }
 
   async function wine(slug: string, withEnotourism = false): Promise<Record<string, any>> {
     const suffix = withEnotourism ? '?with_enotourism=true' : '';
-    return await $fetch<Record<string, any>>(`${base}/v1/wine/${encodeURIComponent(slug)}${suffix}`);
+    return await telemetry.time('catalog', 'wine_request',
+      async () => await $fetch<Record<string, any>>(`${base}/v1/wine/${encodeURIComponent(slug)}${suffix}`, { headers: hdr() }));
   }
 
   // C-038: скан с витриной пути решения (additive)
   async function scanExplain(file: File): Promise<ScanResponse> {
     const body = new FormData();
     body.append('image', file, file.name || 'label.jpg');
-    return await $fetch<ScanResponse>(`${base}/v1/scan?explain=1`, { method: 'POST', body });
+    return await telemetry.time('scan', 'scan_explain_request',
+      async () => await $fetch<ScanResponse>(`${base}/v1/scan?explain=1`, { method: 'POST', body, headers: hdr() }));
   }
 
   // C-038: метрики для дашборда (additive)
   async function demoMetrics(): Promise<Record<string, any>> {
-    return await $fetch<Record<string, any>>(`${base}/v1/demo/metrics`);
+    return await $fetch<Record<string, any>>(`${base}/v1/demo/metrics`, { headers: hdr() });
   }
 
   async function similar(slug: string): Promise<SimilarItem[]> {
-    const response = await $fetch<{ items: SimilarItem[] }>(`${base}/v1/similar/${encodeURIComponent(slug)}`);
+    const response = await $fetch<{ items: SimilarItem[] }>(`${base}/v1/similar/${encodeURIComponent(slug)}`, { headers: hdr() });
     return response.items || [];
   }
 
   async function sommelier(slug: string, answers: Record<string, string>): Promise<SommelierResponse> {
-    return await $fetch<SommelierResponse>(`${base}/v1/sommelier`, {
-      method: 'POST',
-      body: { slug, answers },
-    });
+    return await telemetry.time('sommelier', 'sommelier_request',
+      async () => await $fetch<SommelierResponse>(`${base}/v1/sommelier`, {
+        method: 'POST',
+        body: { slug, answers },
+        headers: hdr(),
+      }));
   }
 
   async function enotourism(slug: string): Promise<EnotourismResponse> {
-    return await $fetch<EnotourismResponse>(`${base}/v1/enotourism/${encodeURIComponent(slug)}`);
+    return await $fetch<EnotourismResponse>(`${base}/v1/enotourism/${encodeURIComponent(slug)}`, { headers: hdr() });
   }
 
   return { base, scan, scanExplain, demoMetrics, catalog, wine, similar, sommelier, enotourism };
