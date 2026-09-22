@@ -1,0 +1,68 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-042>
+    <IntentSummary>Поднять стек, прогнать 100 реальных фото через зонд сканирования, замерить идентичность и
+      отказы, разобрать промахи и зафиксировать результат в метриках и документации.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>reports/real100_labels.jsonl</Value></MustExist>
+      <MustExist><Value>data/samples/real100/manifest.tsv</Value></MustExist>
+      <MustExist><Value>packages/common/text_norm.py</Value></MustExist>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-DATA</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>scripts/eval/eval_real100.py</Value></MustExist>
+      <MustExist><Value>reports/real100_scan.jsonl</Value></MustExist>
+      <MustExist><Value>reports/real100_diag.json</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-EVAL/>
+      <M-GATEWAY/>
+      <M-DATA/>
+      <V-M-EVAL/>
+      <V-M-GATEWAY/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>scripts/eval/</Path>
+      <Path>reports/</Path>
+      <Path>docs/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Харнесс сканирования 100 реальных фото</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Харнесс поднимает сервисы, ждёт готовности, прогревает retrieval и гасит процессы после прогона.</Criterion>
+          <Criterion>Каждое фото отправляется на зонд сканирования с таймаутом и повторами на 503, результат пишется построчно с flush.</Criterion>
+          <Criterion>Строка результата содержит slug, confidence, margin, path, not_found, latency_ms и top5.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/eval_real100.py run --limit 3</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Метрики, диагностика и документация</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>identity-match@1 и @5 считаются только по корзине strong+weak строгим правилом совпадения идентичности.</Criterion>
+          <Criterion>Доля корректных not_found считается по корзине none; отдельно считается совпадение top-1 с топ-кандидатом разметки.</Criterion>
+          <Criterion>Таблица промахов помечает промахи, вызванные слабой опорой на истину, отдельно от промахов поиска.</Criterion>
+          <Criterion>Раздел о 100 реальных фото добавлен в docs/METRICS.md вместе со сравнением с C-025 и оговорками.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/eval_real100.py metrics</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-042>
+</GraceChangePlan>
