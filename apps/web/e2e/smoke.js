@@ -19,8 +19,13 @@ const ROUTES = [
   { path: "/how", title: "Как это работает — Своё Вино", h1: "Как это работает" },
   { path: "/catalog", title: "Каталог — Своё Вино", h1: "Каталог вин" },
   { path: "/metrics", title: "Метрики — Своё Вино", h1: "Метрики качества" },
+  { path: "/learning", title: "Обучение — Своё Вино", h1: "Обучение и качество" },
 ];
-const EXPECTED_NAV = ["/", "/sommelier", "/how", "/catalog", "/metrics"];
+// C-055: навигация «5 основных + Ещё». В сайдбаре на десктопе видны все страницы,
+// в таб-баре — пять основных и кнопка «Ещё» с остальными (там же «Как это работает»).
+const EXPECTED_SIDEBAR = ["/", "/catalog", "/sommelier", "/metrics", "/learning", "/how"];
+const EXPECTED_TABBAR = ["/", "/catalog", "/sommelier", "/metrics", "/learning"];
+const MORE_PATHS = ["/how"];
 
 // каждый маршрут: рендер, заголовок, меню и активный пункт
 for (const route of ROUTES) {
@@ -32,17 +37,35 @@ for (const route of ROUTES) {
     "nav:Array.from(document.querySelectorAll('.shell-nav .nav-link')).map(function(a){return a.getAttribute('href')})," +
     "tabbar:Array.from(document.querySelectorAll('.tabbar .tabbar-link')).map(function(a){return a.getAttribute('href')})," +
     "navActive:Array.from(document.querySelectorAll('.shell-nav .nav-link.active')).map(function(a){return a.getAttribute('href')})," +
-    "tabActive:Array.from(document.querySelectorAll('.tabbar .tabbar-link.active')).map(function(a){return a.getAttribute('href')})," +
+    "tabActive:Array.from(document.querySelectorAll('.tabbar .tabbar-link[href].active')).map(function(a){return a.getAttribute('href')})," +
+    "tabLinks:Array.from(document.querySelectorAll('.tabbar .tabbar-link[href]')).map(function(a){return a.getAttribute('href')})," +
+    "moreButton:!!document.querySelector('.tabbar button.tabbar-link')," +
+    "moreExpanded:(document.querySelector('.tabbar button.tabbar-link')||{}).getAttribute" +
+      "?document.querySelector('.tabbar button.tabbar-link').getAttribute('aria-expanded'):null," +
+    "moreActive:!!document.querySelector('.tabbar button.tabbar-link.active')," +
     "toast:(document.querySelector('.toast')||{}).textContent||null," +
     "bodyLen:(document.body.innerText||'').trim().length" +
     "})");
   ok(route.path + " render", rendered && view.bodyLen > 40, "body chars=" + view.bodyLen);
   ok(route.path + " title", view.title === route.title, "got: " + view.title);
   ok(route.path + " page h1", (view.h1 || []).indexOf(route.h1) !== -1, JSON.stringify(view.h1));
-  ok(route.path + " nav items (5)", JSON.stringify(view.nav) === JSON.stringify(EXPECTED_NAV), JSON.stringify(view.nav));
-  ok(route.path + " tabbar items (5)", JSON.stringify(view.tabbar) === JSON.stringify(EXPECTED_NAV), JSON.stringify(view.tabbar));
+  // Сайдбар показывает все страницы: ни одна не потеряна.
+  ok(route.path + " nav items (all " + EXPECTED_SIDEBAR.length + ")",
+     JSON.stringify(view.nav) === JSON.stringify(EXPECTED_SIDEBAR), JSON.stringify(view.nav));
+  ok(route.path + " nav has /how", (view.nav || []).indexOf("/how") !== -1, JSON.stringify(view.nav));
+  // Таб-бар: пять основных ссылок и отдельная кнопка «Ещё».
+  ok(route.path + " tabbar items (5)",
+     JSON.stringify(view.tabLinks) === JSON.stringify(EXPECTED_TABBAR), JSON.stringify(view.tabLinks));
+  ok(route.path + " tabbar more button", view.moreButton === true && view.moreExpanded === "false",
+     "button=" + view.moreButton + " aria-expanded=" + view.moreExpanded);
   ok(route.path + " sidebar active", (view.navActive || []).indexOf(route.path) !== -1, JSON.stringify(view.navActive));
-  ok(route.path + " tabbar active", (view.tabActive || []).indexOf(route.path) !== -1, JSON.stringify(view.tabActive));
+  // Активный пункт подсвечен в обоих режимах: в таб-баре для «Ещё»-страниц активна кнопка.
+  const tabbarActive = MORE_PATHS.indexOf(route.path) === -1
+    ? (view.tabActive || []).indexOf(route.path) !== -1
+    : view.moreActive === true;
+  ok(route.path + " tabbar active", tabbarActive,
+     MORE_PATHS.indexOf(route.path) === -1 ? JSON.stringify(view.tabActive)
+       : "moreActive=" + view.moreActive);
   ok(route.path + " no error toast", view.toast === null, String(view.toast));
 }
 

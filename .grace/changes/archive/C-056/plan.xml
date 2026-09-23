@@ -1,0 +1,45 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-056>
+    <IntentSummary>Привести проверки навигации к контракту «пять плюс Ещё» и добавить два кейса:
+      изображения через прокси и страница обучения.</IntentSummary>
+    <BaselineAssertions>
+      <MustExist><Value>apps/web/e2e/smoke.js</Value></MustExist>
+      <MustExist><Value>apps/web/e2e/run_all.sh</Value></MustExist>
+      <MustExist><Value>apps/web/layouts/default.vue</Value></MustExist>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+    <TargetAssertions>
+      <MustExist><Value>apps/web/e2e/images.js</Value></MustExist>
+      <MustExist><Value>apps/web/e2e/learning.js</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-WEB</Anchor></MustOwn>
+    </TargetAssertions>
+    <DurableScope><M-WEB/><V-M-WEB/></DurableScope>
+    <ObservedWriteScope>
+      <Path>apps/web/e2e/</Path><Path>tests/</Path><Path>.grace/</Path>
+    </ObservedWriteScope>
+    <ImplementationPlan>
+      <T-001>
+        <Title>Контракт навигации в проверках</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Проверки читают структуру навигации из вёрстки: основные, дополнительные и активные пункты.</Criterion>
+          <Criterion>Кейс «Ещё» учитывает активную кнопку на страницах из листа.</Criterion>
+        </AcceptanceCriteria>
+        <Verification><Command>lightpanda run apps/web/e2e/smoke.js</Command></Verification>
+      </T-001>
+      <T-002>
+        <Title>Кейсы изображений и обучения</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Изображения проверяются по прокси-префиксу, фактической загрузке и запасному ассету.</Criterion>
+          <Criterion>Страница обучения проверяется по разделам, пометке модератора и пустым состояниям.</Criterion>
+          <Criterion>Полный набор зелёный, кроме помеченного дефекта поиска.</Criterion>
+        </AcceptanceCriteria>
+        <Verification><Command>bash apps/web/e2e/run_all.sh</Command></Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-056>
+</GraceChangePlan>

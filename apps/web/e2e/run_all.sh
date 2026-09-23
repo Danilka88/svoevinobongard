@@ -11,9 +11,9 @@
 #   CDP      ws://127.0.0.1:9222          (lightpanda serve --port 9222) — для сбора консоли
 #
 # Результаты: apps/web/e2e/results/<script>.json (по одному на кейс).
-# Примечание: catalog-search.js печатает ОЖИДАЕМЫЙ FAIL и на короткое время загружает
-# gateway на 100% CPU (BUG-001), поэтому он идёт последним и после него gateway
-# перезапускается (если задан GW_RESTART_CMD).
+# Примечание: catalog-search.js идёт последним: исторически он вызывал нагрузку на gateway
+# (BUG-001, поиск ускорен в C-046/C-047 — кейс проходит). После него gateway перезапускается,
+# если задан GW_RESTART_CMD.
 set -u
 export PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
@@ -58,6 +58,8 @@ run_case how-metrics
 run_case catalog
 run_case sommelier
 run_case scanner
+run_case images
+run_case learning
 
 # сбор консоли/исключений по маршрутам (CDP)
 if curl -s -o /dev/null -m 5 "http://127.0.0.1:$CDP_PORT/json/version"; then
