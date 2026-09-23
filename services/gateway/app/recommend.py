@@ -287,21 +287,21 @@ def build_sommelier_prompt(record: dict, answers: dict[str, str], candidates: li
     ]
 
 
+from packages.common.llm.structured import parse_structured, repair_json
+
+
 def parse_sommelier_reply(text: str, allowed_slugs: set[str]) -> dict:
     """Разбирает ответ модели, оставляя только существующие slug.
+
+    C-052: разбор идёт через структурный слой со схемой, поэтому устойчив к фенсам, кавычкам,
+    регистру ключей и синонимам значений. Прямой восстановитель остаётся запасным путём, а список
+    slug по-прежнему фильтруется против каталога: свободному тексту модели не доверяем.
 
     Returns:
         Словарь recommendations и pairing; пустой, если JSON не восстановлен.
     """
-    match = re.search(r"\{.*\}", text or "", re.S)
-    if not match:
-        return {}
-    import json
-
-    try:
-        payload = json.loads(match.group(0))
-    except ValueError:
-        return {}
+    structured = parse_structured(text, "sommelier")
+    payload = structured["data"] if structured["valid"] else (repair_json(text) or {})
     if not isinstance(payload, dict):
         return {}
     recommendations = []

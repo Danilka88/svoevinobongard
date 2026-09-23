@@ -50,6 +50,7 @@ from packages.common.catalog import CatalogStore, load_official_v3
 from packages.common.config import settings
 from packages.common.llm.errors import LLMError
 from packages.common.llm.router import LLMRouter
+from packages.common.llm.structured import validation_stats
 from packages.common.logging import log_marker
 from packages.common.telemetry import MAX_EVENTS_PER_BATCH, append_events, telemetry_summary
 from packages.contracts.schemas import (
@@ -510,7 +511,10 @@ async def _telemetry_ingest(payload: dict) -> dict:
 async def _telemetry_aggregate() -> dict:
     """Сводка по обезличенным событиям: сессии, действия, ошибки, сценарии и задержки."""
     try:
-        return await run_in_threadpool(telemetry_summary, _telemetry_path())
+        summary = await run_in_threadpool(telemetry_summary, _telemetry_path())
+        # C-052: исходы валидации структурированных ответов моделей — аддитивное поле.
+        summary["llm_validation"] = validation_stats()
+        return summary
     except Exception as error:  # noqa: BLE001 - сводка best-effort
         log_marker("M-GATEWAY", "telemetry", "SUMMARY_FAILED", error=type(error).__name__)
         return {"events": 0, "sessions": 0, "note": "telemetry unavailable"}

@@ -1,0 +1,27 @@
+# Svoe Vino Scanner — runtime dependencies
+# Python 3.14. Install: python -m pip install -r requirements.txt
+#
+# Core (gateway / services / web API)
+fastapi==0.141.1
+uvicorn==0.53.0
+httpx==0.28.1
+pydantic==2.13.5
+PyYAML==6.0.3
+
+# Structured LLM output validation (repair + schema) — MIT
+jsonschema==4.26.0
+
+# Retrieval / text matching
+numpy==2.4.6
+rapidfuzz==3.14.6
+
+# Vision / OCR
+Pillow==12.3.0
+opencv-python-headless==5.0.0.93
+
+# Local VLM (optional, heavy — only needed for OCR/VLM-path experiments)
+# torch==2.14.0
+# transformers==5.17.0
+
+# Tests
+pytest

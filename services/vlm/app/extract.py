@@ -83,6 +83,9 @@ class VlmFields:
         return names
 
 
+from packages.common.llm.structured import parse_structured
+
+
 def _extract_json_object(text: str) -> dict:
     """Достает первый JSON-объект из текста, снимая markdown-обертки."""
     candidate = (text or "").strip()
@@ -109,9 +112,14 @@ def _extract_json_object(text: str) -> dict:
     return {}
 
 
-def parse_fields(text: str) -> dict:
+def parse_fields(text: str, finish_reason: str = "") -> dict:
     """Ремонтирует и парсит ответ модели в словарь ожидаемых полей."""
-    parsed = _extract_json_object(text)
+    # C-052: источником данных становится структурный разбор по схеме (фенсы, кавычки, регистр,
+    # синонимы значений), а прежняя обработка полей ниже сохраняется полностью: приведение
+    # confidence к диапазону, очистка пустых значений и сбор extra_text. При невалидном
+    # структурном разборе используется прежний путь, поэтому поведение по умолчанию не меняется.
+    structured = parse_structured(text, "label_fields", finish_reason=finish_reason)
+    parsed = structured["data"] if (structured["valid"] and structured["data"]) else _extract_json_object(text)
     if not parsed:
         return {}
     cleaned: dict = {}

@@ -1,0 +1,57 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-052>
+    <IntentSummary>Добавить структурный слой разбора ответов моделей, применить его к полям этикетки и
+      ответу сомелье, сохранив прежние контракты, и вывести счётчики исходов в телеметрию.</IntentSummary>
+    <BaselineAssertions>
+      <MustExist><Value>packages/common/llm/adapters.py</Value></MustExist>
+      <MustExist><Value>services/vlm/app/extract.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/recommend.py</Value></MustExist>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+    </BaselineAssertions>
+    <TargetAssertions>
+      <MustExist><Value>packages/common/llm/structured.py</Value></MustExist>
+      <MustExist><Value>tests/test_c052_structured.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-VLM</Anchor></MustOwn>
+    </TargetAssertions>
+    <DurableScope>
+      <M-VLM/><M-GATEWAY/><M-CONTRACTS/><V-M-EVAL/>
+    </DurableScope>
+    <ObservedWriteScope>
+      <Path>packages/common/llm/</Path>
+      <Path>services/vlm/app/</Path>
+      <Path>services/gateway/app/</Path>
+      <Path>tests/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+    <ImplementationPlan>
+      <T-001>
+        <Title>Модуль структурного вывода</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Схемы полей этикетки, ответа сомелье и вердикта судьи описаны с закрытыми перечислениями.</Criterion>
+          <Criterion>Восстановление JSON и нормализация покрывают фенсы, кавычки, хвостовые запятые, регистр и синонимы.</Criterion>
+          <Criterion>Повтор при невалидном ответе и безопасный дефолт; счётчики исходов доступны.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c052_structured.py -q</Command>
+        </Verification>
+      </T-001>
+      <T-002>
+        <Title>Применение в полях этикетки и у сомелье</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Публичные контракты функций сохранены, прежняя обработка полей не потеряна.</Criterion>
+          <Criterion>Существующие проверки проходят, метрики ML не меняются.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -m pytest tests/test_vlm_matcher.py -q</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-052>
+</GraceChangePlan>
