@@ -30,7 +30,9 @@ def test_every_gateway_call_has_timeout() -> None:
     source = _read("composables/useGateway.ts")
     calls = re.findall(r"\$fetch<", source)
     signals = re.findall(r"signal: requestTimeout\(", source)
-    assert len(calls) == 8, f"вызовов gateway: {len(calls)}"
+    # Инвариант: таймаут стоит на КАЖДОМ вызове. Точное число вызовов растёт от изменения к изменению,
+    # поэтому проверяется равенство, а не жёсткая константа (C-054 добавил вызов обратной связи).
+    assert len(calls) >= 8, f"вызовов gateway: {len(calls)}"
     assert len(signals) == len(calls), f"таймаутов: {len(signals)} на {len(calls)} вызовов"
 
 

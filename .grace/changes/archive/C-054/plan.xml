@@ -1,0 +1,68 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-054>
+    <IntentSummary>Добавить правила доверия к голосам и хранилище обратной связи в общий код,
+      подключить эндпоинты приёма, сводки и очереди и встроить компонент голосования в интерфейс.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/active_learning/app/store.py</Value></MustExist>
+      <MustExist><Value>packages/common/telemetry.py</Value></MustExist>
+      <MustExist><Value>apps/web/composables/useGateway.ts</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>packages/common/learning.py</Value></MustExist>
+      <MustExist><Value>apps/web/components/FeedbackButtons.vue</Value></MustExist>
+      <MustExist><Value>tests/test_c054_feedback.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/><M-DATA/><M-WEB/><V-M-GATEWAY/><V-M-WEB/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>services/gateway/app/</Path>
+      <Path>apps/web/</Path>
+      <Path>data/flywheel/</Path>
+      <Path>tests/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Правила доверия и хранилище голосов</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Голос санитайзится по белому списку: голос и причины из фиксированного набора.</Criterion>
+          <Criterion>Дедупликация по сессии и изображению, ограничение частоты голосов.</Criterion>
+          <Criterion>Доверие только при независимых сессиях, согласии и консенсусе агентов; одиночный голос без влияния.</Criterion>
+          <Criterion>Сводка и очередь содержат провенанс и состояние консенсуса.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c054_feedback.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Эндпоинты и компонент обратной связи</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Приём голоса отвечает, принят ли он как доверенный вклад или ушёл модератору.</Criterion>
+          <Criterion>Сводка и очередь доступны по чтению и отдают провенанс.</Criterion>
+          <Criterion>Событие обратной связи попадает в телеметрию.</Criterion>
+          <Criterion>Компонент встроен в результат скана и карточку вина, доступен и идемпотентен.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-054>
+</GraceChangePlan>

@@ -136,6 +136,19 @@ export function useGateway() {
     }
   }
 
+  // C-054: голос пользователя за результат. Влияние определяет сервер, интерфейс лишь сообщает.
+  async function feedback(payload: { vote: 'up' | 'down'; reason?: string[]; slug?: string;
+    image_sha256?: string }): Promise<Record<string, any>> {
+    try {
+      return await telemetry.time('action', 'feedback_request',
+        async () => await $fetch<Record<string, any>>(`${base}/v1/feedback`, {
+          method: 'POST', body: payload, headers: hdr(), signal: requestTimeout(timeoutMs),
+        }));
+    } catch {
+      throw new Error('feedback failed');
+    }
+  }
+
   async function similar(slug: string): Promise<SimilarItem[]> {
     try {
       const response = await $fetch<{ items: SimilarItem[] }>(`${base}/v1/similar/${encodeURIComponent(slug)}`, { headers: hdr(), signal: requestTimeout(timeoutMs) });
@@ -167,5 +180,6 @@ export function useGateway() {
     }
   }
 
-  return { base, scan, scanExplain, demoMetrics, catalog, wine, similar, sommelier, enotourism };
+  return { base, scan, scanExplain, demoMetrics, catalog, wine, similar, sommelier,
+           enotourism, feedback };
 }

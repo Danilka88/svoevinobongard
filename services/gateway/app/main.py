@@ -50,6 +50,9 @@ from packages.common.catalog import CatalogStore, load_official_v3
 from packages.common.config import settings
 from packages.common.llm.errors import LLMError
 from packages.common.llm.router import LLMRouter
+from packages.common.learning import (append_feedback, evaluate_trust, feedback_summary,
+                                      load_feedback, moderation_queue, rate_limit_exceeded,
+                                      sanitize_feedback, vote_key)
 from packages.common.llm.structured import validation_stats
 from packages.common.logging import log_marker
 from packages.common.telemetry import MAX_EVENTS_PER_BATCH, append_events, telemetry_summary
@@ -548,6 +551,90 @@ async def _lifespan(application):
 
 
 app.router.lifespan_context = _lifespan
+
+_FEEDBACK_PATH = Path("data") / "flywheel" / "feedback.jsonl"
+
+
+def _feedback_path() -> str:
+    """Путь файла голосов пользователей."""
+    return str(_FEEDBACK_PATH)
+
+
+def _agent_consensus(slug: str) -> dict | None:
+    """Консенсус агентов по вину: голоса агентов, а при их отсутствии — сам каталог.
+
+    Каталог здесь выступает источником истины агентов: если вино есть в каталоге, агенты «за»,
+    если slug неизвестен — «против». Так голоса подтверждающих пользователей могут стать
+    доверенными, а голоса за несуществующее вино — нет.
+    """
+    if not slug:
+        return None
+    try:
+        known = slug in get_store().slug_to_record()
+    except Exception:  # noqa: BLE001 - без каталога доверие не подтверждается
+        return None
+    return {"vote": "up" if known else "down", "source": "catalog"}
+
+
+@app.post("/v1/feedback")
+async def _feedback_submit(payload: dict,
+                           x_session_id: str = Header(default="", alias="X-Session-Id")) -> dict:
+    """Принимает голос пользователя и сообщает, доверенный он или ушёл модератору.
+
+    Анти-накрутка: один голос на сессию и изображение, ограничение частоты, влияние только при
+    согласии нескольких независимых сессий и консенсуса агентов. Одиночный голос влияния не даёт.
+    """
+    vote = sanitize_feedback(payload, session_id=x_session_id)
+    if vote is None:
+        raise HTTPException(status_code=400, detail="vote must be up or down")
+    path = _feedback_path()
+    stored = load_feedback(path)
+    if rate_limit_exceeded(stored, vote["session_id"]):
+        log_marker("M-GATEWAY", "feedback", "RATE_LIMITED", session=vote["session_id"])
+        return {"accepted": False, "trusted": False, "applied": False, "sessions": 0,
+                "reason": "rate_limited", "detail": "too many votes per minute"}
+    duplicate = any(vote_key(item) == vote_key(vote) for item in stored)
+    if not duplicate:
+        await run_in_threadpool(append_feedback, [vote], path)
+        stored = load_feedback(path)
+    verdict = evaluate_trust(stored, consensus=_agent_consensus(vote["slug"]),
+                             image_sha256=vote["image_sha256"], slug=vote["slug"])
+    await run_in_threadpool(append_events, [{"type": "action", "action": "feedback", "ok": True,
+                                             "value": vote["vote"],
+                                             "detail": "trusted" if verdict["trusted"] else "queued"}],
+                            vote["session_id"], _telemetry_path())
+    log_marker("M-GATEWAY", "feedback", "ACCEPTED", vote=vote["vote"], trusted=str(verdict["trusted"]),
+               sessions=verdict["sessions"])
+    return {"accepted": True, "duplicate": duplicate, "trusted": verdict["trusted"],
+            "applied": verdict["applied"], "sessions": verdict["sessions"], "up": verdict["up"],
+            "down": verdict["down"], "agreement": verdict["agreement"],
+            "agent_vote": verdict["agent_vote"], "reasons": verdict["reasons"]}
+
+
+@app.get("/v1/learning/summary")
+async def _learning_summary() -> dict:
+    """Агрегаты обратной связи: голоса, причины, доверенные и очередь."""
+    try:
+        votes = await run_in_threadpool(load_feedback, _feedback_path())
+        return feedback_summary(votes, consensus_resolver=_agent_consensus)
+    except Exception as error:  # noqa: BLE001 - сводка best-effort
+        log_marker("M-GATEWAY", "learning", "SUMMARY_FAILED", error=type(error).__name__)
+        return {"votes": 0, "unique_votes": 0, "sessions": 0, "note": "feedback unavailable"}
+
+
+@app.get("/v1/learning/queue")
+async def _learning_queue(limit: int = 50) -> dict:
+    """Очередь на ручную проверку: всё, что не получило доверия, с провенансом."""
+    try:
+        votes = await run_in_threadpool(load_feedback, _feedback_path())
+        items = moderation_queue(votes, limit=max(1, min(int(limit), 200)),
+                                 consensus_resolver=_agent_consensus)
+        return {"items": items, "total": len(items),
+                "note": "модератор условный: раздел помечен визуально, реальная аутентификация не требуется"}
+    except Exception as error:  # noqa: BLE001
+        log_marker("M-GATEWAY", "learning", "QUEUE_FAILED", error=type(error).__name__)
+        return {"items": [], "total": 0}
+
 
 @app.post("/v1/eval/predict")
 async def eval_predict(image: UploadFile = File(...),

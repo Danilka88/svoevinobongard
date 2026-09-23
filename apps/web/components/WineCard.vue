@@ -98,6 +98,7 @@ const wineryHref = computed(() => (props.card.winery_url ? `https://vino-svoe.ru
         Для этой позиции нет официальных данных портала — показаны поля каталога.
       </p>
     </div>
+    <FeedbackButtons :slug="props.slug" />
   </section>
 </template>
 
