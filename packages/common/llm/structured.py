@@ -393,8 +393,25 @@ def _builtin_errors(payload: object, schema: dict, path: str = "") -> list[str]:
         if isinstance(value, dict) and "properties" in spec:
             errors.extend(_builtin_errors(value, spec, f"{path}{key}."))
         if isinstance(value, list) and isinstance(spec.get("items"), dict):
+            item_spec = spec["items"]
             for index, item in enumerate(value):
-                errors.extend(_builtin_errors(item, spec["items"], f"{path}{key}[{index}]."))
+                location = f"{path}{key}[{index}]."
+                if item_spec.get("type") == "object" or "properties" in item_spec:
+                    errors.extend(_builtin_errors(item, item_spec, location))
+                    continue
+                # Элемент простого типа проверяем как значение: требовать от строки объект нельзя.
+                item_types = item_spec.get("type")
+                item_types = [item_types] if isinstance(item_types, str) else list(item_types or [])
+                actual = ("integer" if isinstance(item, int) and not isinstance(item, bool) else
+                          "number" if isinstance(item, float) else
+                          "array" if isinstance(item, list) else
+                          "object" if isinstance(item, dict) else "string")
+                if item_types and actual not in item_types:
+                    errors.append(f"{location}тип {actual}, ожидался {'/'.join(item_types)}")
+                if item_spec.get("enum") is not None and item not in item_spec["enum"]:
+                    errors.append(f"{location}значение вне перечисления")
+                if isinstance(item, str) and "maxLength" in item_spec and len(item) > item_spec["maxLength"]:
+                    errors.append(f"{location}длиннее {item_spec['maxLength']}")
     return errors
 
 

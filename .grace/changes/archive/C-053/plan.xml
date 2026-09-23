@@ -1,0 +1,70 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-053>
+    <IntentSummary>Добавить тестируемый модуль консенсуса, офлайн-скрипт мультиридерной разметки с
+      чекпоинтом и собрать датасет с провенансом и защитой от утечки.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>scripts/eval/label_real_photos.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/augment.py</Value></MustExist>
+      <MustExist><Value>packages/common/llm/structured.py</Value></MustExist>
+      <MustExist><Value>data/samples/real100</Value></MustExist>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-DATA</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>packages/common/annotation.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/multilabel_real100.py</Value></MustExist>
+      <MustExist><Value>tests/test_c053_annotation.py</Value></MustExist>
+      <MustExist><Value>reports/real100_multilabel.jsonl</Value></MustExist>
+      <MustExist><Value>reports/real100_consensus.json</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-DATA</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-EVAL/><M-DATA/><V-M-EVAL/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>data/annotation/</Path>
+      <Path>reports/</Path>
+      <Path>tests/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Модуль консенсуса и политика разбиения</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Взвешенное голосование по полям с настраиваемыми весами и явным признаком ничьей.</Criterion>
+          <Criterion>Скептическая проверка: расхождение, ничья, отсутствие поддержки каталога и конфликт винодельни эскалируются.</Criterion>
+          <Criterion>Политика разбиения исключает утечку: спорное в holdout, производные наследуют разбиение источника.</Criterion>
+          <Criterion>Юнит-тесты на моках проходят без моделей.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c053_annotation.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Прогон на подмножестве, датасет и отчёт</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Прогон с чекпоинтом, возобновлением и тайм-боксом пишет показания ридеров и вердикт судьи.</Criterion>
+          <Criterion>Отчёт содержит число принятых и эскалированных, распределение согласия и время.</Criterion>
+          <Criterion>Датасет содержит провенанс, разбиение и аугментации с указанием источника.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/multilabel_real100.py run --limit 8 --resume</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-053>
+</GraceChangePlan>
