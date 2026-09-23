@@ -302,6 +302,9 @@ make web-build && make web-preview
 ### `POST /v1/scan` — основной сценарий
 
 - **Request:** `multipart/form-data`, поле `image` (JPG/PNG/WebP, ≤ `MAX_UPLOAD_MB`).
+- **Медиа:** картинки отдаются рабочими адресами портала через прокси изображений
+  (`https://api.vino-svoe.ru/v1/img/str-api/{w}/{h}/resize/uploads/<file>.webp`, 600 для карточек и 1200 для крупных).
+  Сырой путь `/uploads/...` отдаёт 404, поэтому проверять загрузку нужно **GET**-запросом: HEAD на прокси отвечает 404.
 - **Response:** `slug`, `confidence`, `f1_top1`, `f1_top5`, `margin`, `path` (`retrieval` / `ocr_fallback` /
   `vlm_fallback` / `text_first`), `latency_ms`, `top5[]`, `not_found`, `confident`, `vlm_used`,
   `ocr_used`, `degraded`, `card`.
@@ -328,6 +331,41 @@ make web-build && make web-preview
 
 - **Response:** `region` (факт, события), `tours[]`, `articles[]` из официального API.
 
+### `GET /v1/wine/{slug}?with_enotourism=true`
+
+- **Response:** полная карточка вина (`card`) с медиа портала; при `with_enotourism=true` — ещё и блок энотуризма.
+- **Status:** `200`; `404` — slug неизвестен.
+
+### `GET /v1/catalog?q=&region=&category=&grape=&winery=&page=&per_page=&sort=`
+
+- **Response:** `total`, `pages`, `items[]`, `facets` (счётчики по региону, категории, сорту и винодельне).
+- Поиск ускорен предвычисленным индексом форм (C-046/C-047): индекс прогревается на старте gateway, поэтому первый запрос каталога укладывается в SLA.
+
+### `GET /v1/demo/metrics`
+
+- **Response:** дашборд метрик (прокси-замеры, реальные фото, порог гейта) для экрана `/metrics`.
+
+### `POST /v1/telemetry` · `GET /v1/telemetry/summary`
+
+- Приём **обезличенных** событий интерфейса (просмотры, действия, ошибки, голосования) и сводка по ним:
+  сессии, маршруты, действия, ошибки, сценарии, задержки p50/p95 и `llm_validation`
+  (`exact` / `repaired` / `retried` / `failed` / `truncated`) — сколько ответов моделей пришлось восстанавливать.
+- Приватность: только белый список полей, никаких изображений и свободного текста; сессия — `X-Session-Id`.
+
+### `POST /v1/feedback`
+
+- **Request:** `{"vote": "up|down", "reason": ["wrong_wine" | "wrong_year" | "wrong_grape" | "bad_photo" | "other"], "slug": "...", "image_sha256": "..."}`.
+- **Response:** `accepted`, `trusted`, `applied`, `sessions`, `up`/`down`, `agreement`, `agent_vote`, `reasons`.
+- **Правило доверия:** одиночный голос **никогда не влияет**. Влияние (`trusted`, `applied`) возможно только при **≥3 независимых сессиях И согласии с консенсусом агентов**; иначе голос уходит в очередь модератора. Действуют дедупликация (сессия + изображение) и ограничение частоты.
+
+### `GET /v1/learning/summary` · `GET /v1/learning/queue` · `GET /v1/learning/dataset` · `POST /v1/learning/decision`
+
+- `summary` — голоса, 👍/👎, распределение причин, доверенные вклады, очередь, решения и пороги правил.
+- `queue` — очередь модератора с провенансом (сессии, голоса, причины, время).
+- `dataset` — счётчики датасета разметки по разбиениям (`train`/`eval`/`holdout`) и решения модератора.
+- `decision` — `{"decision": "accept|reject", "slug" | "image_sha256": "...", "reason": "..."}`; фиксируется провенанс «кто-когда-почему». **Модератор условный (демо): реальной аутентификации нет.**
+- Витрина механизма — страница `/learning` (раздел «Обучение»).
+
 ### `GET /v1/health` · `POST /v1/warmup`
 
 - `health` — живость и список эндпоинтов; `warmup` — прогрев retrieval (SLA первого запроса).
@@ -337,6 +375,10 @@ make web-build && make web-preview
 ## Установка и конфигурация
 
 - Docker + Docker Compose; Python 3.11+ (для ETL/оценки); Node/Bun (UI); PostgreSQL + pgvector — в compose.
+- **Зависимости Python — `requirements.txt`** (Python 3.14): `fastapi`, `uvicorn`, `httpx`, `pydantic`, `PyYAML`,
+  `jsonschema` (валидация структурированного вывода моделей), `numpy`, `rapidfuzz`, `Pillow`,
+  `opencv-python-headless`; тяжёлые `torch`/`transformers` — опционально и закомментированы.
+  Установка: `python -m pip install -r requirements.txt`.
 - Все переменные — в `.env.example` (скопировать в `.env`, **не коммитить**).
 
 Ключевые группы настроек:
@@ -477,5 +519,6 @@ cd apps/web && bun install && bun run dev        # http://127.0.0.1:3000
 # 4. проверка готовности
 make gate                                        # lint + тесты + eval + контракт организатора
 ```
-UI общается только с gateway; экраны: Сканер `/`, Сомелье `/sommelier`, Как это работает `/how`,
-Каталог `/catalog`, Метрики `/metrics`.
+UI общается только с gateway; экраны: Сканер `/`, Обучение `/learning`, Сомелье `/sommelier`,
+Каталог `/catalog`, Метрики `/metrics`, Как это работает `/how` (в меню «Ещё»).
+Навигация: пять основных пунктов в таб-баре и лист «Ещё» на мобильном, полный список на десктопе.

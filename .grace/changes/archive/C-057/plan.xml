@@ -1,0 +1,52 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-057>
+    <IntentSummary>Дописать в README новые эндпоинты и возможности, обновить числа метрик и
+      ограничения по фактам репозитория.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>README.md</Value></MustExist>
+      <MustExist><Value>docs/METRICS.md</Value></MustExist>
+      <MustExist><Value>docs/LIMITATIONS.md</Value></MustExist>
+      <MustExist><Value>services/gateway/app/main.py</Value></MustExist>
+      <MustVerify><Module>M-DATA</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustVerify><Module>M-DATA</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-DATA</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope><M-DATA/><V-M-DATA/></DurableScope>
+    <ObservedWriteScope>
+      <Path>README.md</Path>
+      <Path>docs/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Эндпоинты и возможности в README</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Перечислены все фактические маршруты gateway: скан, контракт организатора, каталог, карточка вина, похожие, сомелье, энотуризм, метрики, телеметрия, фидбек, обучение, здоровье и прогрев.</Criterion>
+          <Criterion>Описаны медиа через прокси портала, правила доверия к голосам и страница обучения.</Criterion>
+          <Criterion>Список экранов интерфейса включает страницу обучения.</Criterion>
+        </AcceptanceCriteria>
+        <Verification><Command>grep -c "/v1/" README.md</Command></Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Метрики и ограничения по фактам</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Числа метрик взяты из отчётов репозитория и совпадают с ними.</Criterion>
+          <Criterion>Неверное число в разделе о ста реальных фото исправлено по отчёту.</Criterion>
+          <Criterion>Ограничения новых возможностей перечислены честно: отсутствие обучающих данных, условный модератор, поведение движка проверок и автоопределение слабой модели.</Criterion>
+        </AcceptanceCriteria>
+        <Verification><Command>grace lint --path .</Command></Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-057>
+</GraceChangePlan>
