@@ -30,14 +30,20 @@
   --accent-soft: #f7e7ea;
   --gold: #b8873a;
   --gold-soft: #f6ecd9;
+  /* C-051: текст на мягких фонах берёт отдельные токены — светлый акцент не проходит AA */
+  --accent-on-soft: #a51b3a;
+  --gold-on-soft: #86632a;
 
   /* статусы */
   --success: #2f7d54;
   --success-soft: #e6f3ec;
+  --success-on-soft: #2e7951;
   --warning: #b06a12;
   --warning-soft: #fbf0dc;
+  --warning-on-soft: #9d5e10;
   --error: #b3261e;
   --error-soft: #fbe9e8;
+  --error-on-soft: #b3261e;
 
   /* геометрия и движение */
   --radius-sm: 10px;
@@ -92,6 +98,12 @@
   --warning-soft: #2e2417;
   --error: #e5736b;
   --error-soft: #2f1d1c;
+  /* C-051: в тёмной теме текст на мягком фоне ярче фона, но темнее чистого акцента */
+  --accent-on-soft: #dc6b82;
+  --gold-on-soft: #d8ab63;
+  --success-on-soft: #58b183;
+  --warning-on-soft: #d79a43;
+  --error-on-soft: #e5736b;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
   --shadow: 0 12px 32px rgba(0, 0, 0, .5);
   --shadow-lg: 0 28px 64px rgba(0, 0, 0, .6);
@@ -184,7 +196,7 @@ a:hover { text-decoration: underline; }
   border-radius: var(--radius-sm); color: var(--text-muted); font-size: .95rem;
 }
 .nav-link:hover { background: var(--surface-2); text-decoration: none; }
-.nav-link.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.nav-link.active { background: var(--accent-soft); color: var(--accent-on-soft); font-weight: 600; }
 .nav-icon { width: 20px; text-align: center; }
 
 @media (min-width: 900px) {
@@ -247,16 +259,16 @@ a:hover { text-decoration: underline; }
 }
 .chip-soft { opacity: .9; }
 .chip-dish { background: var(--gold-soft); border-color: color-mix(in srgb, var(--gold) 35%, var(--border)); font-weight: 600; }
-.chip-accent { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 30%, var(--border)); color: var(--accent); }
+.chip-accent { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 30%, var(--border)); color: var(--accent-on-soft); }
 .badge {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 3px 10px; border-radius: 999px; font-size: .74rem; font-weight: 600;
   background: var(--surface-2); border: 1px solid var(--border);
 }
-.badge-success { background: var(--success-soft); color: var(--success); border-color: color-mix(in srgb, var(--success) 30%, var(--border)); }
-.badge-warning { background: var(--warning-soft); color: var(--warning); border-color: color-mix(in srgb, var(--warning) 30%, var(--border)); }
-.badge-error { background: var(--error-soft); color: var(--error); border-color: color-mix(in srgb, var(--error) 30%, var(--border)); }
-.badge-gold { background: var(--gold-soft); color: var(--gold); border-color: color-mix(in srgb, var(--gold) 35%, var(--border)); }
+.badge-success { background: var(--success-soft); color: var(--success-on-soft); border-color: color-mix(in srgb, var(--success) 30%, var(--border)); }
+.badge-warning { background: var(--warning-soft); color: var(--warning-on-soft); border-color: color-mix(in srgb, var(--warning) 30%, var(--border)); }
+.badge-error { background: var(--error-soft); color: var(--error-on-soft); border-color: color-mix(in srgb, var(--error) 30%, var(--border)); }
+.badge-gold { background: var(--gold-soft); color: var(--gold-on-soft); border-color: color-mix(in srgb, var(--gold) 35%, var(--border)); }
 
 /* ---------- кнопки ---------- */
 .btn, .primary, .secondary, .ghost {

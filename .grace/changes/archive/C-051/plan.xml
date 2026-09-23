@@ -1,0 +1,52 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-051>
+    <IntentSummary>Поднять контраст текста на мягких фонах до уровня AA отдельными токенами и закрыть
+      регрессии автоматическим тестом по файлу стилей.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>apps/web/assets/css/main.css</Value></MustExist>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>tests/test_c051_contrast.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/test_c051_contrast.py -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-WEB</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope><M-WEB/><V-M-WEB/></DurableScope>
+    <ObservedWriteScope>
+      <Path>apps/web/</Path><Path>tests/</Path><Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Токены текста для мягких фонов</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Для акцента, золотого, успеха, предупреждения и ошибки есть отдельные токены текста на мягком фоне.</Criterion>
+          <Criterion>Тёмная тема использует более яркие значения для текста на соф-фоне.</Criterion>
+          <Criterion>Фоны, границы и сами элементы остаются на месте.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c051_contrast.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Автоматическая проверка контраста</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Тест извлекает токены и пары из файла стилей и считает контраст по WCAG.</Criterion>
+          <Criterion>Порог 4.5 для текста и 3.0 для нетекстовых пар; при регрессии тест падает.</Criterion>
+          <Criterion>Печатается таблица пар с числами как отчёт для ревью.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-051>
+</GraceChangePlan>
