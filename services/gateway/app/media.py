@@ -29,6 +29,7 @@ from pathlib import Path
 from rapidfuzz import fuzz
 
 from packages.common.logging import log_marker
+from packages.common.official_api import image_proxy_url
 from packages.common.text_norm import MAX_FORMS, fold, forms
 
 DEFAULT_MEDIA = "data/catalog/catalog_media.json"
@@ -262,7 +263,8 @@ def catalog_search(records: dict, media: dict, *, query: str = "", region: str =
             "category": record.get("category", ""),
             "grape": record.get("grape", ""),
             "year": record.get("year"),
-            "image_url": entry_media.get("image_url", ""),
+            # C-050: рабочий адрес портала, даже если в производном файле остался сырой путь.
+            "image_url": image_proxy_url(entry_media.get("image_url", "")),
             "category_gradient": entry_media.get("category_gradient", ""),
         })
     key = {"name": lambda item: fold(item["name"]),

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-label="Изображение недоступно" width="320" height="320">
+  <rect width="320" height="320" fill="#f3eef1"/>
+  <rect x="16" y="16" width="288" height="288" rx="18" fill="none" stroke="#d8cdd4" stroke-width="2" stroke-dasharray="8 8"/>
+  <path d="M150 96h20v58l34 58a14 14 0 0 1-12 21h-64a14 14 0 0 1-12-21l34-58z" fill="#c9b7c2"/>
+  <rect x="146" y="84" width="28" height="14" rx="4" fill="#c9b7c2"/>
+  <text x="160" y="266" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" fill="#8b7683">нет фото</text>
+</svg>

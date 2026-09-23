@@ -38,7 +38,7 @@ const wineryHref = computed(() => (props.card.winery_url ? `https://vino-svoe.ru
 <template>
   <section class="card" style="padding: 0; overflow: hidden" aria-labelledby="wine-title">
     <div class="wine-hero" :style="heroStyle">
-      <img v-if="bottle" class="wine-hero-bottle" :src="bottle" :alt="props.card.name || props.slug" loading="lazy">
+      <AppImage v-if="bottle" class="wine-hero-bottle" :src="bottle" :alt="props.card.name || props.slug" loading="lazy" />
       <div class="wine-hero-text">
         <h2 id="wine-title" class="wine-title">{{ props.card.name || props.slug }}</h2>
         <p class="wine-sub">
@@ -62,7 +62,7 @@ const wineryHref = computed(() => (props.card.winery_url ? `https://vino-svoe.ru
         <h3 class="block-title">Сорта</h3>
         <ul class="chips">
           <li v-for="grape in grapeChips" :key="grape.name" class="chip chip-grape">
-            <img v-if="grape.url" :src="grape.url" alt="" class="chip-thumb" loading="lazy">
+            <AppImage v-if="grape.url" :src="grape.url" alt="" class="chip-thumb" loading="lazy" />
             {{ grape.name }}
           </li>
         </ul>
@@ -72,7 +72,7 @@ const wineryHref = computed(() => (props.card.winery_url ? `https://vino-svoe.ru
         <h3 class="block-title">К чему подходит</h3>
         <ul class="dish-grid">
           <li v-for="dish in dishes" :key="dish.name" class="dish">
-            <img v-if="dish.url" :src="dish.url" :alt="dish.name" class="dish-photo" loading="lazy">
+            <AppImage v-if="dish.url" :src="dish.url" :alt="dish.name" class="dish-photo" loading="lazy" />
             <span class="dish-name">{{ dish.name }}</span>
           </li>
         </ul>
@@ -82,7 +82,7 @@ const wineryHref = computed(() => (props.card.winery_url ? `https://vino-svoe.ru
       <div v-if="props.card.region_image_url || props.card.region_geojson_url" class="block">
         <h3 class="block-title">Регион</h3>
         <div class="region-card">
-          <img v-if="props.card.region_image_url" :src="props.card.region_image_url" :alt="props.card.region" class="region-photo" loading="lazy">
+          <AppImage v-if="props.card.region_image_url" :src="props.card.region_image_url" :alt="props.card.region" class="region-photo" loading="lazy" />
           <div>
             <p style="margin: 0; font-weight: 600">{{ props.card.region || '—' }}</p>
             <p v-if="props.card.region_geojson_url" class="muted small" style="margin: 4px 0 0">

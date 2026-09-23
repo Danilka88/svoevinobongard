@@ -1,0 +1,72 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-050>
+    <IntentSummary>Отдавать рабочие адреса картинок портала во всех ответах медиа, пересобрать
+      производный файл медиа и заменить сырые изображения единой устойчивой обёрткой.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>packages/common/official_api.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/media.py</Value></MustExist>
+      <MustExist><Value>scripts/catalog/build_media.py</Value></MustExist>
+      <MustExist><Value>data/api_cache/wines</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>apps/web/components/AppImage.vue</Value></MustExist>
+      <MustExist><Value>apps/web/public/media/placeholder.svg</Value></MustExist>
+      <MustExist><Value>tests/test_c050_media.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/>
+      <M-DATA/>
+      <M-WEB/>
+      <V-M-GATEWAY/>
+      <V-M-WEB/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>services/gateway/app/</Path>
+      <Path>scripts/catalog/</Path>
+      <Path>data/catalog/catalog_media.json</Path>
+      <Path>apps/web/</Path>
+      <Path>tests/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Помощник адресов и прокси-адреса в ответах</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Путь портала превращается в прокси-адрес заданного размера; локальные и сторонние адреса не меняются.</Criterion>
+          <Criterion>Данные официального API и медиа каталога отдаются с рабочими адресами.</Criterion>
+          <Criterion>Производный файл медиа пересобран, состав записей совпадает с прежним.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c050_media.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Устойчивая обёртка изображения в интерфейсе</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Все изображения идут через единую обёртку с ленивой загрузкой и без Referer.</Criterion>
+          <Criterion>При ошибке загрузки подставляется запасной ассет, пустого места не остаётся.</Criterion>
+          <Criterion>Сборка интерфейса проходит, существующая разметка и стили не ломаются.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-050>
+</GraceChangePlan>

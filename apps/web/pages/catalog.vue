@@ -183,7 +183,7 @@ onMounted(() => { void load(1); });
         <article v-for="item in items" :key="item.slug" class="card wine-tile" style="margin-top: 0">
           <button class="tile-hit" type="button" :aria-label="`Открыть карточку ${item.name || item.slug}`" @click="openCard(item.slug)">
             <div class="tile-hero" :style="{ background: item.category_gradient || 'linear-gradient(135deg, var(--accent-strong), var(--accent))' }">
-              <img v-if="item.image_url" :src="item.image_url" :alt="item.name" class="tile-photo" loading="lazy">
+              <AppImage v-if="item.image_url" :src="item.image_url" :alt="item.name" class="tile-photo" loading="lazy" />
             </div>
             <div class="tile-body">
               <h2 class="tile-title">{{ item.name || item.slug }}</h2>
@@ -214,7 +214,7 @@ onMounted(() => { void load(1); });
         <div v-if="sheetLoading" class="stack"><div class="skeleton skeleton-line" style="width: 50%" /><div class="skeleton" style="height: 140px" /></div>
         <template v-else-if="sheetCard">
           <div class="sheet-hero" :style="{ background: sheetCard.category_gradient || 'linear-gradient(135deg, var(--accent-strong), var(--accent))' }">
-            <img v-if="sheetCard.image_url" :src="sheetCard.image_url" :alt="sheetCard.name" class="sheet-photo">
+            <AppImage v-if="sheetCard.image_url" :src="sheetCard.image_url" :alt="sheetCard.name" class="sheet-photo" />
             <div>
               <h2 class="wine-title" style="color: #fff; margin: 0 0 4px">{{ sheetCard.name }}</h2>
               <p style="color: rgba(255,255,255,.9); margin: 0">{{ sheetCard.winery }}<template v-if="sheetCard.region"> · {{ sheetCard.region }}</template></p>
@@ -233,7 +233,7 @@ onMounted(() => { void load(1); });
             <h3 class="block-title">Сорта</h3>
             <ul class="chips">
               <li v-for="grapeImage in sheetCard.grape_images" :key="grapeImage.name" class="chip">
-                <img v-if="grapeImage.url" :src="grapeImage.url" alt="" class="mini"> {{ grapeImage.name }}
+                <AppImage v-if="grapeImage.url" :src="grapeImage.url" alt="" class="mini" /> {{ grapeImage.name }}
               </li>
             </ul>
           </div>
@@ -242,7 +242,7 @@ onMounted(() => { void load(1); });
             <h3 class="block-title">К чему подходит</h3>
             <ul class="chips">
               <li v-for="dish in sheetCard.dish_images" :key="dish.name" class="chip chip-dish">
-                <img v-if="dish.url" :src="dish.url" alt="" class="mini"> {{ dish.name }}
+                <AppImage v-if="dish.url" :src="dish.url" alt="" class="mini" /> {{ dish.name }}
               </li>
             </ul>
           </div>
@@ -250,7 +250,7 @@ onMounted(() => { void load(1); });
           <div v-if="sheetCard.region_image_url" class="block">
             <h3 class="block-title">Регион</h3>
             <div class="row">
-              <img :src="sheetCard.region_image_url" :alt="sheetCard.region" class="region-mini">
+              <AppImage :src="sheetCard.region_image_url" :alt="sheetCard.region" class="region-mini" />
               <div>
                 <p style="margin: 0; font-weight: 600">{{ sheetCard.region }}</p>
                 <p v-if="sheetEnotourism?.region?.fact" class="muted small" style="margin: 4px 0 0">{{ sheetEnotourism.region.fact }}</p>

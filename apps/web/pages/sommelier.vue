@@ -186,7 +186,7 @@ onMounted(() => { taste.load(); if (baseSlug.value) void submit(); });
         </p>
         <ul class="rec-grid">
           <li v-for="item in result.recommendations" :key="item.slug" class="rec">
-            <img v-if="item.image_url" :src="item.image_url" :alt="item.name" class="rec-photo" loading="lazy">
+            <AppImage v-if="item.image_url" :src="item.image_url" :alt="item.name" class="rec-photo" loading="lazy" />
             <div class="rec-body">
               <h3 class="rec-title">{{ item.name || item.slug }}</h3>
               <p class="muted small" style="margin: 2px 0 6px">{{ item.winery }}</p>
@@ -199,7 +199,7 @@ onMounted(() => { taste.load(); if (baseSlug.value) void submit(); });
               </ul>
               <ul v-if="item.pairing_cards?.length" class="chips" style="margin-top: 8px">
                 <li v-for="dish in item.pairing_cards" :key="dish.name" class="chip chip-dish">
-                  <img v-if="dish.url" :src="dish.url" alt="" class="dish-thumb">{{ dish.name }}
+                  <AppImage v-if="dish.url" :src="dish.url" alt="" class="dish-thumb" />{{ dish.name }}
                 </li>
               </ul>
               <div class="row" style="margin-top: 10px">
@@ -218,7 +218,7 @@ onMounted(() => { taste.load(); if (baseSlug.value) void submit(); });
         <p class="muted small">Другие варианты под те же условия: другой регион или цена.</p>
         <ul class="rec-grid">
           <li v-for="alt in result.alternatives" :key="alt.slug" class="rec rec-compact">
-            <img v-if="alt.image_url" :src="alt.image_url" :alt="alt.name" class="rec-photo" loading="lazy">
+            <AppImage v-if="alt.image_url" :src="alt.image_url" :alt="alt.name" class="rec-photo" loading="lazy" />
             <div class="rec-body">
               <p class="rec-title">{{ alt.name || alt.slug }}</p>
               <p class="muted small" style="margin: 2px 0 0">{{ alt.winery }}</p>

@@ -49,7 +49,7 @@ onBeforeUnmount(() => { if (preview.value) URL.revokeObjectURL(preview.value); }
       @dragleave.prevent="dragging = false"
       @drop.prevent="onDrop"
     >
-      <img v-if="preview" :src="preview" alt="Выбранное фото" class="dropzone-preview">
+      <AppImage v-if="preview" :src="preview" alt="Выбранное фото" class="dropzone-preview" />
       <div v-else class="dropzone-placeholder">
         <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
           <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M4 12h16" />

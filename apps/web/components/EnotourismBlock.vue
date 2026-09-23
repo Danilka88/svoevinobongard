@@ -42,7 +42,7 @@ const hasContent = computed(() => Boolean(fact.value) || tours.value.length > 0 
 
     <template v-else>
       <div v-if="region?.image_url || fact" class="region-hero">
-        <img v-if="region?.image_url" :src="region.image_url" :alt="region?.name || ''" class="region-hero-photo" loading="lazy">
+        <AppImage v-if="region?.image_url" :src="region.image_url" :alt="region?.name || ''" class="region-hero-photo" loading="lazy" />
         <div>
           <p class="region-hero-name">{{ region?.name }}</p>
           <p v-if="fact" class="muted small" style="margin: 4px 0 0">{{ fact }}</p>
@@ -58,7 +58,7 @@ const hasContent = computed(() => Boolean(fact.value) || tours.value.length > 0 
         <h3 class="block-title">Винные туры</h3>
         <ul class="tour-grid">
           <li v-for="tour in tours" :key="tour.slug" class="tour">
-            <img v-if="tour.image_url" :src="tour.image_url" :alt="tour.title" class="tour-photo" loading="lazy">
+            <AppImage v-if="tour.image_url" :src="tour.image_url" :alt="tour.title" class="tour-photo" loading="lazy" />
             <div>
               <a class="tour-title" :href="tour.url" target="_blank" rel="noopener">{{ tour.title || tour.slug }}</a>
               <p v-if="tour.address" class="muted small" style="margin: 4px 0 0">{{ tour.address }}</p>

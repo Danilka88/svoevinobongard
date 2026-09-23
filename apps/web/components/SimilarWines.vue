@@ -22,7 +22,7 @@ const emit = defineEmits<{ (event: 'pick', slug: string): void }>();
 
     <ul v-else-if="props.items?.length" class="similar-grid">
       <li v-for="item in props.items" :key="item.slug" class="similar">
-        <img v-if="item.image_url" :src="item.image_url" :alt="item.name" class="similar-photo" loading="lazy">
+        <AppImage v-if="item.image_url" :src="item.image_url" :alt="item.name" class="similar-photo" loading="lazy" />
         <div v-else class="similar-photo similar-photo-empty" aria-hidden="true" />
         <p class="similar-name">{{ item.name || item.slug }}</p>
         <p class="muted small" style="margin: 2px 0 0">{{ item.winery }}<template v-if="item.region"> · {{ item.region }}</template></p>

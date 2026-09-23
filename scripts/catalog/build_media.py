@@ -43,6 +43,9 @@ DEFAULT_OUT = "data/catalog/catalog_media.json"
 __all__ = ["DEFAULT_CACHE", "DEFAULT_OUT", "DEFAULT_REGIONS", "build_media", "build_record", "main", "parse_args"]
 
 
+from packages.common.official_api import image_proxy_url
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Разбирает аргументы CLI."""
     parser = argparse.ArgumentParser(description="Медиа-обогащение каталога из кэша API")
@@ -57,8 +60,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def _image_url(node: object) -> str:
     """Абсолютный URL изображения из узла API вида {"url": ...}."""
     if isinstance(node, dict):
-        return absolute_url(str(node.get("url") or ""))
-    return ""
+        return image_proxy_url(absolute_url(str(node.get("url") or "")))
+    # C-050: в производном файле храним рабочий прокси-адрес портала.
+    return image_proxy_url("")
 
 
 def build_record(detail: dict, region_meta: dict) -> dict:

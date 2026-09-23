@@ -13,6 +13,10 @@
 # cached_json - чтение из дискового кэша или загрузка с записью
 # fetch_similar - официальные похожие вина; None при недоступности API
 # absolute_url - абсолютный URL для относительных путей API
+# image_proxy_url - рабочий адрес картинки портала через прокси изображений
+# proxy_images_in - рекурсивная замена адресов картинок в данных API
+# MEDIA_SIZE_CARD - размер картинки карточки по умолчанию
+# MEDIA_SIZE_HERO - размер крупной картинки по умолчанию
 # END_MODULE_MAP
 """Клиент официального API.
 
@@ -30,12 +34,16 @@ from pathlib import Path
 
 from packages.common.logging import log_marker
 
+import os
+from urllib.parse import urlsplit
+
 API_ROOT = "https://api.vino-svoe.ru/v1"
 _ORIGIN = API_ROOT.rsplit("/v1", 1)[0]
 _USER_AGENT = "svoe-vino-scanner/1.0 (+offline enrichment)"
 SIMILAR_SIZE_MAX = 24  # проверено: size > 24 API отвергает с 400
 
-__all__ = ["API_ROOT", "SIMILAR_SIZE_MAX", "fetch_json", "cached_json", "fetch_similar", "absolute_url"]
+__all__ = ["API_ROOT", "SIMILAR_SIZE_MAX", "fetch_json", "cached_json", "fetch_similar", "absolute_url",
+           "image_proxy_url", "proxy_images_in", "MEDIA_SIZE_CARD", "MEDIA_SIZE_HERO"]
 
 
 def fetch_json(url: str, timeout: float = 25.0, retries: int = 3, pause: float = 0.15) -> object:
@@ -110,6 +118,54 @@ def fetch_similar(slug: str, size: int = 6, cache_dir: str | Path = "data/api_ca
                    error=str(payload)[:120])
         return None
     return [item for item in payload if isinstance(item, dict)]
+
+
+# C-050: сырые адреса /uploads/... отдают 404, рабочий путь — прокси изображений портала.
+PROXY_TEMPLATE = "https://api.vino-svoe.ru/v1/img/str-api/{size}/{size}/resize/uploads/{name}"
+PORTAL_HOSTS = ("api.vino-svoe.ru", "vino-svoe.ru")
+MEDIA_SIZE_CARD = int(os.environ.get("MEDIA_SIZE_CARD", "600"))
+MEDIA_SIZE_HERO = int(os.environ.get("MEDIA_SIZE_HERO", "1200"))
+
+
+def image_proxy_url(path_or_url: str | None, size: int = MEDIA_SIZE_CARD) -> str:
+    """Возвращает рабочий адрес картинки портала через прокси изображений.
+
+    Принимает как относительный путь портала (``/uploads/x.webp``), так и полный адрес того же
+    домена. Локальные адреса (``/media/...``) и адреса других доменов возвращаются без изменений:
+    переписывать чужие ссылки нельзя.
+    """
+    raw = str(path_or_url or "").strip()
+    if not raw:
+        return ""
+    name = ""
+    if raw.startswith("/uploads/"):
+        name = raw[len("/uploads/"):]
+    elif raw.startswith("http"):
+        parsed = urlsplit(raw)
+        if parsed.netloc not in PORTAL_HOSTS or not parsed.path.startswith("/uploads/"):
+            return raw
+        name = parsed.path[len("/uploads/"):]
+    else:
+        return raw
+    if not name:
+        return raw
+    return PROXY_TEMPLATE.format(size=int(size), name=name)
+
+
+def proxy_images_in(node: object, size: int = MEDIA_SIZE_CARD) -> object:
+    """Рекурсивно заменяет адреса картинок портала на прокси-адреса в структуре данных.
+
+    Применяется к данным официального API: адреса вида ``/uploads/...`` встречаются на разной
+    глубине (бутылка, сорта, блюда, регион, туры, статьи), поэтому обход идёт по всей структуре,
+    а чужие и локальные адреса остаются как есть.
+    """
+    if isinstance(node, dict):
+        return {key: proxy_images_in(value, size) for key, value in node.items()}
+    if isinstance(node, list):
+        return [proxy_images_in(item, size) for item in node]
+    if isinstance(node, str) and "/uploads/" in node:
+        return image_proxy_url(node, size)
+    return node
 
 
 def absolute_url(path: str | None) -> str:

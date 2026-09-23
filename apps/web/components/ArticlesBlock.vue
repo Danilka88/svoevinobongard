@@ -22,7 +22,7 @@ function when(iso: string) {
 
     <ul class="story-grid">
       <li v-for="article in visible" :key="article.slug" class="story">
-        <img v-if="article.image_url" :src="article.image_url" alt="" class="story-photo" loading="lazy">
+        <AppImage v-if="article.image_url" :src="article.image_url" alt="" class="story-photo" loading="lazy" />
         <div>
           <a class="story-title" :href="article.url" target="_blank" rel="noopener">{{ article.title }}</a>
           <p class="story-meta">
