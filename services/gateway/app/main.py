@@ -34,9 +34,12 @@ from __future__ import annotations
 
 import io
 import os
+import time
 
 import json
 from pathlib import Path
+
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -62,7 +65,7 @@ from packages.contracts.schemas import (
 from services.gateway.app.clients import ServiceClients
 from services.gateway.app.enotourism import enotourism_for, load_collections
 from services.gateway.app.media import (catalog_search, demo_metrics, load_media,
-                                        media_for)
+                                        media_for, warm_catalog_index)
 from services.gateway.app.pipeline import build_card, build_trace, run_scan
 from services.gateway.app.recommend import (
     build_sommelier_prompt,
@@ -512,6 +515,35 @@ async def _telemetry_aggregate() -> dict:
         log_marker("M-GATEWAY", "telemetry", "SUMMARY_FAILED", error=type(error).__name__)
         return {"events": 0, "sessions": 0, "note": "telemetry unavailable"}
 
+
+async def _warm_catalog_on_startup() -> None:
+    """Прогревает индекс форм каталога при старте gateway (C-047).
+
+    Прогрев не должен мешать запуску: любая ошибка только логируется, а время построения
+    записывается в маркер, чтобы было видно стоимость на реальном каталоге.
+    """
+    started = time.perf_counter()
+    try:
+        records = get_store().slug_to_record()
+        count = await run_in_threadpool(warm_catalog_index, records)
+        log_marker("M-GATEWAY", "startup", "CATALOG_WARMED", slugs=count,
+                   ms=round((time.perf_counter() - started) * 1000.0, 1))
+    except Exception as error:  # noqa: BLE001 - прогрев не обязателен для работы gateway
+        log_marker("M-GATEWAY", "startup", "CATALOG_WARM_FAILED", error=type(error).__name__,
+                   ms=round((time.perf_counter() - started) * 1000.0, 1))
+
+
+@asynccontextmanager
+async def _lifespan(application):
+    """Жизненный цикл приложения: прогревает индекс форм каталога до приёма запросов (C-047).
+
+    Прогрев обёрнут в защиту, поэтому сбой каталога не мешает сервису подняться.
+    """
+    await _warm_catalog_on_startup()
+    yield
+
+
+app.router.lifespan_context = _lifespan
 
 @app.post("/v1/eval/predict")
 async def eval_predict(image: UploadFile = File(...),

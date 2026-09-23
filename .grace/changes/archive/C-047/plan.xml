@@ -1,0 +1,64 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-047>
+    <IntentSummary>Сделать кэш форм каталога пригодным к переиспользованию между запусками и прогреть
+      индекс на старте gateway, чтобы первый запрос каталога был тёплым.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/gateway/app/media.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/main.py</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog.jsonl</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-DATA</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>tests/test_c047_warmup.py</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog_forms.json</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/>
+      <M-DATA/>
+      <V-M-GATEWAY/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>services/gateway/app/</Path>
+      <Path>data/catalog/catalog_forms.json</Path>
+      <Path>tests/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Подпись кэша и переиспользование форм</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Подпись зависит от содержимого каталога и не зависит от порядка записей.</Criterion>
+          <Criterion>Изменение каталога делает кэш недействительным, неизменный каталог переиспользуется.</Criterion>
+          <Criterion>Наборы записей меньше порога не записываются в кэш и не затирают формы боевого каталога.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c047_warmup.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Прогрев индекса на старте gateway</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>На старте строится индекс форм каталога, время построения пишется в лог маркером.</Criterion>
+          <Criterion>Ошибка прогрева не мешает запуску сервиса.</Criterion>
+          <Criterion>Первый поиск каталога после прогрева укладывается в секунду и даёт прежний отбор.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>curl -s -o /dev/null -w "%{time_total}" "http://127.0.0.1:8080/v1/catalog?q=пино%20нуар&amp;per_page=100"</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-047>
+</GraceChangePlan>

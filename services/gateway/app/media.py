@@ -22,6 +22,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -121,7 +122,10 @@ _INDEX_CACHE: dict[int, tuple[int, dict[str, dict]]] = {}
 # Формы каталога постоянны, а их расчёт стоит ~3.6 мс на запись. Дисковый кэш убирает эту работу
 # из холодного запроса: файл пересобирается только при изменении каталога.
 _FORMS_CACHE_PATH = Path("data/catalog/catalog_forms.json")
-_FORMS_CACHE_VERSION = 1
+_FORMS_CACHE_VERSION = 2
+# Мелкие наборы (например синтетические в тестах) не пишутся в кэш: иначе они затирали бы формы
+# боевого каталога, и следующий старт пересчитывал бы всё заново.
+_FORMS_CACHE_MIN_RECORDS = 500
 
 
 def _prepared_similarity(query_forms: list[str], record_forms: list[str]) -> float:
@@ -142,9 +146,29 @@ def _prepared_similarity(query_forms: list[str], record_forms: list[str]) -> flo
 
 
 def _forms_signature(records: dict) -> str:
-    """Подпись каталога: кэш форм действителен, пока состав записей не изменился."""
-    slugs = list(records)
-    return f"{_FORMS_CACHE_VERSION}:{len(slugs)}:{slugs[0] if slugs else ''}:{slugs[-1] if slugs else ''}"
+    """Подпись каталога: кэш форм действителен, пока состав и содержимое записей не изменились.
+
+    C-047: подпись считается по содержимому (отсортированные slug и длины значимых полей), а не по
+    порядку записей. Прежняя подпись опиралась на первый и последний slug и не переживала ни смену
+    порядка, ни подмену каталога: кэш, записанный на синтетическом наборе, заставлял боевой каталог
+    пересчитывать формы заново.
+    """
+    digest = hashlib.md5()  # noqa: S324 - не криптография, только отпечаток состава каталога
+    for slug in sorted(records):
+        record = records[slug]
+        lengths = "|".join(str(len(str(record.get(field) or "")))
+                           for field in ("name", "winery", "region", "category", "grape"))
+        digest.update(f"{slug}:{lengths}\n".encode())
+    return f"{_FORMS_CACHE_VERSION}:{len(records)}:{digest.hexdigest()[:16]}"
+
+
+def warm_catalog_index(records: dict) -> int:
+    """Готовит индекс форм каталога заранее (C-047).
+
+    Вызывается на старте gateway: первый пользовательский запрос каталога приходит на тёплый индекс
+    вместо ожидания построения форм. Возвращает число записей в индексе.
+    """
+    return len(_catalog_index(records))
 
 
 def _load_forms_cache(signature: str) -> dict[str, list[str]] | None:
@@ -184,7 +208,8 @@ def _catalog_index(records: dict) -> dict[str, dict]:
         forms_by_slug = {slug: forms(fold(" ".join(str(record.get(field) or "") for field in
                                                    ("name", "winery", "region", "category", "grape"))))
                          for slug, record in records.items()}
-        _save_forms_cache(signature, forms_by_slug)
+        if len(forms_by_slug) >= _FORMS_CACHE_MIN_RECORDS:
+            _save_forms_cache(signature, forms_by_slug)
     index: dict[str, dict] = {}
     for slug, record in records.items():
         index[slug] = {

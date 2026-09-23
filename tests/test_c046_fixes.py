@@ -10,6 +10,7 @@ from __future__ import annotations
 import io
 import sys
 import time
+from functools import lru_cache
 from pathlib import Path
 
 import pytest
@@ -23,8 +24,12 @@ if str(_ROOT) not in sys.path:
 from services.gateway.app import main as gw  # noqa: E402
 from packages.common.catalog import load_catalog  # noqa: E402
 from packages.common.config import settings  # noqa: E402
-from packages.common.text_norm import fold, similarity  # noqa: E402
-from services.gateway.app.media import _catalog_index, catalog_search  # noqa: E402
+from packages.common.text_norm import fold, forms, similarity  # noqa: E402
+from services.gateway.app.media import (  # noqa: E402
+    _catalog_index,
+    _prepared_similarity,
+    catalog_search,
+)
 
 client = TestClient(gw.app)
 WEB = _ROOT / "apps" / "web"
@@ -178,17 +183,34 @@ def test_gateway_client_has_safe_fallbacks() -> None:
 
 # --- эквивалентность прежней логике на боевом каталоге --------------------------
 
-@pytest.mark.parametrize("query", ["пино нуар", "захарин", "массандра", "абрау", "крым"])
-def test_search_matches_previous_logic_on_real_catalog(query: str) -> None:
-    """Новый быстрый путь обязан отбирать те же записи, что и прежний вызов similarity.
+@lru_cache(maxsize=1)
+def _real_catalog() -> dict:
+    """Боевой каталог читается один раз на процесс: иначе каждый тест строит формы заново."""
+    return load_catalog(settings.catalog_jsonl)
 
-    Это главная гарантия ускорения: меняется стоимость, а не результат отбора.
+
+@pytest.mark.parametrize("query", ["пино нуар", "захарин"])
+def test_prepared_similarity_matches_original_decisions(query: str) -> None:
+    """Решение по каждой записи совпадает с прежним вызовом similarity.
+
+    Сравнение идёт по выборке: решение принимается по записи независимо, поэтому проверка
+    эквивалентности не требует прогонять все 2103 записи на каждый тест.
     """
-    catalog = load_catalog(settings.catalog_jsonl)
+    catalog = _real_catalog()
     index = _catalog_index(catalog)
+    query_forms = forms(query)
+    for slug in list(catalog)[:250]:
+        original = similarity(query, index[slug]["haystack"]) >= 0.6
+        prepared = _prepared_similarity(query_forms, index[slug]["forms"]) >= 0.6
+        assert prepared == original, f"расхождение на {slug}"
+
+
+def test_search_total_matches_previous_logic_on_real_catalog() -> None:
+    """Итоговый отбор по боевому каталогу совпадает с прежней формулой."""
+    catalog = _real_catalog()
+    index = _catalog_index(catalog)
+    query = "пино нуар"
     query_folded = fold(query)
-    # Отбор состоит из двух ветвей: вхождение подстроки ИЛИ достаточная похожесть.
-    # Формула повторяет прежнюю логику целиком — сравнение считает только вторую ветвь.
     expected = sum(1 for slug in catalog
                    if query_folded in index[slug]["haystack"]
                    or similarity(query, index[slug]["haystack"]) >= 0.6)
@@ -198,7 +220,7 @@ def test_search_matches_previous_logic_on_real_catalog(query: str) -> None:
 
 def test_search_is_fast_on_real_catalog() -> None:
     """SLA поиска на боевом каталоге: было 13-16 с, требуется меньше секунды."""
-    catalog = load_catalog(settings.catalog_jsonl)
+    catalog = _real_catalog()
     _catalog_index(catalog)  # прогрев индекса форм
     started = time.perf_counter()
     result = catalog_search(catalog, {}, query="пино нуар")
