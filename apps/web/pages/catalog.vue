@@ -24,6 +24,8 @@ const page = ref(1);
 const loading = ref(false);
 const loadingMore = ref(false);
 const error = ref('');
+// C-048/REG-001: отличаем сбой связи от пустой выдачи.
+const unavailable = ref(false);
 
 const sheetOpen = ref(false);
 const sheetLoading = ref(false);
@@ -38,19 +40,27 @@ async function load(nextPage = 1) {
   const more = nextPage > 1;
   more ? (loadingMore.value = true) : (loading.value = true);
   error.value = '';
+  if (!more) unavailable.value = false;
   try {
     const response = await gateway.catalog({
       q: query.value, region: region.value, category: category.value,
       grape: grape.value, winery: winery.value, sort: sort.value,
       page: nextPage, per_page: PER_PAGE,
     });
+    if (response.unavailable) {
+      unavailable.value = true;
+      error.value = 'Сервис недоступен: каталог не загрузился.';
+      if (!more) items.value = [];
+      return;
+    }
     items.value = more ? [...items.value, ...(response.items || [])] : (response.items || []);
     facets.value = response.facets || {};
     total.value = response.total || 0;
     pages.value = response.pages || 1;
     page.value = response.page || nextPage;
   } catch {
-    error.value = 'Не удалось загрузить каталог: проверьте, что gateway запущен.';
+    unavailable.value = true;
+    error.value = 'Сервис недоступен: каталог не загрузился.';
     if (!more) items.value = [];
   } finally {
     loading.value = false;
@@ -63,6 +73,10 @@ watch([query, region, category, grape, winery, sort], () => {
   if (timer) clearTimeout(timer);
   timer = setTimeout(() => void load(1), 250);
 });
+
+function retry() {
+  void load(1);
+}
 
 function reset() {
   query.value = '';
@@ -107,6 +121,7 @@ onMounted(() => { void load(1); });
       <p>2103 позиции с официальными данными портала: регион, винодельня, сорт, категория и изображение.</p>
     </div>
 
+    <ServiceUnavailable v-if="unavailable" :detail="error" @retry="retry" />
     <div v-if="error" class="toast-stack" role="status" aria-live="polite"><div class="toast">{{ error }}</div></div>
 
     <!-- Поиск и фильтры -->
@@ -183,7 +198,7 @@ onMounted(() => { void load(1); });
         </article>
       </section>
 
-      <section v-else class="card placeholder">Ничего не найдено. Попробуйте изменить запрос или сбросить фильтры.</section>
+      <section v-else-if="!unavailable" class="card placeholder">Ничего не найдено. Попробуйте изменить запрос или сбросить фильтры.</section>
 
       <div v-if="canLoadMore" class="row" style="justify-content: center; margin-top: 16px">
         <button class="secondary" type="button" :disabled="loadingMore" @click="load(page + 1)">

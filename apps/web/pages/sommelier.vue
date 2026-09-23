@@ -14,6 +14,8 @@ const baseSlug = computed(() => String(route.query.slug || ''));
 const step = ref(0);
 const busy = ref(false);
 const error = ref('');
+// C-048/REG-001: «сервис недоступен» — отдельное состояние, а не «подходящего не нашлось».
+const unavailable = ref(false);
 const result = ref<SommelierResponse | null>(null);
 
 const dishes = [
@@ -52,12 +54,18 @@ const canSubmit = computed(() => Boolean(answers.dish));
 async function submit() {
   busy.value = true;
   error.value = '';
+  unavailable.value = false;
   try {
     const payload: Record<string, string> = { ...answers };
     if (regionInput.value.trim()) payload.region = regionInput.value.trim();
     result.value = await sommelier(baseSlug.value, payload);
+    if (result.value?.source === 'unavailable') {
+      unavailable.value = true;
+      error.value = 'Сервис недоступен: подбор не получен.';
+    }
   } catch (e) {
-    error.value = 'Не удалось получить подбор: проверьте, что gateway запущен.';
+    unavailable.value = true;
+    error.value = 'Сервис недоступен: подбор не получен.';
     result.value = null;
   } finally {
     busy.value = false;
@@ -82,6 +90,8 @@ onMounted(() => { taste.load(); if (baseSlug.value) void submit(); });
         <template v-else>Подбор с нуля: расскажите про стол, повод и предпочтения.</template>
       </p>
     </div>
+
+    <ServiceUnavailable v-if="unavailable" :detail="error" action="Попробовать снова" @retry="submit" />
 
     <div class="toast-stack" role="status" aria-live="polite" v-if="error">
       <div class="toast">{{ error }}</div>

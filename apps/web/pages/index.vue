@@ -6,6 +6,9 @@ const telemetry = useTelemetry();
 
 const busy = ref(false);
 const error = ref('');
+// C-048/REG-001: сбой связи показываем как недоступность сервиса, а не как отказ распознавания.
+const unavailable = ref(false);
+let lastFile: File | null = null;
 const current = ref<ScanResponse | null>(null);
 const similarItems = ref<SimilarItem[]>([]);
 const similarLoading = ref(false);
@@ -13,6 +16,8 @@ const similarLoading = ref(false);
 async function onFile(file: File) {
   busy.value = true;
   error.value = '';
+  unavailable.value = false;
+  lastFile = file;
   // Размер снимка в килобайтах: имя файла не отправляем, это пользовательские данные.
   telemetry.track('scan', { action: 'scan_start', value: Math.round(file.size / 1024) });
   current.value = null;
@@ -30,10 +35,15 @@ async function onFile(file: File) {
       await loadSimilar(result.slug);
     }
   } catch (err) {
+    unavailable.value = true;
     error.value = 'Сервис недоступен. Проверьте, что gateway запущен, и попробуйте снова.';
   } finally {
     busy.value = false;
   }
+}
+
+function retry() {
+  if (lastFile) void onFile(lastFile);
 }
 
 async function loadSimilar(slug: string) {
@@ -68,6 +78,8 @@ async function pick(slug: string) {
 
     <div class="page">
       <ScanUploader :busy="busy" @selected="onFile" />
+
+      <ServiceUnavailable v-if="unavailable" :detail="error" action="Повторить снимок" @retry="retry" />
 
       <div v-if="error" class="toast-stack" role="status" aria-live="polite">
         <div class="toast">{{ error }}</div>

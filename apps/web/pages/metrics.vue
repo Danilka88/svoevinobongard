@@ -6,6 +6,8 @@ useHead({ title: 'Метрики — Своё Вино' });
 const { demoMetrics } = useGateway();
 const loading = ref(true);
 const error = ref('');
+// C-048/REG-001: сбой связи отличается от пустого результата.
+const unavailable = ref(false);
 const data = ref<Record<string, any> | null>(null);
 
 const dashboard = computed(() => data.value?.dashboard || {});
@@ -22,6 +24,10 @@ function ms(value: unknown) {
 function bar(value: unknown) {
   const number = Number(value);
   return `${Math.max(2, Math.min(100, Math.round((Number.isFinite(number) ? number : 0) * 100)))}%`;
+}
+
+function retry() {
+  void load();
 }
 
 const gateOk = computed(() => {
@@ -46,10 +52,18 @@ const notes = [
 async function load() {
   loading.value = true;
   error.value = '';
+  unavailable.value = false;
   try {
     data.value = await demoMetrics();
+    // Заглушка клиента помечает сбой связи: показываем недоступность, а не «нет данных».
+    if ((data.value as Record<string, any>)?.unavailable) {
+      unavailable.value = true;
+      error.value = 'Сервис недоступен: метрики не загружены.';
+      data.value = null;
+    }
   } catch {
-    error.value = 'Gateway недоступен: метрики не загружены.';
+    unavailable.value = true;
+    error.value = 'Сервис недоступен: метрики не загружены.';
     data.value = null;
   } finally {
     loading.value = false;
@@ -65,6 +79,8 @@ onMounted(load);
       <h1>Метрики качества</h1>
       <p>Честные числа проекта: синтетический прокси, реальные полевые фото и границы применимости.</p>
     </div>
+
+    <ServiceUnavailable v-if="unavailable" :detail="error" @retry="retry" />
 
     <div v-if="error" class="toast-stack" role="status" aria-live="polite">
       <div class="toast">{{ error }}</div>

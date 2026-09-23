@@ -62,7 +62,12 @@ function flush(beacon = false) {
   const body = JSON.stringify({ session_id: ensureSessionId(), events });
   try {
     if (beacon && navigator.sendBeacon) {
-      navigator.sendBeacon(endpoint(), new Blob([body], { type: 'application/json' }));
+      // sendBeacon не отклоняется, но оборачиваем: телеметрия не должна создавать отказ промиса.
+      try {
+        navigator.sendBeacon(endpoint(), new Blob([body], { type: 'application/json' }));
+      } catch {
+        /* телеметрия best-effort */
+      }
       return;
     }
     void fetch(endpoint(), {

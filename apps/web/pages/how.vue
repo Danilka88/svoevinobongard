@@ -64,14 +64,30 @@ const limits = [
   'Часть промахов на реальных фото — следствие слабой разметки (имена файлов транслитерированы), то есть числа занижены.',
 ];
 
+const unavailable = ref(false);
+let lastFile: File | null = null;
+
+function retry() {
+  if (lastFile) void onFile(lastFile);
+}
+
 async function onFile(file: File) {
   busy.value = true;
   error.value = '';
+  unavailable.value = false;
   result.value = null;
+  lastFile = file;
   try {
     result.value = await scanExplain(file);
+    // C-048/BUG-006: вспомогательный вызов не бросает исключение, сбой приходит пометкой.
+    if ((result.value as Record<string, any>)?.unavailable) {
+      unavailable.value = true;
+      error.value = 'Сервис недоступен: трейс не получен.';
+      result.value = null;
+    }
   } catch {
-    error.value = 'Не удалось получить трейс: проверьте, что gateway и сервисы запущены.';
+    unavailable.value = true;
+    error.value = 'Сервис недоступен: трейс не получен.';
   } finally {
     busy.value = false;
   }
@@ -86,6 +102,8 @@ async function onFile(file: File) {
     </div>
 
     <ScanUploader :busy="busy" @selected="onFile" />
+
+    <ServiceUnavailable v-if="unavailable" :detail="error" action="Повторить снимок" @retry="retry" />
 
     <div v-if="error" class="toast-stack" role="status" aria-live="polite"><div class="toast">{{ error }}</div></div>
 

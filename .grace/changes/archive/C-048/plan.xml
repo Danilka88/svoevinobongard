@@ -1,0 +1,43 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-048>
+    <IntentSummary>Показать недоступность сервиса отдельным состоянием и убрать необработанные
+      отклонения промисов из кода приложения.</IntentSummary>
+    <BaselineAssertions>
+      <MustExist><Value>apps/web/composables/useGateway.ts</Value></MustExist>
+      <MustExist><Value>apps/web/pages/catalog.vue</Value></MustExist>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+    <TargetAssertions>
+      <MustExist><Value>apps/web/components/ServiceUnavailable.vue</Value></MustExist>
+      <MustExist><Value>tests/test_c048_error_state.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-WEB</Anchor></MustOwn>
+    </TargetAssertions>
+    <DurableScope><M-WEB/><V-M-WEB/></DurableScope>
+    <ObservedWriteScope>
+      <Path>apps/web/</Path><Path>tests/</Path><Path>.grace/</Path>
+    </ObservedWriteScope>
+    <ImplementationPlan>
+      <T-001>
+        <Title>Различимое состояние сбоя на экранах</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Экраны показывают блок недоступности с кнопкой повтора и не показывают пустоту вместо сбоя.</Criterion>
+          <Criterion>Пустой результат по-прежнему отображается как отсутствие данных.</Criterion>
+        </AcceptanceCriteria>
+        <Verification><Command>cd apps/web &amp;&amp; bun run build</Command></Verification>
+      </T-001>
+      <T-002>
+        <Title>Отсутствие необработанных отклонений</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Вспомогательные вызовы возвращают помеченный результат вместо исключения.</Criterion>
+          <Criterion>Отправка телеметрии не создаёт отклонений промисов.</Criterion>
+        </AcceptanceCriteria>
+        <Verification><Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c048_error_state.py -q</Command></Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-048>
+</GraceChangePlan>

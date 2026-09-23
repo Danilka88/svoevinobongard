@@ -111,8 +111,14 @@ export function useGateway() {
   async function scanExplain(file: File): Promise<ScanResponse> {
     const body = new FormData();
     body.append('image', file, file.name || 'label.jpg');
-    return await telemetry.time('scan', 'scan_explain_request',
-      async () => await $fetch<ScanResponse>(`${base}/v1/scan?explain=1`, { method: 'POST', body, headers: hdr() }));
+    // C-048/BUG-006: витрина пути решения — вспомогательный вызов. Он не должен создавать
+    // необработанный отказ промиса, поэтому сбой возвращается как помеченный результат.
+    try {
+      return await telemetry.time('scan', 'scan_explain_request',
+        async () => await $fetch<ScanResponse>(`${base}/v1/scan?explain=1`, { method: 'POST', body, headers: hdr() }));
+    } catch {
+      return { unavailable: true } as unknown as ScanResponse;
+    }
   }
 
   // C-038: метрики для дашборда (additive)
