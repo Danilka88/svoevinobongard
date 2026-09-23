@@ -5,7 +5,11 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       // Адрес gateway: единственная точка входа для UI.
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://127.0.0.1:8080'
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://127.0.0.1:8080',
+      // C-049: ограничение ожидания ответа gateway (мс). Против «висящего» соединения
+      // интерфейс переходит в состояние недоступности, а не ждёт бесконечно.
+      apiTimeoutMs: Number(process.env.NUXT_PUBLIC_API_TIMEOUT_MS || 8000),
+      apiScanTimeoutMs: Number(process.env.NUXT_PUBLIC_API_SCAN_TIMEOUT_MS || 15000)
     }
   },
   app: {

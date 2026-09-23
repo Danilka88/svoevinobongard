@@ -1,0 +1,55 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-049>
+    <IntentSummary>Ограничить время ожидания вызовов gateway и превратить прерывание по времени в
+      состояние недоступности, проверяемое на «висящем» соединении.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>apps/web/composables/useGateway.ts</Value></MustExist>
+      <MustExist><Value>apps/web/components/ServiceUnavailable.vue</Value></MustExist>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>apps/web/utils/request.ts</Value></MustExist>
+      <MustExist><Value>apps/web/e2e/timeout-check.ts</Value></MustExist>
+      <MustExist><Value>tests/test_c049_timeouts.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-WEB</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope><M-WEB/><V-M-WEB/></DurableScope>
+    <ObservedWriteScope>
+      <Path>apps/web/</Path><Path>tests/</Path><Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Таймауты вызовов gateway</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Утилита времени даёт сигнал прерывания и классифицирует прерывание как сбой связи.</Criterion>
+          <Criterion>Каждый вызов gateway ограничен по времени; сканирование получает больший бюджет.</Criterion>
+          <Criterion>Значения настраиваются публичной конфигурацией с безопасными значениями по умолчанию.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Проверка на зависшем соединении</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Проверка использует ту же утилиту, что и клиент, и подтверждает срабатывание в пределах бюджета.</Criterion>
+          <Criterion>Состояние недоступности выставляется без необработанных отклонений промиса.</Criterion>
+          <Criterion>Проверки на уровне исходников подтверждают отсутствие вызовов без таймаута.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c049_timeouts.py -q</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-049>
+</GraceChangePlan>

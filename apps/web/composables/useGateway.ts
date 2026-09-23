@@ -2,6 +2,8 @@
  * Тонкий клиент gateway: единственная точка входа для UI.
  * Никаких обращений к retrieval/vlm/ocr/matcher напрямую — только gateway.
  */
+import { requestTimeout } from '../utils/request';
+
 export interface TopKItem {
   slug: string; score: number; name?: string | null; winery?: string | null;
   geo_score?: number; inliers?: number;
@@ -73,12 +75,16 @@ export function useGateway() {
   // C-044: обезличенная сессия связывает действия в интерфейсе с вызовами API и логами gateway.
   const telemetry = useTelemetry();
   const hdr = () => ({ 'X-Session-Id': telemetry.sessionId() });
+  // C-049: без ограничения по времени «висящий» gateway (соединение принято, ответа нет)
+  // оставлял интерфейс в скелетоне навсегда. Сканирование получает больший бюджет.
+  const timeoutMs = Number(config.public.apiTimeoutMs || 8000);
+  const scanTimeoutMs = Number(config.public.apiScanTimeoutMs || 15000);
 
   async function scan(file: File): Promise<ScanResponse> {
     const body = new FormData();
     body.append('image', file, file.name || 'label.jpg');
     return await telemetry.time('scan', 'scan_request',
-      async () => await $fetch<ScanResponse>(`${base}/v1/scan`, { method: 'POST', body, headers: hdr() }));
+      async () => await $fetch<ScanResponse>(`${base}/v1/scan`, { method: 'POST', body, headers: hdr(), signal: requestTimeout(scanTimeoutMs) }));
   }
 
   // C-039: браузер каталога и полная карточка по slug (additive)
@@ -91,7 +97,7 @@ export function useGateway() {
     ).toString();
     try {
       return await telemetry.time('catalog', 'catalog_request',
-        async () => await $fetch<Record<string, any>>(`${base}/v1/catalog${query ? `?${query}` : ''}`, { headers: hdr() }));
+        async () => await $fetch<Record<string, any>>(`${base}/v1/catalog${query ? `?${query}` : ''}`, { headers: hdr(), signal: requestTimeout(timeoutMs) }));
     } catch {
       return { total: 0, items: [], facets: {}, unavailable: true };
     }
@@ -101,7 +107,7 @@ export function useGateway() {
     const suffix = withEnotourism ? '?with_enotourism=true' : '';
     try {
       return await telemetry.time('catalog', 'wine_request',
-        async () => await $fetch<Record<string, any>>(`${base}/v1/wine/${encodeURIComponent(slug)}${suffix}`, { headers: hdr() }));
+        async () => await $fetch<Record<string, any>>(`${base}/v1/wine/${encodeURIComponent(slug)}${suffix}`, { headers: hdr(), signal: requestTimeout(timeoutMs) }));
     } catch {
       return { unavailable: true };
     }
@@ -115,7 +121,7 @@ export function useGateway() {
     // необработанный отказ промиса, поэтому сбой возвращается как помеченный результат.
     try {
       return await telemetry.time('scan', 'scan_explain_request',
-        async () => await $fetch<ScanResponse>(`${base}/v1/scan?explain=1`, { method: 'POST', body, headers: hdr() }));
+        async () => await $fetch<ScanResponse>(`${base}/v1/scan?explain=1`, { method: 'POST', body, headers: hdr(), signal: requestTimeout(scanTimeoutMs) }));
     } catch {
       return { unavailable: true } as unknown as ScanResponse;
     }
@@ -124,7 +130,7 @@ export function useGateway() {
   // C-038: метрики для дашборда (additive)
   async function demoMetrics(): Promise<Record<string, any>> {
     try {
-      return await $fetch<Record<string, any>>(`${base}/v1/demo/metrics`, { headers: hdr() });
+      return await $fetch<Record<string, any>>(`${base}/v1/demo/metrics`, { headers: hdr(), signal: requestTimeout(timeoutMs) });
     } catch {
       return { unavailable: true };
     }
@@ -132,7 +138,7 @@ export function useGateway() {
 
   async function similar(slug: string): Promise<SimilarItem[]> {
     try {
-      const response = await $fetch<{ items: SimilarItem[] }>(`${base}/v1/similar/${encodeURIComponent(slug)}`, { headers: hdr() });
+      const response = await $fetch<{ items: SimilarItem[] }>(`${base}/v1/similar/${encodeURIComponent(slug)}`, { headers: hdr(), signal: requestTimeout(timeoutMs) });
       return response.items || [];
     } catch {
       return [];
@@ -146,6 +152,7 @@ export function useGateway() {
           method: 'POST',
           body: { slug, answers },
           headers: hdr(),
+          signal: requestTimeout(timeoutMs),
         }));
     } catch {
       return { slug, recommendations: [], pairing: [], source: 'unavailable', note: 'Сервис недоступен' } as SommelierResponse;
@@ -154,7 +161,7 @@ export function useGateway() {
 
   async function enotourism(slug: string): Promise<EnotourismResponse> {
     try {
-      return await $fetch<EnotourismResponse>(`${base}/v1/enotourism/${encodeURIComponent(slug)}`, { headers: hdr() });
+      return await $fetch<EnotourismResponse>(`${base}/v1/enotourism/${encodeURIComponent(slug)}`, { headers: hdr(), signal: requestTimeout(timeoutMs) });
     } catch {
       return { slug, unavailable: true } as unknown as EnotourismResponse;
     }
