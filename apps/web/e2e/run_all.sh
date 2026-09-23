@@ -53,6 +53,7 @@ run_case () {
 
 run_case smoke
 run_case theme
+run_case fixes
 run_case how-metrics
 run_case catalog
 run_case sommelier
