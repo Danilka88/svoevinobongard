@@ -10,6 +10,8 @@ export default defineNuxtConfig({
   },
   app: {
     head: {
+      // C-046/BUG-003: без htmlAttrs атрибут lang оставался пустым, что мешает доступности и SEO.
+      htmlAttrs: { lang: 'ru' },
       title: 'Своё Вино — сканер этикеток',
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },

@@ -18,7 +18,14 @@ export default defineNuxtPlugin(() => {
   window.addEventListener('error', (event) => {
     track('js_error', { action: 'window_error', detail: (event as ErrorEvent).message ? 'runtime' : 'resource' });
   });
-  window.addEventListener('unhandledrejection', () => {
+  window.addEventListener('unhandledrejection', (event) => {
+    // C-046/BUG-006: отказ сетевого запроса — это состояние интерфейса, а не ошибка скрипта.
+    // Такие отказы уже учтены как api_error в клиенте gateway, поэтому шум не создаём.
+    const reason = (event as PromiseRejectionEvent).reason as { status?: number; response?: unknown } | undefined;
+    if (reason && (typeof reason.status === 'number' || reason.response)) {
+      event.preventDefault();
+      return;
+    }
     track('js_error', { action: 'unhandled_rejection', detail: 'promise' });
   });
 

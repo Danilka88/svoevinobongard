@@ -82,19 +82,29 @@ export function useGateway() {
   }
 
   // C-039: браузер каталога и полная карточка по slug (additive)
+  // C-046/BUG-006: у вспомогательных вызовов есть безопасный запасной результат, чтобы отказ
+  // gateway показывался как состояние экрана, а не превращался в необработанный отказ промиса.
   async function catalog(params: Record<string, string | number> = {}): Promise<Record<string, any>> {
     const query = new URLSearchParams(
       Object.entries(params).filter(([, value]) => value !== '' && value !== undefined)
         .map(([key, value]) => [key, String(value)]) as [string, string][],
     ).toString();
-    return await telemetry.time('catalog', 'catalog_request',
-      async () => await $fetch<Record<string, any>>(`${base}/v1/catalog${query ? `?${query}` : ''}`, { headers: hdr() }));
+    try {
+      return await telemetry.time('catalog', 'catalog_request',
+        async () => await $fetch<Record<string, any>>(`${base}/v1/catalog${query ? `?${query}` : ''}`, { headers: hdr() }));
+    } catch {
+      return { total: 0, items: [], facets: {}, unavailable: true };
+    }
   }
 
   async function wine(slug: string, withEnotourism = false): Promise<Record<string, any>> {
     const suffix = withEnotourism ? '?with_enotourism=true' : '';
-    return await telemetry.time('catalog', 'wine_request',
-      async () => await $fetch<Record<string, any>>(`${base}/v1/wine/${encodeURIComponent(slug)}${suffix}`, { headers: hdr() }));
+    try {
+      return await telemetry.time('catalog', 'wine_request',
+        async () => await $fetch<Record<string, any>>(`${base}/v1/wine/${encodeURIComponent(slug)}${suffix}`, { headers: hdr() }));
+    } catch {
+      return { unavailable: true };
+    }
   }
 
   // C-038: скан с витриной пути решения (additive)
@@ -107,25 +117,41 @@ export function useGateway() {
 
   // C-038: метрики для дашборда (additive)
   async function demoMetrics(): Promise<Record<string, any>> {
-    return await $fetch<Record<string, any>>(`${base}/v1/demo/metrics`, { headers: hdr() });
+    try {
+      return await $fetch<Record<string, any>>(`${base}/v1/demo/metrics`, { headers: hdr() });
+    } catch {
+      return { unavailable: true };
+    }
   }
 
   async function similar(slug: string): Promise<SimilarItem[]> {
-    const response = await $fetch<{ items: SimilarItem[] }>(`${base}/v1/similar/${encodeURIComponent(slug)}`, { headers: hdr() });
-    return response.items || [];
+    try {
+      const response = await $fetch<{ items: SimilarItem[] }>(`${base}/v1/similar/${encodeURIComponent(slug)}`, { headers: hdr() });
+      return response.items || [];
+    } catch {
+      return [];
+    }
   }
 
   async function sommelier(slug: string, answers: Record<string, string>): Promise<SommelierResponse> {
-    return await telemetry.time('sommelier', 'sommelier_request',
-      async () => await $fetch<SommelierResponse>(`${base}/v1/sommelier`, {
-        method: 'POST',
-        body: { slug, answers },
-        headers: hdr(),
-      }));
+    try {
+      return await telemetry.time('sommelier', 'sommelier_request',
+        async () => await $fetch<SommelierResponse>(`${base}/v1/sommelier`, {
+          method: 'POST',
+          body: { slug, answers },
+          headers: hdr(),
+        }));
+    } catch {
+      return { slug, recommendations: [], pairing: [], source: 'unavailable', note: 'Сервис недоступен' } as SommelierResponse;
+    }
   }
 
   async function enotourism(slug: string): Promise<EnotourismResponse> {
-    return await $fetch<EnotourismResponse>(`${base}/v1/enotourism/${encodeURIComponent(slug)}`, { headers: hdr() });
+    try {
+      return await $fetch<EnotourismResponse>(`${base}/v1/enotourism/${encodeURIComponent(slug)}`, { headers: hdr() });
+    } catch {
+      return { slug, unavailable: true } as unknown as EnotourismResponse;
+    }
   }
 
   return { base, scan, scanExplain, demoMetrics, catalog, wine, similar, sommelier, enotourism };

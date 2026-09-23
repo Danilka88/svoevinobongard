@@ -1,0 +1,67 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-046>
+    <IntentSummary>Ускорить поиск каталога предвычисленным индексом форм, защитить сканер от вырожденных
+      изображений, включить CORS, исправить разметку и убрать шум необработанных отказов.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/gateway/app/media.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/main.py</Value></MustExist>
+      <MustExist><Value>apps/web/layouts/default.vue</Value></MustExist>
+      <MustExist><Value>apps/web/nuxt.config.ts</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>tests/test_c046_fixes.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/>
+      <M-WEB/>
+      <V-M-GATEWAY/>
+      <V-M-WEB/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>services/gateway/app/</Path>
+      <Path>apps/web/</Path>
+      <Path>tests/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Поиск каталога и устойчивость сканера</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Формы полей каталога считаются один раз и переиспользуются запросами; время поиска на полном каталоге меньше секунды.</Criterion>
+          <Criterion>Фильтры и фасеты продолжают работать, результаты отбора не меняются на проверочных запросах.</Criterion>
+          <Criterion>Изображения меньше допустимой стороны дают отказ с причиной image_too_small, а не 503.</Criterion>
+          <Criterion>Предварительный запрос CORS возвращает заголовки доступа с настраиваемыми источниками.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c046_fixes.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Разметка и состояния отказа в интерфейсе</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Документ объявляет язык ru; заголовок оболочки больше не первого уровня.</Criterion>
+          <Criterion>На каждом из пяти маршрутов ровно один заголовок первого уровня.</Criterion>
+          <Criterion>Отказ сети даёт состояние экрана и не создаёт необработанный отказ промиса.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-046>
+</GraceChangePlan>

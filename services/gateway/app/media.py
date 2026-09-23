@@ -25,8 +25,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from rapidfuzz import fuzz
+
 from packages.common.logging import log_marker
-from packages.common.text_norm import fold, similarity
+from packages.common.text_norm import MAX_FORMS, fold, forms
 
 DEFAULT_MEDIA = "data/catalog/catalog_media.json"
 REPORT_FILES = {
@@ -115,6 +117,89 @@ def _facets(items: list[dict], fields: tuple[str, ...] = ("region", "category", 
     return facets
 
 
+_INDEX_CACHE: dict[int, tuple[int, dict[str, dict]]] = {}
+# Формы каталога постоянны, а их расчёт стоит ~3.6 мс на запись. Дисковый кэш убирает эту работу
+# из холодного запроса: файл пересобирается только при изменении каталога.
+_FORMS_CACHE_PATH = Path("data/catalog/catalog_forms.json")
+_FORMS_CACHE_VERSION = 1
+
+
+def _prepared_similarity(query_forms: list[str], record_forms: list[str]) -> float:
+    """Точная копия similarity, но формы уже предвычислены.
+
+    BUG-001: дорогая часть similarity — построение вариантов написания (translit, алиасы) для
+    обеих строк на каждой из ~2000 записей, отсюда 13-16 с на запрос. Здесь варианты каталога
+    берутся готовыми, а сравнение (token_set_ratio) остаётся прежним, поэтому результат совпадает
+    со старой логикой.
+    """
+    if not query_forms or not record_forms:
+        return 0.0
+    best = 0.0
+    for left_value in query_forms[:MAX_FORMS]:
+        for right_value in record_forms[:MAX_FORMS]:
+            best = max(best, fuzz.token_set_ratio(left_value, right_value) / 100.0)
+    return round(best, 4)
+
+
+def _forms_signature(records: dict) -> str:
+    """Подпись каталога: кэш форм действителен, пока состав записей не изменился."""
+    slugs = list(records)
+    return f"{_FORMS_CACHE_VERSION}:{len(slugs)}:{slugs[0] if slugs else ''}:{slugs[-1] if slugs else ''}"
+
+
+def _load_forms_cache(signature: str) -> dict[str, list[str]] | None:
+    """Читает кэш форм с диска, если он соответствует текущему каталогу."""
+    try:
+        if not _FORMS_CACHE_PATH.is_file():
+            return None
+        payload = json.loads(_FORMS_CACHE_PATH.read_text(encoding="utf-8"))
+        if payload.get("signature") != signature:
+            return None
+        cached = payload.get("forms") or {}
+        return cached if cached else None
+    except Exception:  # noqa: BLE001 - повреждённый кэш не критичен, формы пересчитаются
+        return None
+
+
+def _save_forms_cache(signature: str, forms_by_slug: dict[str, list[str]]) -> None:
+    """Сохраняет кэш форм, чтобы следующий запуск не платил за пересчёт."""
+    try:
+        _FORMS_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _FORMS_CACHE_PATH.write_text(
+            json.dumps({"signature": signature, "forms": forms_by_slug}, ensure_ascii=False),
+            encoding="utf-8")
+    except Exception:  # noqa: BLE001 - кэш не обязателен для работы
+        pass
+
+
+def _catalog_index(records: dict) -> dict[str, dict]:
+    """Готовит индекс поиска: свёрнутые поля фильтров и предвычисленные формы для сравнения."""
+    key = id(records)
+    cached = _INDEX_CACHE.get(key)
+    if cached is not None and cached[0] == len(records):
+        return cached[1]
+    signature = _forms_signature(records)
+    forms_by_slug = _load_forms_cache(signature)
+    if forms_by_slug is None:
+        forms_by_slug = {slug: forms(fold(" ".join(str(record.get(field) or "") for field in
+                                                   ("name", "winery", "region", "category", "grape"))))
+                         for slug, record in records.items()}
+        _save_forms_cache(signature, forms_by_slug)
+    index: dict[str, dict] = {}
+    for slug, record in records.items():
+        index[slug] = {
+            "haystack": fold(" ".join(str(record.get(field) or "") for field in
+                                      ("name", "winery", "region", "category", "grape"))),
+            "forms": forms_by_slug.get(slug) or [],
+            "region": fold(str(record.get("region") or "")),
+            "category": fold(str(record.get("category") or "")),
+            "grape": fold(str(record.get("grape") or "")),
+            "winery": fold(str(record.get("winery") or "")),
+        }
+    _INDEX_CACHE[key] = (len(records), index)
+    return index
+
+
 def catalog_search(records: dict, media: dict, *, query: str = "", region: str = "",
                    category: str = "", grape: str = "", winery: str = "",
                    page: int = 1, per_page: int = 20, sort: str = "name") -> dict:
@@ -125,19 +210,24 @@ def catalog_search(records: dict, media: dict, *, query: str = "", region: str =
     """
     items: list[dict] = []
     query_folded = fold(query)
+    index = _catalog_index(records)
+    query_forms = forms(query)
+    filters = {"region": fold(region), "category": fold(category),
+               "grape": fold(grape), "winery": fold(winery)}
     for slug, record in records.items():
         entry_media = media.get(slug) or {}
-        haystack = fold(" ".join(str(record.get(field) or "") for field in
-                                 ("name", "winery", "region", "category", "grape")))
-        if query_folded and query_folded not in haystack and similarity(query, haystack) < 0.6:
+        entry = index[slug]
+        # C-046/BUG-001: сравнение по предвычисленным формам, без вызовов similarity в цикле.
+        if query_folded and query_folded not in entry["haystack"] \
+                and _prepared_similarity(query_forms, entry["forms"]) < 0.6:
             continue
-        if region and fold(region) not in fold(str(record.get("region") or "")):
+        if filters["region"] and filters["region"] not in entry["region"]:
             continue
-        if category and fold(category) not in fold(str(record.get("category") or "")):
+        if filters["category"] and filters["category"] not in entry["category"]:
             continue
-        if grape and fold(grape) not in fold(str(record.get("grape") or "")):
+        if filters["grape"] and filters["grape"] not in entry["grape"]:
             continue
-        if winery and fold(winery) not in fold(str(record.get("winery") or "")):
+        if filters["winery"] and filters["winery"] not in entry["winery"]:
             continue
         items.append({
             "slug": slug,

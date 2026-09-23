@@ -42,7 +42,7 @@ const isActive = (to: string) => (to === '/' ? route.path === '/' : route.path.s
       <div class="shell-brand">
         <img class="shell-logo" src="/media/logo-svoe-vino.svg" alt="Своё Вино" width="34" height="34">
         <div>
-          <h1 class="shell-title">Своё Вино</h1>
+          <div class="shell-title">Своё Вино</div>
           <p class="shell-sub">Сканер этикеток · демо конкурса</p>
         </div>
       </div>

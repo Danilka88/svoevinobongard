@@ -39,6 +39,7 @@ import json
 from pathlib import Path
 
 from fastapi import FastAPI, File, Header, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 from fastapi.concurrency import run_in_threadpool
 
@@ -93,6 +94,28 @@ __all__ = [
 ]
 
 app = FastAPI(title="Svoe Vino Scanner — Gateway", version="0.3.0")
+
+# C-046/BUG-005: интерфейс и организаторский скрипт ходят с других источников, поэтому CORS нужен.
+# Список источников настраивается через окружение, по умолчанию — только локальная разработка.
+_CORS_ORIGINS = [origin.strip() for origin in
+                 os.environ.get("CORS_ORIGINS", "http://127.0.0.1:3000,http://localhost:3000").split(",")
+                 if origin.strip()]
+app.add_middleware(CORSMiddleware, allow_origins=_CORS_ORIGINS, allow_credentials=False,
+                   allow_methods=["*"], allow_headers=["*"])
+
+# C-046/BUG-002: вырожденные изображения (например 1x1) ломали ресайз в поиске и давали 503.
+# Такие кадры отсекаются до обращения к retrieval: ответ остаётся корректным отказом.
+_MIN_IMAGE_SIDE = 8
+
+
+def _image_too_small(data: bytes) -> bool:
+    """Проверяет, что изображение пригодно для поиска по размеру сторон."""
+    try:
+        with Image.open(io.BytesIO(data)) as probe:
+            width, height = probe.size
+        return min(width, height) < _MIN_IMAGE_SIDE
+    except Exception:  # noqa: BLE001 - нечитаемое изображение обработается дальше по общему пути
+        return False
 
 VLM_MODEL = os.getenv("VLM_MODEL", "gemma4:12b")
 ENCODER = os.getenv("ENCODER", "siglip2")
@@ -500,6 +523,9 @@ async def eval_predict(image: UploadFile = File(...),
     а внутренние сбои дают плоский ответ со значением null вместо ошибки.
     """
     data = await _read_image_upload(image)
+    if _image_too_small(data):
+        log_marker("M-GATEWAY", "eval_predict", "IMAGE_TOO_SMALL")
+        return EvalPredictResponse(slug=None)
     try:
         result = await run_scan(data, get_store(), filename=image.filename or "query.jpg",
                                 session_id=x_session_id[:40])
@@ -519,6 +545,12 @@ async def scan(image: UploadFile = File(...),
                x_session_id: str = Header(default="", alias="X-Session-Id")) -> ScanResponse:
     """Rich-ответ основного сценария сканирования."""
     data = await _read_image_upload(image)
+    if _image_too_small(data):
+        log_marker("M-GATEWAY", "scan", "IMAGE_TOO_SMALL")
+        small_response = ScanResponse(slug=None, not_found=True, degraded=True, path="degraded",
+                                      reason="image_too_small", top5=[], card=None)
+        small_response.trace = build_trace(small_response)
+        return small_response
     try:
         store = get_store()
         response = await run_scan(data, store, filename=image.filename or "query.jpg",
