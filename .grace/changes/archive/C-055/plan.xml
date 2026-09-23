@@ -1,0 +1,66 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-055>
+    <IntentSummary>Добавить страницу обучения с механизмом обратной связи и решениями модератора,
+      аддитивные эндпоинты решения и счётчиков датасета, и перевести навигацию на схему «пять плюс Ещё».</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>apps/web/layouts/default.vue</Value></MustExist>
+      <MustExist><Value>packages/common/learning.py</Value></MustExist>
+      <MustExist><Value>data/annotation</Value></MustExist>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>apps/web/pages/learning.vue</Value></MustExist>
+      <MustExist><Value>tests/test_c055_learning_page.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-WEB</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-WEB/><M-GATEWAY/><M-DATA/><V-M-WEB/><V-M-GATEWAY/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>services/gateway/app/</Path>
+      <Path>apps/web/</Path>
+      <Path>data/flywheel/</Path>
+      <Path>tests/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Решения модератора и счётчики датасета</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Решение фиксируется с провенансом: выбор, цель, причина, сессия и время.</Criterion>
+          <Criterion>Решённый кейс исчезает из очереди и учитывается в сводке.</Criterion>
+          <Criterion>Счётчики датасета отдают разбиение и не падают при отсутствии файлов.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c055_learning_page.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Страница обучения и навигация «пять плюс Ещё»</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Страница показывает очередь, консенсус, качество моделей, датасет и панель модератора с пометкой.</Criterion>
+          <Criterion>Навигация: пять основных пунктов, лист «Ещё» с остальными, полный список на десктопе.</Criterion>
+          <Criterion>Доступность: aria-current, aria-expanded, закрытие по Escape и клику вне, ловушка фокуса, контраст AA.</Criterion>
+          <Criterion>Сборка проходит, все страницы достижимы.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-055>
+</GraceChangePlan>

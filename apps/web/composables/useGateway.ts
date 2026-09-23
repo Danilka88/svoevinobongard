@@ -149,6 +149,41 @@ export function useGateway() {
     }
   }
 
+  // C-055: страница обучения читает агрегаты, очередь, датасет и отправляет решения модератора.
+  function safeJson(path: string, options: Record<string, unknown> = {}) {
+    return (async () => {
+      try {
+        return await $fetch<Record<string, any>>(`${base}${path}`,
+          { headers: hdr(), signal: requestTimeout(timeoutMs), ...options });
+      } catch {
+        return { unavailable: true };
+      }
+    })();
+  }
+
+  async function learningSummary(): Promise<Record<string, any>> {
+    return await safeJson('/v1/learning/summary');
+  }
+
+  async function learningQueue(): Promise<Record<string, any>> {
+    return await safeJson('/v1/learning/queue');
+  }
+
+  async function learningDataset(): Promise<Record<string, any>> {
+    return await safeJson('/v1/learning/dataset');
+  }
+
+  async function telemetrySummary(): Promise<Record<string, any>> {
+    return await safeJson('/v1/telemetry/summary');
+  }
+
+  async function learningDecision(payload: { decision: 'accept' | 'reject'; slug?: string;
+    image_sha256?: string; reason?: string }): Promise<Record<string, any>> {
+    return await telemetry.time('action', 'moderator_decision',
+      async () => await $fetch<Record<string, any>>(`${base}/v1/learning/decision`,
+        { method: 'POST', body: payload, headers: hdr(), signal: requestTimeout(timeoutMs) }));
+  }
+
   async function similar(slug: string): Promise<SimilarItem[]> {
     try {
       const response = await $fetch<{ items: SimilarItem[] }>(`${base}/v1/similar/${encodeURIComponent(slug)}`, { headers: hdr(), signal: requestTimeout(timeoutMs) });
@@ -181,5 +216,6 @@ export function useGateway() {
   }
 
   return { base, scan, scanExplain, demoMetrics, catalog, wine, similar, sommelier,
-           enotourism, feedback };
+           enotourism, feedback, learningSummary, learningQueue, learningDataset,
+           learningDecision, telemetrySummary };
 }

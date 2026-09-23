@@ -50,9 +50,10 @@ from packages.common.catalog import CatalogStore, load_official_v3
 from packages.common.config import settings
 from packages.common.llm.errors import LLMError
 from packages.common.llm.router import LLMRouter
-from packages.common.learning import (append_feedback, evaluate_trust, feedback_summary,
+from packages.common.learning import (append_decision, append_feedback, decision_stats,
+                                      evaluate_trust, feedback_summary, load_decisions,
                                       load_feedback, moderation_queue, rate_limit_exceeded,
-                                      sanitize_feedback, vote_key)
+                                      sanitize_decision, sanitize_feedback, vote_key)
 from packages.common.llm.structured import validation_stats
 from packages.common.logging import log_marker
 from packages.common.telemetry import MAX_EVENTS_PER_BATCH, append_events, telemetry_summary
@@ -616,7 +617,8 @@ async def _learning_summary() -> dict:
     """Агрегаты обратной связи: голоса, причины, доверенные и очередь."""
     try:
         votes = await run_in_threadpool(load_feedback, _feedback_path())
-        return feedback_summary(votes, consensus_resolver=_agent_consensus)
+        decisions = await run_in_threadpool(load_decisions, _decision_path())
+        return feedback_summary(votes, consensus_resolver=_agent_consensus, decisions=decisions)
     except Exception as error:  # noqa: BLE001 - сводка best-effort
         log_marker("M-GATEWAY", "learning", "SUMMARY_FAILED", error=type(error).__name__)
         return {"votes": 0, "unique_votes": 0, "sessions": 0, "note": "feedback unavailable"}
@@ -627,13 +629,96 @@ async def _learning_queue(limit: int = 50) -> dict:
     """Очередь на ручную проверку: всё, что не получило доверия, с провенансом."""
     try:
         votes = await run_in_threadpool(load_feedback, _feedback_path())
+        decisions = await run_in_threadpool(load_decisions, _decision_path())
         items = moderation_queue(votes, limit=max(1, min(int(limit), 200)),
-                                 consensus_resolver=_agent_consensus)
+                                 consensus_resolver=_agent_consensus, decisions=decisions)
         return {"items": items, "total": len(items),
                 "note": "модератор условный: раздел помечен визуально, реальная аутентификация не требуется"}
     except Exception as error:  # noqa: BLE001
         log_marker("M-GATEWAY", "learning", "QUEUE_FAILED", error=type(error).__name__)
         return {"items": [], "total": 0}
+
+
+_DECISION_PATH = Path("data") / "flywheel" / "decisions.jsonl"
+_ANNOTATION_DIR = Path("data") / "annotation"
+
+
+def _decision_path() -> str:
+    """Путь файла решений модератора."""
+    return str(_DECISION_PATH)
+
+
+def _annotation_dir() -> Path:
+    """Каталог датасета разметки."""
+    return _ANNOTATION_DIR
+
+
+def _dataset_dirs() -> list[Path]:
+    """Каталоги, где ищем производные датасета."""
+    return [_ANNOTATION_DIR]
+
+
+def _dataset_counters() -> dict:
+    """Счётчики датасета: сколько записей в каждом разбиении и сколько файлов их дают."""
+    splits: dict[str, dict] = {}
+    for directory in _dataset_dirs():
+        if not Path(directory).is_dir():
+            continue
+        for path in sorted(Path(directory).glob("*.jsonl")):
+            name = path.stem
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                split = str(record.get("split") or "unknown")
+                entry = splits.setdefault(split, {"split": split, "records": 0, "files": 0, "sources": {}})
+                entry["records"] += 1
+                if name not in entry["sources"]:
+                    entry["sources"][name] = 0
+                    entry["files"] += 1
+                entry["sources"][name] += 1
+    images = 0
+    for directory in _dataset_dirs():
+        if Path(directory).is_dir():
+            images += len(list(Path(directory).rglob("*.jpg")))
+    rows = [dict(value) for _, value in sorted(splits.items())]
+    return {"splits": rows, "total_records": sum(row["records"] for row in rows), "images": images}
+
+
+@app.post("/v1/learning/decision")
+async def _learning_decision(payload: dict,
+                             x_session_id: str = Header(default="", alias="X-Session-Id")) -> dict:
+    """Фиксирует решение модератора по спорному кейсу.
+
+    Аутентификация условная: в демонстрации достаточно провенанса (кто, когда и почему решил),
+    реальная проверка прав не выполняется. Решение только убирает кейс из очереди и фиксируется
+    в хранилище: автоматически на каталог или поиск оно не влияет.
+    """
+    decision = sanitize_decision(payload, session_id=x_session_id)
+    if decision is None:
+        raise HTTPException(status_code=400, detail="decision must be accept or reject and name a target")
+    await run_in_threadpool(append_decision, decision, _decision_path())
+    votes = await run_in_threadpool(load_feedback, _feedback_path())
+    decisions = await run_in_threadpool(load_decisions, _decision_path())
+    log_marker("M-GATEWAY", "learning", "DECISION_RECORDED", decision=decision["decision"],
+               slug=decision["slug"][:40])
+    return {"accepted": True, "decision": decision["decision"], "provenance": decision,
+            "summary": feedback_summary(votes, consensus_resolver=_agent_consensus, decisions=decisions)}
+
+
+@app.get("/v1/learning/dataset")
+async def _learning_dataset() -> dict:
+    """Счётчики датасета: разбиения, записи и решения модератора."""
+    try:
+        counters = await run_in_threadpool(_dataset_counters)
+        decisions = await run_in_threadpool(load_decisions, _decision_path())
+        return {**counters, "decisions": decision_stats(decisions)}
+    except Exception as error:  # noqa: BLE001 - счётчики best-effort
+        log_marker("M-GATEWAY", "learning", "DATASET_FAILED", error=type(error).__name__)
+        return {"splits": [], "total_records": 0, "files": 0}
 
 
 @app.post("/v1/eval/predict")

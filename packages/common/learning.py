@@ -9,6 +9,7 @@
 # MAP_MODE: EXPORTS
 # END_MODULE_CONTRACT
 # START_MODULE_MAP
+# DECISIONS - решения модератора по кейсу
 # VOTES - допустимые голоса
 # FEEDBACK_REASONS - чипы причин: что именно не так
 # MIN_TRUSTED_SESSIONS - сколько независимых сессий нужно для доверия
@@ -20,6 +21,11 @@
 # dedupe_votes - оставляет по одному голосу на сессию и изображение
 # rate_limit_exceeded - проверяет превышение частоты голосов
 # evaluate_trust - правила доверия: независимые сессии, согласованность и консенсус агентов
+# sanitize_decision - приводит решение модератора к белому списку полей
+# append_decision - дописывает решения в хранилище
+# load_decisions - читает сохранённые решения
+# decision_targets - множество решённых целей
+# decision_stats - сводка решений модератора
 # append_feedback - дописывает голоса в хранилище, best-effort
 # load_feedback - читает сохранённые голоса
 # feedback_summary - агрегаты для сводки обучения
@@ -43,7 +49,13 @@ from pathlib import Path
 from packages.common.logging import log_marker
 
 __all__ = [
+    "DECISIONS",
     "VOTES",
+    "sanitize_decision",
+    "append_decision",
+    "load_decisions",
+    "decision_targets",
+    "decision_stats",
     "FEEDBACK_REASONS",
     "MIN_TRUSTED_SESSIONS",
     "TRUST_AGREEMENT",
@@ -60,6 +72,7 @@ __all__ = [
     "moderation_queue",
 ]
 
+DECISIONS = ("accept", "reject")
 VOTES = ("up", "down")
 FEEDBACK_REASONS = ("wrong_wine", "wrong_year", "wrong_grape", "bad_photo", "other")
 # Русские подписи чипов: UI присылает либо код, либо подпись — приводим к коду.
@@ -235,7 +248,8 @@ def _consensus_by_target(votes: list[dict]) -> dict[str, dict]:
             for key, counts in grouped.items()}
 
 
-def feedback_summary(votes: list[dict], consensus_resolver=None) -> dict:
+def feedback_summary(votes: list[dict], consensus_resolver=None,
+                     decisions: list[dict] | None = None) -> dict:
     """Агрегаты по голосам для сводки обучения.
 
     Если передан источник консенсуса (например каталог через gateway), используется он:
@@ -266,9 +280,13 @@ def feedback_summary(votes: list[dict], consensus_resolver=None) -> dict:
                                  slug=sample.get("slug") or "")
         trusted += 1 if verdict["trusted"] else 0
         queued += 0 if verdict["trusted"] else 1
+    # Решённые модератором кейсы больше не висят в очереди, поэтому вычитаем их из счётчика.
+    resolved_targets = decision_targets(decisions or [])
+    queued = max(0, queued - sum(1 for target in targets if target in resolved_targets))
     return {
         "votes": len(votes),
         "unique_votes": len(unique),
+        "decisions": decision_stats(decisions or []),
         "sessions": len(sessions),
         "up": up,
         "down": down,
@@ -283,7 +301,8 @@ def feedback_summary(votes: list[dict], consensus_resolver=None) -> dict:
     }
 
 
-def moderation_queue(votes: list[dict], limit: int = 50, consensus_resolver=None) -> list[dict]:
+def moderation_queue(votes: list[dict], limit: int = 50, consensus_resolver=None,
+                     decisions: list[dict] | None = None) -> list[dict]:
     """Очередь на ручную проверку: всё, что не получило доверия, с провенансом."""
     unique = dedupe_votes(votes)
     consensus = _consensus_by_target(unique)
@@ -303,7 +322,7 @@ def moderation_queue(votes: list[dict], limit: int = 50, consensus_resolver=None
         verdict = evaluate_trust(unique, consensus=resolved or consensus.get(target),
                                  image_sha256=vote.get("image_sha256") or "",
                                  slug=vote.get("slug") or "")
-        if verdict["trusted"]:
+        if verdict["trusted"] or target in decision_targets(decisions or []):
             continue
         queued.append({"image_sha256": vote.get("image_sha256", ""), "slug": vote.get("slug", ""),
                        "sessions": verdict["sessions"], "up": verdict["up"], "down": verdict["down"],
@@ -315,3 +334,75 @@ def moderation_queue(votes: list[dict], limit: int = 50, consensus_resolver=None
                                       for item in unique
                                       if (item.get("image_sha256") or f"slug:{item.get('slug')}") == target]})
     return queued[:limit]
+
+
+def sanitize_decision(payload: object, session_id: str = "") -> dict | None:
+    """Приводит решение модератора к белому списку полей.
+
+    Аутентификация условная: фиксируется только провенанс (кто-когда-почему), права не проверяются.
+    """
+    if not isinstance(payload, dict):
+        return None
+    decision = str(payload.get("decision") or "").strip().lower()
+    if decision not in DECISIONS:
+        return None
+    slug = str(payload.get("slug") or "")[:120]
+    image_sha256 = str(payload.get("image_sha256") or "")[:64]
+    if not slug and not image_sha256:
+        return None
+    return {"decision": decision, "slug": slug, "image_sha256": image_sha256,
+            "reason": str(payload.get("reason") or "")[:200],
+            "session_id": str(session_id or payload.get("session_id") or "moderator")[:40],
+            "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+
+
+def append_decision(decision: dict, path: str | Path = "data/flywheel/decisions.jsonl") -> int:
+    """Дописывает решение модератора. Best-effort: сбой не влияет на ответ."""
+    try:
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with target.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(decision, ensure_ascii=False) + "\n")
+        return 1
+    except Exception as error:  # noqa: BLE001
+        log_marker("M-GATEWAY", "append_decision", "FAILED", error=type(error).__name__)
+        return 0
+
+
+def load_decisions(path: str | Path = "data/flywheel/decisions.jsonl") -> list[dict]:
+    """Читает сохранённые решения модератора."""
+    target = Path(path)
+    if not target.is_file():
+        return []
+    rows: list[dict] = []
+    for line in target.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return rows
+
+
+def decision_targets(decisions: list[dict]) -> set[str]:
+    """Цели, по которым решение уже принято.
+
+    Возвращаются оба возможных ключа — хеш изображения и slug: голос из интерфейса может не нести
+    хеша, и тогда решение, записанное по хешу, не сняло бы кейс с очереди (найдено живой проверкой).
+    """
+    targets: set[str] = set()
+    for row in decisions:
+        if row.get("image_sha256"):
+            targets.add(str(row["image_sha256"]))
+        if row.get("slug"):
+            targets.add(f"slug:{row['slug']}")
+    return targets
+
+
+def decision_stats(decisions: list[dict]) -> dict:
+    """Сводка решений модератора."""
+    accepted = sum(1 for row in decisions if row.get("decision") == "accept")
+    rejected = sum(1 for row in decisions if row.get("decision") == "reject")
+    return {"total": len(decisions), "accepted": accepted, "rejected": rejected,
+            "last": decisions[-3:]}

@@ -370,3 +370,17 @@ a:hover { text-decoration: underline; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
 }
+
+/* C-055: лист «Ещё» для масштабируемой навигации */
+.more-backdrop { position: fixed; inset: 0; background: var(--overlay); z-index: 50; }
+.more-sheet {
+  position: fixed; inset-inline: 0; bottom: 0; z-index: 51;
+  display: grid; gap: var(--space-2);
+  padding: var(--space-4); padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  background: var(--surface); border-top: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: var(--shadow-lg);
+}
+.more-title { margin: 0 0 var(--space-2); font-weight: 600; }
+.more-sheet .nav-link { min-height: var(--tap); }
+@media (min-width: 900px) { .more-sheet, .more-backdrop { display: none; } }
