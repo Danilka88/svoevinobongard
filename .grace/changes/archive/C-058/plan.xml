@@ -1,0 +1,61 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-058>
+    <IntentSummary>Добавить единый слой нормализации адресов изображений на границе ответа gateway и
+      явные размеры для крупных изображений, закрыв защиту от забвения тестом по всем эндпоинтам.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>packages/common/official_api.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/main.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/pipeline.py</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>tests/test_c058_media_proxy.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-CONTRACTS</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/><M-CONTRACTS/><V-M-GATEWAY/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>services/gateway/app/</Path>
+      <Path>tests/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Правила нормализации и центральный слой</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Проксируются только изображения портала: данные и прочие пути не меняются.</Criterion>
+          <Criterion>Центральный слой обрабатывает JSON-ответы всех эндпоинтов, не затрагивая потоки и файлы.</Criterion>
+          <Criterion>Размер крупных изображений отличается от размера карточек.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c058_media_proxy.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Проверка по всем эндпоинтам</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Интеграционная проверка перебирает скан, похожие, энотуризм, карточку, каталог и сомелье.</Criterion>
+          <Criterion>Ни один ответ не содержит сырых изображений портала; данные geojson не переписаны.</Criterion>
+          <Criterion>Живой прогон подтверждает рабочие адреса ответом 200 на выборке адресов.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>curl -s -X POST -F image=@data/samples/real100/87.88_28-08-2026_16-56-20.webp http://127.0.0.1:8080/v1/scan</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-058>
+</GraceChangePlan>

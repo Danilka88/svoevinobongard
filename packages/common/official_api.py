@@ -15,6 +15,9 @@
 # absolute_url - абсолютный URL для относительных путей API
 # image_proxy_url - рабочий адрес картинки портала через прокси изображений
 # proxy_images_in - рекурсивная замена адресов картинок в данных API
+# resize_proxy_url - смена размера у уже проксированного адреса
+# is_image_path - отличает изображение от данных по расширению
+# IMAGE_EXTENSIONS - расширения, которые считаются изображениями
 # MEDIA_SIZE_CARD - размер картинки карточки по умолчанию
 # MEDIA_SIZE_HERO - размер крупной картинки по умолчанию
 # END_MODULE_MAP
@@ -35,6 +38,7 @@ from pathlib import Path
 from packages.common.logging import log_marker
 
 import os
+import re
 from urllib.parse import urlsplit
 
 API_ROOT = "https://api.vino-svoe.ru/v1"
@@ -43,7 +47,8 @@ _USER_AGENT = "svoe-vino-scanner/1.0 (+offline enrichment)"
 SIMILAR_SIZE_MAX = 24  # проверено: size > 24 API отвергает с 400
 
 __all__ = ["API_ROOT", "SIMILAR_SIZE_MAX", "fetch_json", "cached_json", "fetch_similar", "absolute_url",
-           "image_proxy_url", "proxy_images_in", "MEDIA_SIZE_CARD", "MEDIA_SIZE_HERO"]
+           "image_proxy_url", "proxy_images_in", "resize_proxy_url", "is_image_path",
+           "MEDIA_SIZE_CARD", "MEDIA_SIZE_HERO", "IMAGE_EXTENSIONS"]
 
 
 def fetch_json(url: str, timeout: float = 25.0, retries: int = 3, pause: float = 0.15) -> object:
@@ -123,6 +128,7 @@ def fetch_similar(slug: str, size: int = 6, cache_dir: str | Path = "data/api_ca
 # C-050: сырые адреса /uploads/... отдают 404, рабочий путь — прокси изображений портала.
 PROXY_TEMPLATE = "https://api.vino-svoe.ru/v1/img/str-api/{size}/{size}/resize/uploads/{name}"
 PORTAL_HOSTS = ("api.vino-svoe.ru", "vino-svoe.ru")
+IMAGE_EXTENSIONS = (".webp", ".jpg", ".jpeg", ".png", ".avif")
 MEDIA_SIZE_CARD = int(os.environ.get("MEDIA_SIZE_CARD", "600"))
 MEDIA_SIZE_HERO = int(os.environ.get("MEDIA_SIZE_HERO", "1200"))
 
@@ -147,9 +153,27 @@ def image_proxy_url(path_or_url: str | None, size: int = MEDIA_SIZE_CARD) -> str
         name = parsed.path[len("/uploads/"):]
     else:
         return raw
-    if not name:
+    if not name or not is_image_path(name):
+        # Данные (например geojson) прокси не отдаёт: на них приходит 404, поэтому путь не трогаем.
         return raw
     return PROXY_TEMPLATE.format(size=int(size), name=name)
+
+
+def is_image_path(path: str | None) -> bool:
+    """Отличает изображение от данных: расширение важнее расположения."""
+    value = str(path or "").split("?")[0].lower()
+    return value.endswith(IMAGE_EXTENSIONS)
+
+
+def resize_proxy_url(url: str | None, size: int = MEDIA_SIZE_HERO) -> str:
+    """Меняет размер уже проксированного адреса (для крупных изображений).
+
+    Сторонние и не-проксированные адреса возвращаются без изменений.
+    """
+    raw = str(url or "")
+    if "/v1/img/str-api/" not in raw:
+        return raw
+    return re.sub(r"/v1/img/str-api/\d+/\d+/", f"/v1/img/str-api/{int(size)}/{int(size)}/", raw)
 
 
 def proxy_images_in(node: object, size: int = MEDIA_SIZE_CARD) -> object:

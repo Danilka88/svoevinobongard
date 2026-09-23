@@ -163,6 +163,9 @@ def build_trace(response, diagnostics=None) -> dict:
     }
 
 
+from packages.common.official_api import MEDIA_SIZE_HERO, image_proxy_url
+
+
 def build_card(store: CatalogStore, slug: str, official: dict | None = None) -> Card:
     """Собирает карточку вина: данные CSV плюс официальные поля API (C-018).
 
@@ -196,7 +199,8 @@ def build_card(store: CatalogStore, slug: str, official: dict | None = None) -> 
         temperature=str(extra.get("temperature") or ""),
         dishes=[str(dish) for dish in (extra.get("dishes") or []) if dish],
         image=data.get("image"),
-        image_url=str(extra.get("image_url") or "") or None,
+        # C-058: основное фото вина — крупное изображение, поэтому размер hero.
+        image_url=image_proxy_url(str(extra.get("image_url") or ""), MEDIA_SIZE_HERO) or None,
         api_match=bool(extra.get("api_match")),
     )
 

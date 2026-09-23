@@ -41,7 +41,8 @@ from pathlib import Path
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, File, Header, HTTPException, UploadFile
+from fastapi import FastAPI, File, Header, HTTPException, Request, Response, UploadFile
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 from fastapi.concurrency import run_in_threadpool
@@ -56,6 +57,8 @@ from packages.common.learning import (append_decision, append_feedback, decision
                                       sanitize_decision, sanitize_feedback, vote_key)
 from packages.common.llm.structured import validation_stats
 from packages.common.logging import log_marker
+from packages.common.official_api import (MEDIA_SIZE_HERO, image_proxy_url,
+                                          proxy_images_in, resize_proxy_url)
 from packages.common.telemetry import MAX_EVENTS_PER_BATCH, append_events, telemetry_summary
 from packages.contracts.schemas import (
     EnotourismResponse,
@@ -233,7 +236,8 @@ def _enrich_region(payload: dict, store: CatalogStore, slug: str) -> None:
     region = payload.get("region") or {}
     name = str(region.get("name") or "")
     entry = media_for(slug)
-    region["image_url"] = str(entry.get("region_image_url") or "")
+    # C-058: фото региона в карточке — крупное, поэтому размер hero.
+    region["image_url"] = resize_proxy_url(str(entry.get("region_image_url") or ""), MEDIA_SIZE_HERO)
     region["geojson_url"] = str(entry.get("region_geojson_url") or "")
     regions_path = Path("data/api_cache/regions.json")
     if regions_path.is_file():
@@ -719,6 +723,38 @@ async def _learning_dataset() -> dict:
     except Exception as error:  # noqa: BLE001 - счётчики best-effort
         log_marker("M-GATEWAY", "learning", "DATASET_FAILED", error=type(error).__name__)
         return {"splits": [], "total_records": 0, "files": 0}
+
+
+@app.middleware("http")
+async def _normalize_media_urls(request: Request, call_next):
+    """Заменяет сырые адреса изображений портала на прокси-адреса на границе ответа (C-058).
+
+    Центральный слой вместо правок в каждом сборщике: нормализацию нельзя забыть на новом
+    эндпоинте. Обрабатываются только JSON-ответы; потоки и файлы проходят как есть. Проксируются
+    строго изображения: данные (geojson) не трогаются, потому что прокси отдаёт на них 404.
+    Уже проксированные адреса, локальные ассеты и чужие домены остаются без изменений.
+    """
+    response = await call_next(request)
+    content_type = response.headers.get("content-type", "")
+    if "application/json" not in content_type:
+        return response
+    body = b""
+    async for chunk in response.body_iterator:
+        body += chunk if isinstance(chunk, bytes) else str(chunk).encode()
+    # Заголовки внутренних слоёв (в том числе CORS) обязан сохранить: этот слой внешний,
+    # и новый ответ иначе «съел» бы их. Длину и тип пересчитывает JSONResponse.
+    preserved = {name: value for name, value in response.headers.items()
+                 if name.lower() not in {"content-length", "content-type"}}
+    if b"/uploads/" not in body:
+        return Response(content=body, status_code=response.status_code,
+                        headers=preserved, media_type=content_type)
+    try:
+        payload = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return Response(content=body, status_code=response.status_code,
+                        headers=preserved, media_type=content_type)
+    return JSONResponse(content=proxy_images_in(payload), status_code=response.status_code,
+                        headers=preserved)
 
 
 @app.post("/v1/eval/predict")
