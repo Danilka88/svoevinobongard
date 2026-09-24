@@ -183,6 +183,7 @@
       <Source>services/ocr/</Source>
             <Test>tests/test_ocr.py</Test>
       <Test>tests/test_ocr_engines.py</Test>
+      <Test>tests/test_c066_cyrillic_ocr.py</Test>
       <Interface>POST /ocr (image) → строки и поля (vintage, sweetness)</Interface>
       <Depends>
         <M-COMMON/>
@@ -194,7 +195,10 @@
         <M-MATCHER/>
       </Feeds>
       <Note>C-010: замер показал, что RapidOCR надежно читает год (2024, 2022) за ~250-290 мс;
-        кириллические слова даются хуже (стандартная ch/en модель) — зафиксировано как ограничение.</Note>
+        кириллические слова даются хуже (стандартная ch/en модель) — зафиксировано как ограничение.
+        C-066: кириллический PP-OCRv5 rec доступен за флагом OCR_ENGINE=cyrillic|fusion, дефолт — rapidocr;
+        замер (proxy 40 + поле 39): слова и сладость лучше (CER 0.672→0.451, сладость 0.075→1.0), но на реальных
+        фото год хуже (0.513→0.410) — движок остаётся выключенным по умолчанию.</Note>
       <Verification>V-M-OCR</Verification>
     </M-OCR>
 
@@ -281,7 +285,8 @@
             <Test>tests/test_eval_harness.py</Test>
       <Exports>post_image, extract_slug, extract_top5, load_ground_truth, compute_metrics, percentile,
         field_augment, random_background, synthetic pairs CLI (scripts/train/synthetic_pairs.py),
-        head training CLI (scripts/train/train_head.py, модуль головы живёт в M-RETRIEVAL)</Exports>
+        head training CLI (scripts/train/train_head.py, модуль головы живёт в M-RETRIEVAL),
+        cyrillic OCR benchmark CLI (scripts/eval/ocr_cyrillic_bench.py, C-066)</Exports>
       <Verification>V-M-EVAL</Verification>
     </M-EVAL>
 

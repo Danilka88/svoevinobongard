@@ -84,14 +84,18 @@ class AppSettings:
         default_factory=lambda: _env("VLM_REASONING_EFFORT", "none"))
 
     # OCR text signal (C-010): дешёвая замена VLM-fallback в онлайн-пути
-    ocr_rec_model: str = field(default_factory=lambda: _env("OCR_REC_MODEL", ""))
+    # C-066: кириллический rec (PP-OCRv5 mobile, Apache-2.0) автоподхватывается из vendored-весов,
+    # но сам движок включается только флагом OCR_ENGINE=cyrillic|fusion; без файлов resolve_cyrillic
+    # вернёт None и система молча деградирует к RapidOCR (обязательной зависимости нет).
+    ocr_rec_model: str = field(default_factory=lambda: _env("OCR_REC_MODEL", "data/models/ocr/cyrillic_PP-OCRv5_rec.onnx"))
     # C-020: выбор движка OCR со стороны запроса и параметры PaddleOCR-VL
     ocr_engine: str = field(default_factory=lambda: _env("OCR_ENGINE", ""))
     ocr_vl_model: str = field(default_factory=lambda: _env("OCR_VL_MODEL", "data/models/paddleocr_vl"))
     ocr_vl_max_tokens: int = field(default_factory=lambda: _env_int("OCR_VL_MAX_TOKENS", 1024))
     ocr_det_side: int = field(default_factory=lambda: _env_int("OCR_DET_SIDE", 1280))
     ocr_rec_width: int = field(default_factory=lambda: _env_int("OCR_REC_WIDTH", 640))
-    ocr_rec_keys: str = field(default_factory=lambda: _env("OCR_REC_KEYS", ""))
+    # C-066: словарь символов кириллического rec; требуется только при включённом движке.
+    ocr_rec_keys: str = field(default_factory=lambda: _env("OCR_REC_KEYS", "data/models/ocr/cyrillic_dict.txt"))
     ocr_url: str = field(default_factory=lambda: _env("OCR_URL", "http://127.0.0.1:8085"))
     # C-028: text-first поиск + RRF. По умолчанию выключен: замер на реальных фото показал,
     # что при весах, сохраняющих identity@1, текст не добавляет, а при равных — роняет @1,

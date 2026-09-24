@@ -1,0 +1,66 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-066>
+    <IntentSummary>Подключить кириллический OCR отдельным движком за флагом, замерить его против
+      текущего на размеченных данных и честно оценить пользу для года и сладости.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>packages/common/ocr.py</Value></MustExist>
+      <MustExist><Value>packages/common/ocr_cyrillic.py</Value></MustExist>
+      <MustExist><Value>data/index</Value></MustExist>
+      <MustVerify><Module>M-OCR</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>scripts/eval/ocr_cyrillic_bench.py</Value></MustExist>
+      <MustExist><Value>reports/ocr_cyrillic_bench.json</Value></MustExist>
+      <MustExist><Value>reports/ocr_cyrillic_bench.md</Value></MustExist>
+      <MustExist><Value>tests/test_c066_cyrillic_ocr.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustPassCommand><Command>make gate</Command></MustPassCommand>
+      <MustVerify><Module>M-OCR</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-OCR</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-OCR/><M-EVAL/><M-MATCHER/><V-M-OCR/><V-M-EVAL/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>reports/</Path>
+      <Path>tests/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Кириллический движок за флагом</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Движок выбирается по имени и деградирует к текущему, если недоступен.</Criterion>
+          <Criterion>Значение по умолчанию не меняется, флаг выключен.</Criterion>
+          <Criterion>Отсутствие движка не приводит к ошибке: возвращается причина и пустой результат.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c066_cyrillic_ocr.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Замер движков и вывод</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Замер считает точность года и сладости, читаемость полей, CER/WER и время.</Criterion>
+          <Criterion>Отчёт содержит прямое заключение о пользе движка.</Criterion>
+          <Criterion>Общий замер гейта не деградирует.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/ocr_cyrillic_bench.py --limit 40</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-066>
+</GraceChangePlan>
