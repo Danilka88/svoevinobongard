@@ -1,0 +1,168 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-072>
+    <IntentSummary>Построить офлайн-стенд реального измерения на 21 проверенном полевом фото: (1) gold-маппинг
+      «фото → slug» из manifest.tsv через text_norm/транслит/fuzzy с честными статусами
+      matched|ambiguous|not_found и разделом manual; (2) машинный инвариант отсутствия утечки тестовых
+      фото (sha256) в галерею/индекс/обучающие данные и лог flywheel; (3) стенд A/B/C
+      (A — retrieval+geo как в проде, observer off; B — только LLM-зрение; C — каскад с эскалацией),
+      принимающий список моделей-читателей; (4) реальный прогон на 21 фото с фактическими
+      accuracy@1/@5, not_found, latency p50/p95, распределением путей и примерами наблюдений LLM.
+      Онлайн-дефолты, зачётный контракт и метрики make gate не меняются; коммит не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-072/spec.xml</Value></MustExist>
+      <MustExist><Value>data/samples/real_field/manifest.tsv</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog.jsonl</Value></MustExist>
+      <MustExist><Value>packages/common/observer.py</Value></MustExist>
+      <MustExist><Value>packages/common/calibration.py</Value></MustExist>
+      <MustExist><Value>packages/common/text_norm.py</Value></MustExist>
+      <MustExist><Value>packages/common/text_rank.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/observer_bench.py</Value></MustExist>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-DATA</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>test -f scripts/eval/field21_gold.py &amp;&amp; test -f scripts/eval/field21_abc.py &amp;&amp; test -f tests/test_c072_field21.py</Command></MustPassCommand>
+      <MustPassCommand><Command>test -f reports/field21_gold.json &amp;&amp; test -f reports/field21_abc.json &amp;&amp; test -f reports/field21_abc.md</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c072_field21.py -q</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-DATA</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-DATA</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-EVAL/>
+      <M-DATA/>
+      <M-RETRIEVAL/>
+      <M-VLM/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>scripts/eval/field21_gold.py</Path>
+      <Path>scripts/eval/field21_abc.py</Path>
+      <Path>tests/test_c072_field21.py</Path>
+      <Path>reports/field21_gold.json</Path>
+      <Path>reports/field21_abc.json</Path>
+      <Path>reports/field21_abc.md</Path>
+      <Path>reports/field21_leak.json</Path>
+      <Path>data/flywheel/queries.jsonl</Path>
+      <Path>.grace/graph/modules.xml</Path>
+      <Path>.grace/verification/VD-M0-CODE.xml</Path>
+      <Path>.grace/verification/VD-M-DATA.xml</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Gold-маппинг 21 фото → slug каталога (M-EVAL)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>scripts/eval/field21_gold.py читает manifest.tsv и catalog.jsonl, строит для каждого
+            файла статус matched|ambiguous|not_found, ожидаемый slug (для matched), ранжированные
+            кандидаты и источник auto|manual.</Criterion>
+          <Criterion>Маппинг использует text_norm (fold/транслит/алиасы) и текстовый поиск по формам
+            каталога (text_rank), малые manual-правки допускаются и помечаются source=manual с note.</Criterion>
+          <Criterion>Отчёт reports/field21_gold.json сохраняется; скрипт печатает сводку
+            «однозначных/неоднозначных/ненайденных» и списки неоднозначных и ненайденных с кандидатами.
+            Неоднозначные/ненайденные не выдумываются.</Criterion>
+          <Criterion>Файл имеет MODULE_CONTRACT/MODULE_MAP (ROLE SCRIPT, MAP_MODE LOCALS).</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/field21_gold.py --out reports/field21_gold.json</Command>
+          <Command>grep -q "START_MODULE_CONTRACT" scripts/eval/field21_gold.py</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Инвариант утечки тестовых фото (M-DATA, M-EVAL)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Функция проверки утечки считает sha256 21 тестового фото и ищет их в артефактах
+            галереи/индекса (data/index), обучающих данных (data/train, data/train-confirmed,
+            data/annotation) и в логе запросов flywheel (image_sha256).</Criterion>
+          <Criterion>Обнаруженная утечка 21 хеша в data/flywheel/queries.jsonl устраняется (записи с
+            этими хешами удаляются), после чего инвариант выполняет.</Criterion>
+          <Criterion>Отчёт reports/field21_leak.json фиксирует проверенные поверхности, число удалённых
+            записей и итоговый результат.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/field21_gold.py --leak-scan --out reports/field21_leak.json</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Стенд A/B/C на 21 фото с моделями-читателями (M-EVAL, M-RETRIEVAL, M-VLM)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>scripts/eval/field21_abc.py принимает --models (список моделей-читателей, задел под
+            C-073), --only (ограничение набора фото) и не пишет в flywheel.</Criterion>
+          <Criterion>Mode A — POST /normalize и POST /search (retrieval+geo, как в проде, observer off);
+            Mode B — observe_label (наблюдение) → parse_observation → observation_fields →
+            observer_candidates по всему каталогу; Mode C — классика, при not_found/low-confidence/
+            should_escalate — LLM-зрение и merge_candidates, иначе классический top-1.</Criterion>
+          <Criterion>Метрики: accuracy@1/@5 (на вычислимом наборе matched+ambiguous, попадание в набор
+            кандидатов для ambiguous), доля not_found, latency p50/p95, распределение путей, доля строк
+            наблюдения распознано/нормализовано. Для каждой модели-читателя отдельная строка B и C.</Criterion>
+          <Criterion>Живые HTTP-вызовы деградируют корректно: недоступный retrieval даёт понятную
+            ошибку, недоступная модель наблюдателя даёт ok=false без падения стенда.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "START_MODULE_CONTRACT" scripts/eval/field21_abc.py</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Реальный прогон A/B/C и отчёты с примерами (M-EVAL)</Title>
+        <DependsOn>T-001, T-002, T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Стенд реально прогнан на 21 фото против живого стека и Ollama; получены фактические
+            accuracy@1/@5, not_found, latency p50/p95 для A/B/C.</Criterion>
+          <Criterion>reports/field21_abc.json и reports/field21_abc.md содержат таблицу A/B/C и примеры
+            «фото → чтение LLM → кандидаты → итоговый slug», включая честную фиксацию мусора и омоглифов.</Criterion>
+          <Criterion>Выводы не подгоняются: фиксируется, какой режим лучше и насколько, с ограничениями.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/field21_abc.py --models gemma4:e4b-mlx --out reports/field21_abc.json --md reports/field21_abc.md</Command>
+        </Verification>
+      </T-004>
+
+      <T-005>
+        <Title>Тесты стенда и инварианта утечки (M-EVAL, M-DATA)</Title>
+        <DependsOn>T-001, T-002, T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>tests/test_c072_field21.py (ROLE TEST, MAP_MODE LOCALS) проверяет: счёт статусов gold
+            из manifest; инвариант утечки (пустое пересечение хешей с защищёнными артефактами); чистые
+            функции метрик и слияния кандидатов A/B/C без вызова моделей; чтение gold и статусов.</Criterion>
+          <Criterion>Тесты не обращаются к сети/Ollama и не пишут в защищённые данные.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c072_field21.py -q</Command>
+        </Verification>
+      </T-005>
+
+      <T-006>
+        <Title>Синхронизация графа, verification и roadmap; финальные гейты (M-EVAL, M-DATA)</Title>
+        <DependsOn>T-001, T-002, T-003, T-004, T-005</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>graph/modules.xml: M-EVAL получает новые скрипты/тест, M-DATA — тест инварианта;
+            anchors аддитивны, существующие не ломаются.</Criterion>
+          <Criterion>verification VD-M0-CODE (V-M-EVAL) и VD-M-DATA (V-M-DATA) получают сценарий C-072
+            с фактическими командами и числами.</Criterion>
+          <Criterion>AGENTS.md roadmap дополняется строкой C-072; архивный бандл формируется в
+            .grace/changes/archive/C-072/.</Criterion>
+          <Criterion>grace lint --path . — 0 errors / 0 warnings; полный pytest зелёный; синтетические
+            метрики make gate не изменились; после гейтов код не меняется.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-006>
+    </ImplementationPlan>
+  </C-072>
+</GraceChangePlan>

@@ -332,11 +332,14 @@
       <Test>tests/test_c064_budget.py</Test>
       <Test>tests/test_c065_near_dup.py</Test>
       <Test>tests/test_c067_organizer_contract.py</Test>
+      <Test>tests/test_c072_field21.py</Test>
       <Exports>post_image, extract_slug, extract_top5, load_ground_truth, compute_metrics, percentile,
         field_augment, random_background, synthetic pairs CLI (scripts/train/synthetic_pairs.py),
         head training CLI (scripts/train/train_head.py, модуль головы живёт в M-RETRIEVAL),
         cyrillic OCR benchmark CLI (scripts/eval/ocr_cyrillic_bench.py, C-066),
-        organizer run report (scripts/eval/participant_run.py, C-067)</Exports>
+        organizer run report (scripts/eval/participant_run.py, C-067),
+        field21 gold mapping + leak invariant (scripts/eval/field21_gold.py, C-072),
+        field21 A/B/C stand (scripts/eval/field21_abc.py, C-072)</Exports>
       <Verification>V-M-EVAL</Verification>
     </M-EVAL>
 
@@ -375,12 +378,16 @@
       <Test>tests/test_c047_warmup.py</Test>
       <Test>tests/test_c050_media.py</Test>
       <Test>tests/test_c054_feedback.py</Test>
+      <Test>tests/test_c072_field21.py</Test>
       <Verification>V-M-DATA</Verification>
       <Note>C-011: правило закреплено в AGENTS.md, constraints.xml (D-3) и requirements.xml (AN-3);
         архивные бандлы C-001/C-002/C-004/C-010 не редактировались (история).</Note>
       <Note>C-068: путь-каталог tests/ заменён на файлы, чьи контракты объявляют LINKS: M-DATA и покрывают
         правила гигиены данных — governance-стража разметки, политика раскладки датасета и честный
         воспроизводимый baseline.</Note>
+      <Note>C-072: инвариант утечки тестовых фото (tests/test_c072_field21.py) машинно проверяет, что
+        sha256 21 полевого фото не встречается в галерее/индексе/обучающих данных; обнаруженная утечка
+        221 записи в data/flywheel/queries.jsonl устранена, стенд обходит gateway и не пишет лог.</Note>
     </M-DATA>
     <M-ENOTOURISM>
       <Name>Enotourism and Stories</Name>

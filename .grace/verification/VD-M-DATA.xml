@@ -67,6 +67,16 @@
       <Evidence note="C041-real100-provenance">C-041: 100 webp получены от организатора (имена вида score_дата_время, меток не содержат),
         скопированы в data/samples/real100 (data/ в .gitignore), манифест manifest.tsv связывает имя файла с исходным;
         каталог материалов конкурса открыт только на чтение. Фото полевые — используются только для оценки, не для обучения и не в галерею.</Evidence>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/field21_gold.py --leak-scan --leak-out reports/field21_leak.json</Command>
+      <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c072_field21.py -q</Command>
+      <Scenario id="S-DATA-10">Инвариант утечки тестовых фото: sha256 ни одного из 21 полевого фото не встречается
+        в галерее/индексе (data/index), обучающих данных (data/train, data/train-confirmed, data/annotation)
+        и в логе запросов data/flywheel/queries.jsonl; тест проверяет это машинно.</Scenario>
+      <Evidence note="C072-leak-invariant">C-072: сканер (scripts/eval/field21_gold.py --leak-scan) проверил 14 текстовых
+        артефактов защищённых поверхностей — утечек в галерею/индекс/обучение 0. Обнаружена и устранена утечка
+        в лог flywheel: 221 запись из 5166 содержала sha256 тестовых фото (следы прошлых прогонов через gateway);
+        удалено 221, осталось 0. Стенд A/B/C принципиально не ходит через gateway и не пишет в flywheel, поэтому
+        повторной утечки не даёт. Отчёт: reports/field21_leak.json; тест: tests/test_c072_field21.py.</Evidence>
     </V-M-DATA>
   </VD-M-DATA>
 </GraceVerificationDocument>

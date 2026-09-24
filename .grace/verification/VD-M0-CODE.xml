@@ -200,6 +200,21 @@
         Пример строки: query_id 1.73_06-09-2026_14-54-06, image_path 1.73_06-09-2026_14-54-06.webp, image_sha256 367a651c80...,
         predicted_slug valeriy-zaharin-avtohtonnoe-vino-kryma-ot-valeriya-zaharina-aleatiko-kefesiya-rozovoe-suhoe-11, latency_ms 935.
         Отчёты: reports/participant_run.json и reports/participant_run.md; обёртка scripts/eval/participant_run.py вызывает контракт как есть, а не подменяет его.</Evidence>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/field21_gold.py --out reports/field21_gold.json</Command>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/field21_abc.py --models "gemma4:e4b-mlx,qwen3-vl:2b" --out reports/field21_abc.json --md reports/field21_abc.md</Command>
+      <Scenario id="S-EVAL-15">Стенд A/B/C на 21 проверенном полевом фото: эталон из manifest (matched/ambiguous/not_found),
+        три режима с едиными метриками accuracy@1/@5, strict@1, not_found, latency p50/p95, распределением путей;
+        список моделей-читателей задаётся --models.</Scenario>
+      <Evidence note="C072-abc-stand">C-072: на 21 фото (эталон: однозначных 4, неоднозначных 7, ненайденных 10, вычислимых 11)
+        A (классика retrieval+geo, observer off): accuracy@1 0.4545, @5 0.4545, strict@1 1.0, not_found 0.7619,
+        p50/p95 207/517 мс. B (только LLM-зрение, gemma4:e4b-mlx): accuracy@1 0.2727, @5 0.3636, strict@1 0.25,
+        пустых наблюдений 1/21, p50/p95 3161/6319 мс. C (каскад, gemma4:e4b-mlx): accuracy@1 0.4545, @5 0.4545,
+        strict@1 1.0, эскалаций 16/21, Δ к A +0.0, p50/p95 3330/4413 мс. Вторая читательница qwen3-vl:2b не уложилась
+        в онлайн-бюджет 6.5 с ни на одном фото (21/21 пустых), поэтому B=0.0 и C≈A. Вывод: на этом наборе LLM-зрение
+        не превосходит классику, каскад не даёт прироста точности и стоит ~15× задержки; отдельные чтения верны
+        (Fanagoria 5 Elements, «CHATEAU TAMAGNE SEMI-SWEET», Abrau Reserve), но текстовый поиск по разговорному
+        чтению и зарубежные этикетки (Bosca, DaschBosch, Toskana) остаются главным источником ошибок.
+        Отчёты: reports/field21_abc.json и reports/field21_abc.md.</Evidence>
     </V-M-EVAL>
 
     <V-M-GATEWAY>
