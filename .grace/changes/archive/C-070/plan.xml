@@ -1,0 +1,169 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-070>
+    <IntentSummary>Привести документацию сдачи к критериям ТЗ: README (сетап, запуск, флаги, ограничения,
+      API, факт совместимости со скриптом организатора), ARCHITECTURE (пайплайн и границы слоёв + observer
+      как опциональный слой), docs/DEMO.md (сценарий ≤7 минут), docs/LIMITATIONS.md (честные ограничения),
+      .env.example (ключевые флаги с дефолтами). Зафиксировать решение владельца: observer выключен по
+      умолчанию для зачётного пути. Доказать воспроизводимость реальным выводом make gate и docker compose config.
+      Код и метрики не меняются.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>README.md</Value></MustExist>
+      <MustExist><Value>ARCHITECTURE.md</Value></MustExist>
+      <MustExist><Value>docs/DEMO.md</Value></MustExist>
+      <MustExist><Value>docs/LIMITATIONS.md</Value></MustExist>
+      <MustExist><Value>.env.example</Value></MustExist>
+      <MustExist><Value>reports/participant_run.json</Value></MustExist>
+      <MustExist><Value>reports/final.json</Value></MustExist>
+      <MustExist><Value>requirements.txt</Value></MustExist>
+      <MustExist><Value>docker-compose.yml</Value></MustExist>
+      <MustExist><Value>Makefile</Value></MustExist>
+      <MustVerify><Module>M-DEPLOY</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>grep -q "1072" README.md</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "100 / 100" README.md</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "0.775" README.md &amp;&amp; grep -q "0.97" README.md</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "make gate" README.md</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "requirements.txt" README.md</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "OBSERVER_ENABLED" README.md &amp;&amp; grep -q "OBSERVER_ENABLED" .env.example</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "CALIBRATION_ENABLED" .env.example &amp;&amp; grep -q "NEAR_DUP_DISAMBIGUATION" .env.example &amp;&amp; grep -q "VLM_FALLBACK_ENABLED" .env.example</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "text_search" ARCHITECTURE.md</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "observer" ARCHITECTURE.md &amp;&amp; grep -q "services/\*" ARCHITECTURE.md</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "7 минут" docs/DEMO.md &amp;&amp; grep -q "F1@1" docs/DEMO.md</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "OBSERVER_ENABLED=0" docs/LIMITATIONS.md</Command></MustPassCommand>
+      <MustPassCommand><Command>docker compose config</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-DEPLOY</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-DEPLOY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-DEPLOY/>
+      <M-DATA/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>README.md</Path>
+      <Path>ARCHITECTURE.md</Path>
+      <Path>docs/DEMO.md</Path>
+      <Path>docs/LIMITATIONS.md</Path>
+      <Path>.env.example</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/graph/modules.xml</Path>
+      <Path>.grace/verification/VD-M6-DEPLOY.xml</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>README.md под требования ТЗ (сетап, запуск, флаги, ограничения, API, факт совместимости)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>В README добавлен фактический результат совместимости из reports/participant_run.json:
+            100 обработанных фото, 100/100 непустых slug, p95 1072.2 мс, 0 таймаутов, 0 ошибок.</Criterion>
+          <Criterion>Метрики приведены к reports/final.json: acc@1 0.775 / acc@5 0.97, p50 140.0 / p95 155.8 мс,
+            команда make gate; ссылка на requirements.txt присутствует.</Criterion>
+          <Criterion>Таблица флагов и дефолтов включает OBSERVER_ENABLED=0, CALIBRATION_ENABLED=0,
+            OCR_ENGINE=rapidocr, NEAR_DUP_DISAMBIGUATION=0, VLM_FALLBACK_ENABLED=0.</Criterion>
+          <Criterion>Инструкции запуска: локально (uvicorn + Nuxt) и в Docker; устаревшее «Сделано
+            (C-001…C-033, 33 change)» заменено фактическим счётом архива.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "1072" README.md &amp;&amp; grep -q "0.775" README.md &amp;&amp; grep -q "requirements.txt" README.md</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>ARCHITECTURE.md: пайплайн, observer как опциональный слой, границы слоёв</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Пайплайн описан как нормализация → Tier-1 CV (SigLIP2 + геоверификация ORB) →
+            near-dup/OCR-сигнал → решение.</Criterion>
+          <Criterion>Observer описан как опциональный слой (свободный текст → text_search по всему каталогу)
+            с флагом OBSERVER_ENABLED.</Criterion>
+          <Criterion>Отражены калиброванный p_correct-гейт, ветка «не найдено» → аналоги и flywheel.</Criterion>
+          <Criterion>Правило «services/* не импортируют друг друга» (C-069) сохранено явно.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "text_search" ARCHITECTURE.md &amp;&amp; grep -q "OBSERVER_ENABLED" ARCHITECTURE.md</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>docs/DEMO.md: сценарий живого демо ≤7 минут по структуре ТЗ</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Сценарий укладывается в 7 минут и следует структуре ТЗ: концепция → архитектура →
+            живое демо → метрики F1@1/@5 → функция после поиска → выводы.</Criterion>
+          <Criterion>Указаны конкретные команды, маршруты UI и curl: фото из каталога → карточка;
+            неоднозначное → top-10; вне каталога → аналоги; сомелье; вкладка «Обучение»; метрики.</Criterion>
+          <Criterion>Каждая показанная команда/маршрут существует в репозитории (Makefile/эндпоинты).</Criterion>
+          <Criterion>Числа обновлены до reports/final.json; старая таблица baseline-c003 убрана.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "7 минут" docs/DEMO.md &amp;&amp; grep -q "F1@1" docs/DEMO.md &amp;&amp; grep -q "0.775" docs/DEMO.md</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>docs/LIMITATIONS.md: честные ограничения и решение по observer</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Зафиксировано: proxy-числа ≠ полевое качество; нет ground truth; облачные ключи не подключены.</Criterion>
+          <Criterion>Зафиксировано решение: observer ВЫКЛЮЧЕН по умолчанию (OBSERVER_ENABLED=0); причины —
+            лимит 10 с на запрос и недоказанная точность (нет ground truth); observer — опциональный quality mode.</Criterion>
+          <Criterion>Зафиксированы near-dup и кириллица как off-flag с отрицательными результатами C-065/C-066.</Criterion>
+          <Criterion>Указан лимит скрипта организатора 10 с/запрос.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "OBSERVER_ENABLED=0" docs/LIMITATIONS.md &amp;&amp; grep -q "10 с" docs/LIMITATIONS.md</Command>
+        </Verification>
+      </T-004>
+
+      <T-005>
+        <Title>.env.example: ключевые флаги с дефолтами и пояснениями</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Добавлены блоки observer (OBSERVER_ENABLED=0 и параметры бюджета), calibration
+            (CALIBRATION_ENABLED=0) и near-dup (NEAR_DUP_DISAMBIGUATION=0).</Criterion>
+          <Criterion>Зафиксированы дефолты OCR_ENGINE=rapidocr и VLM_FALLBACK_ENABLED=0 с пояснениями.</Criterion>
+          <Criterion>Секреты — только плейсхолдеры; реальных значений нет.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "OBSERVER_ENABLED" .env.example &amp;&amp; grep -q "CALIBRATION_ENABLED" .env.example &amp;&amp; grep -q "NEAR_DUP_DISAMBIGUATION" .env.example</Command>
+        </Verification>
+      </T-005>
+
+      <T-006>
+        <Title>Синхронизация AGENTS.md (roadmap) и scope M-DEPLOY в графе</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Roadmap AGENTS.md покрывает C-001…C-070; счётчик архивных изменений актуализирован;
+            C-070 отнесён к этапу M6.</Criterion>
+          <Criterion>Scope модуля M-DEPLOY в .grace/graph/modules.xml упоминает .env.example.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "| C-070 |" AGENTS.md &amp;&amp; grep -q ".env.example" .grace/graph/modules.xml</Command>
+        </Verification>
+      </T-006>
+
+      <T-007>
+        <Title>Финальная верификация: линт, тесты, compose, gate</Title>
+        <DependsOn>T-001, T-002, T-003, T-004, T-005, T-006</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>grace lint --path . — 0 errors / 0 warnings; Integrity 0/0; Active 0; Archive 69 после архивации.</Criterion>
+          <Criterion>pytest зелёный; docker compose config разбирается; make gate проходит (acc@1 0.775, p95 ≤ 3000 мс).</Criterion>
+          <Criterion>После гейтов код не меняется; вывод зафиксирован в отчёте сдачи.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>docker compose config</Command>
+          <Command>make gate</Command>
+        </Verification>
+      </T-007>
+    </ImplementationPlan>
+  </C-070>
+</GraceChangePlan>

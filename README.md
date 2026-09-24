@@ -1,8 +1,8 @@
 # 🍷 Своё Вино — сканер российских вин по фото этикетки
 
 Компьютерное зрение + гибридный retrieval: **фото этикетки → `{"slug": "<вино>"}`** с уверенностью,
-топ-5 кандидатов и карточкой вина с платформы «Своё Вино» — за **≈160 мс** (SLA 3 с), без единого
-облачного вызова на инференсе.
+топ-5 кандидатов и карточкой вина с платформы «Своё Вино» — за **p95 ≈158 мс** (SLA 3 с, жёсткий лимит
+скрипта организатора 10 с), без единого облачного вызова на инференсе.
 
 > **Конкурс:** РСХБ / ЛЦТ. **Задача:** найти карточку вина в каталоге (2103 позиции) по «полевому»
 > фото этикетки. **Цель:** 90–100% top-1, SLA < 3 с (жёсткий лимит скрипта организатора — 10 с).
@@ -43,7 +43,7 @@
   Object Storage, Managed PostgreSQL + pgvector (`deploy/yandex/`).
 - **Только permissive-лицензии.** SigLIP 2, DINOv2, RapidOCR, OpenCV, FastAPI, Nuxt, PyTorch —
   Apache-2.0/MIT. AGPL (Ultralytics) не используется. Чистый clean-room относительно `old/`.
-- **Инженерная дисциплина.** GRACE 4: 101 governed-файл, контракты, assertion-гейты, 33 завершённых
+- **Инженерная дисциплина.** GRACE 4: 162 governed-файла, контракты, assertion-гейты, 69 завершённых
   change с машино-проверямыми критериями; `make gate` — один коммит-гейт качества и SLA.
 
 ---
@@ -393,11 +393,27 @@ make web-build && make web-preview
 | VLM | `VLM_FALLBACK_ENABLED`, `VLM_PROVIDER`, `VLM_MODEL`, `VLM_REASONING_EFFORT` |
 | LLM Router | `LLM_PROVIDERS_FILE`, `LLM_LOCAL_ONLY`, ключи провайдеров |
 | Текстовый фьюжн | `TEXT_FUSION_MODE`, `TEXT_FUSION_WEIGHT` |
+| Observer (опц.) | `OBSERVER_ENABLED`, `OBSERVER_MODEL`, `OBSERVER_TIMEOUT_S`, `OBSERVER_TOP_K` |
+| Калибровка / near-dup | `CALIBRATION_ENABLED`, `NEAR_DUP_DISAMBIGUATION`, `NEAR_DUP_THRESHOLD`, `SCAN_TOP_K` |
 | SLA | `WARMUP_ON_START`, `SERVICE_TIMEOUT_S` |
 
-Провайдеры и цепочки — `config/providers.yaml` (секреты только через env). Актуальные дефолты:
-`SCORE_TAU=0.7615`, `MARGIN_DELTA=0.0058`, `GEO_WEIGHT=0.7`, `VIEWS=6`, `OCR_ENGINE=rapidocr`,
-`TEXT_FUSION_MODE=conditional`, `VLM_FALLBACK_ENABLED=0`, `NORMALIZE_CROP=0`.
+### Флаги и дефолты
+
+Полный список с пояснениями — в `.env.example`. Ключевые флаги и их **дефолты** (поведение зачётного пути):
+
+| Флаг | Дефолт | Смысл |
+|---|---|---|
+| `OBSERVER_ENABLED` | **`0`** (выключен) | Observer — опциональный «quality mode» для живого демо; в зачётном скрипте выключен (лимит 10 с, точность не доказана). |
+| `CALIBRATION_ENABLED` | **`0`** | Калиброванный `p_correct`-гейт; выключен — решение не меняется. |
+| `NEAR_DUP_DISAMBIGUATION` | **`0`** | Дизамбигуация near-дубликатов; выключена, метрики гейта не меняются (C-065). |
+| `OCR_ENGINE` | **`rapidocr`** | Онлайн-OCR (латиница+цифры); `cyrillic`/`fusion` — off-flag (C-066). |
+| `VLM_FALLBACK_ENABLED` | **`0`** | Локальная VLM не читает этикетки в бюджет SLA (C-004). |
+| `TEXT_FUSION_MODE` | **`conditional`** | Текстовый фьюжн только на near-dup пару в визуальном top-2. |
+| `SCORE_TAU` / `MARGIN_DELTA` | `0.7615` / `0.0058` | Пороги уверенности (калибровка C-021/C-022). |
+| `GEO_WEIGHT` / `VIEWS` | `0.7` / `6` | Геоверификация ORB и число видов галереи (C-023). |
+| `NORMALIZE_CROP` / `PAS_TILES` | `0` / `4` | Полный кадр без кропа этикетки + pan-and-scan тайлы. |
+
+Провайдеры и цепочки — `config/providers.yaml` (секреты только через env).
 
 ---
 
@@ -412,15 +428,60 @@ make gate     # финальный гейт: lint + тесты + eval (acc@1 ≥
 
 | Метрика | Значение | Источник |
 |---|---|---|
-| Тестов собрано | **195** (26 файлов) | `pytest --collect-only` |
-| syntax/grammar lint | 0 errors (101 governed-файл) | `grace lint` |
+| Тестов собрано | **484** (49 файлов) | `pytest --collect-only` |
+| syntax/grammar lint | 0 errors (162 governed-файла) | `grace lint` |
 | acc@1 (in-distribution proxy, n=200, seed 42) | **0.775** | `reports/final.json` |
 | acc@5 | **0.970** | `reports/final.json` |
 | near-duplicate acc@1 | **0.7619** | `reports/final.json` |
-| latency p50 / p95 | **156.9 / 176.5 мс** | `reports/final.json` |
+| latency p50 / p95 | **133.8 / 158.1 мс** | `reports/final.json` |
 | identity@1 / @5 (21 реальное фото, RU) | **0.526 / 0.632** | `reports/real_field.json` (C-025; @5 поднят транслитом, C-027) |
 | корректный `not_found` на реальных фото | **82.6%** | `docs/METRICS.md` |
 | отказ для не-российских вин | **100%** | `docs/METRICS.md` |
+
+### Совместимость с настоящим скриптом организатора (C-067)
+
+Настоящий скрипт организатора прогнан против gateway на **100 фото** (`reports/participant_run.json`):
+
+| Показатель | Значение | Источник |
+|---|---|---|
+| Обработано фото | **100** | `reports/participant_run.json` |
+| Непустой `predicted_slug` | **100 / 100 (100%)** | там же |
+| `null` slug | **0** | там же |
+| Latency p50 / p95 / max | **943.5 / 1072.2 / 1132.0 мс** | там же |
+| Уложились в лимит 10 с | **100 / 100** | там же |
+| Таймауты на лимите скрипта | **0** | там же |
+| HTTP-ошибки / отсутствие ответа | **0 / 0** (все ответы `200`) | там же |
+| sha256 зафиксирован | **100 / 100** | там же |
+
+**Вывод:** СОВМЕСТИМ — скрипт организатора отработал, ответы плоские (`{"slug": ...}`) и укладываются
+в бюджет. Отчёт прогона — `reports/participant_run.md`.
+
+## Воспроизводимость (доказательство)
+
+`make gate` и `docker compose config` прогнаны реально (C-070), вывод ниже:
+
+```text
+$ grace lint --path .
+Files checked: 187 · Governed files: 162 · XML artifacts checked: 158
+Errors: 0 · Warnings: 0 — No issues found.
+
+$ make test   # pytest tests/ -q
+484 passed, 2 warnings in 134.66s
+
+$ make eval   # → reports/final.json
+acc@1 0.775 · acc@5 0.97 · группа acc@1 0.785 · near-dup acc@1 0.7619 (n=21)
+latency p50 133.8 мс · p95 158.1 мс (SLA 3000.0)
+=== ГЕЙТ ПРОЙДЕН: acc@1 0.775 ≥ 0.75, p95 158.1 мс ≤ 3000.0 мс ===
+
+$ scripts/eval/check_contract.py   # живой POST /v1/eval/predict
+HTTP 200 · ответ: {"slug": "nebo-rossii-glera"} — плоский ответ, контракт соблюдён
+
+$ docker compose config
+exit 0 · сервисы: postgres, gateway, normalize, retrieval, vlm, matcher, ocr, web
+```
+
+> `reports/` в `.gitignore`: отчёты пересоздаются любой командой `make eval` / `make gate`,
+> поэтому числа воспроизводимы, а не вшиты.
 
 **Честная оговорка.** Прокси-числа **in-distribution**: галерея и запросы строятся одним семейством
 аугментаций. На отложенном суровом OOD-семействе acc@1 падает до ≈0.06, поэтому прокси-числа нельзя
@@ -432,8 +493,12 @@ make gate     # финальный гейт: lint + тесты + eval (acc@1 ≥
 ## Ограничения (кратко)
 
 - Полевых фото нет; официальный комплект — 2 контрольных фото. Полевое качество измерит организатор.
+- **Ground truth отсутствует**: прокси-числа (acc@1 0.775) измерены in-distribution и не выдаются за
+  полевое качество; облачные ключи не подключены (облачный реранкер — кандидат на будущее).
 - Узкое место — **представление**: у 6 из 19 реальных российских фото правильной позиции нет даже в
   top-100 из 2103 (C-026). Дешёвые эвристики домена исчерпаны.
+- **Observer выключен по умолчанию** (`OBSERVER_ENABLED=0`): зачётный скрипт последовательный с лимитом
+  10 с/запрос, observer ~5–6 с на грани, точность не доказана. Это опциональный «quality mode» для демо.
 - VLM-fallback выключен по умолчанию: локальные модели не читают этикетки в бюджет SLA (3–34 с).
 - `faiss` недоступен на macOS arm64 (конфликт libomp с torch) — используется numpy-бэкенд.
 - PaddleOCR-VL — офлайн-инструмент (~186–234 с/кадр), не онлайн-путь.
@@ -444,7 +509,7 @@ make gate     # финальный гейт: lint + тесты + eval (acc@1 ≥
 
 ## План развития
 
-**Сделано (C-001…C-033, 33 change):**
+**Сделано (C-001…C-070, 69 change):**
 
 - ✅ **M0** — скелет репозитория, ETL каталога (2103 slug), self-evaluator.
 - ✅ **M1** — Tier-1 retrieval (SigLIP2-so400m + обученная голова), full-frame вход + P&S,
@@ -456,7 +521,8 @@ make gate     # финальный гейт: lint + тесты + eval (acc@1 ≥
 - ✅ **M5** — flywheel: SQLite-логи, очередь ревью, HITL, экспорт датасета, реестр версий;
   офлайн-обогащение 26b.
 - ✅ **M6** — Docker/compose, Makefile, Yandex-манифесты, демо-документация, синк официального API
-  (2035/2103), гигиена артефактов.
+  (2035/2103), гигиена артефактов; пакет сдачи: документация под ТЗ, совместимость со скриптом
+  организатора (100/100), решение по observer и доказательство воспроизводимости (C-070).
 
 **В плане:**
 

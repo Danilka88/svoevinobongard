@@ -350,7 +350,7 @@
         docker-compose.yml (postgres+pgvector, 6 сервисов, web, healthcheck, host.docker.internal);
         Makefile (setup/etl/index/images/up/down/eval/test/lint/web-*); deploy/yandex/ (Serverless
         Containers, Workflow переобучения, заметки по Object Storage/Managed PostgreSQL/Lockbox);
-        README.md, ARCHITECTURE.md, docs/DEMO.md, docs/LIMITATIONS.md.</Scope>
+        README.md, ARCHITECTURE.md, docs/DEMO.md, docs/LIMITATIONS.md, .env.example.</Scope>
       <Source>deploy/</Source>
       <Verification>V-M-DEPLOY</Verification>
       <Note>C-068: отдельного pytest-файла у модуля нет — упаковка проверяется командами V-M-DEPLOY

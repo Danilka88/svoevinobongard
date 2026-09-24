@@ -24,21 +24,39 @@ services/gateway (FastAPI)  ── /v1/eval/predict  /v1/scan  /v1/similar  /v1/
 
 ## Пайплайн (онлайн)
 
+Нормализация → Tier-1 CV → near-dup/OCR-сигнал → решение; observer, VLM-fallback и калиброванный
+гейт — опциональные слои за флагами.
+
 1. **Прогрев (при старте):** `retrieval` загружает энкодер, голову, индекс и признаки эталонов и
    прогоняет пробный поиск (`WARMUP_ON_START=1`, эндпоинты `/warmup` и `/v1/warmup`), чтобы первый
    пользовательский запрос не платил за холодный старт.
-2. `POST /v1/scan` (или `/v1/eval/predict`) принимает `image`.
-3. **Нормализация:** EXIF-ориентация, ресайз, детекция этикетки/бутылки (D-FINE/RT-DETRv4),
-   выпрямление перспективы, TTA-кропы. При неудаче детектора — кропы OpenCV-эвристикой.
-4. **Tier-1 retrieval:** эмбеддинг SigLIP 2 so400m (naFlex) → проекционная голова домен-адаптации →
-   kNN по numpy-бэкенду (pgvector/FAISS — прод-цель) → Top-K.
-5. **Геоверификация:** ORB (или SIFT) + BFMatcher с ratio-test + RANSAC-гомография по верхним
-   `GEO_TOPK` кандидатам → фьюжн `score + GEO_WEIGHT · geo_score` и переранжирование.
-6. **Решение:** `confidence` — softmax по top-K с калиброванной температурой; `margin` — отрыв
-   top1 от top2; `confident = (score ≥ SCORE_TAU) and (margin ≥ MARGIN_DELTA)`.
-   Ветвление на **VLM-fallback** (`gemma4:12b`) при неуверенности подключает change C-004.
-7. Ответ: `slug`, `confidence`, `f1_top1`, `f1_top5`, `margin`, `path`, `latency_ms`, `top5`, `card`.
-8. Лог запроса → `active-learning`.
+2. `POST /v1/scan` (или `/v1/eval/predict`) принимает `image` (multipart).
+3. **Нормализация** (`services/normalize`): EXIF-ориентация, ресайз, **полный кадр без кропа этикетки**
+   (`NORMALIZE_CROP=0`) + letterbox и pan-and-scan тайлы (`PAS_TILES=4/6`). Это база и для retrieval, и
+   для VLM: овальные/цилиндрические этикетки, блики и ракурсы ломают детекцию и выпрямление.
+   Детектор этикетки — OpenCV-эвристика (нейросетевой D-FINE/RT-DETRv4 не подключён).
+4. **Tier-1 CV** (`services/retrieval`): эмбеддинг **SigLIP 2 so400m** (naFlex) → проекционная голова
+   домен-адаптации → kNN по numpy-бэкенду (pgvector/FAISS — прод-цель) → Top-K; затем
+   **геоверификация ORB + BFMatcher(ratio-test) + RANSAC** по верхним `GEO_TOPK` кандидатам →
+   фьюжн `score + GEO_WEIGHT · geo_score` и переранжирование.
+5. **Near-dup / OCR-сигнал:** группы near-дубликатов (серии одного винодела) и дешёвый OCR-сигнал
+   (RapidOCR, ~250 мс) подключаются при неуверенном Tier-1; оба — за флагами
+   (`NEAR_DUP_DISAMBIGUATION=0`, `OCR_ENABLED=1`, `TEXT_FUSION_MODE=conditional`).
+6. **Решение:** `confidence` — softmax по top-K с калиброванной температурой; `margin` — отрыв top1 от
+   top2; `confident = (score ≥ SCORE_TAU) and (margin ≥ MARGIN_DELTA)`. Калиброванный **`p_correct`-гейт**
+   (`CALIBRATION_ENABLED=0`, консервативная поправка) уточняет уверенность, не меняя дефолтного решения.
+7. **Observer (опциональный слой, `OBSERVER_ENABLED=0`).** При неуверенности свободный текст наблюдения
+   этикетки ищется **по всему каталогу** функцией `text_search` (`packages/common/text_rank.py`) и
+   сливается с визуальным top-K (`path="observer"`). Слой живёт на VLM-сервисе (`POST /observe`), имеет
+   жёсткий таймаут (`OBSERVER_TIMEOUT_S=6.5`) и по умолчанию **выключен**: зачётный скрипт
+   последовательный с лимитом 10 с/запрос, а точность наблюдений не доказана (нет ground truth).
+   Включается как «quality mode» для живого демо, а не для зачётного пути.
+8. **VLM-fallback** (C-004): коннектор `services/vlm` может быть вызван при неуверенности; по умолчанию
+   выключен (`VLM_FALLBACK_ENABLED=0`) — локальные модели не укладываются в бюджет SLA.
+9. **«Не найдено» → аналоги:** без уверенного ответа система отдаёт `not_found` и ближайшие
+   кандидаты/аналоги (`GET /v1/similar/{slug}`), а не пустой экран или неверный ответ.
+10. Ответ: `slug`, `confidence`, `f1_top1`, `f1_top5`, `margin`, `path`, `latency_ms`, `top5`, `card`.
+11. Лог запроса → flywheel (`services/active_learning`).
 
 ## Пайплайн (офлайн, flywheel)
 
@@ -51,11 +69,12 @@ services/gateway (FastAPI)  ── /v1/eval/predict  /v1/scan  /v1/similar  /v1/
 
 ## Стек
 
-- Backend: FastAPI, Python 3.11+
-- CV: PyTorch + transformers/timm (MPS/ONNX), OpenCV, Kornia
-- Модели: SigLIP 2 / DINOv2 (Apache-2.0), D-FINE/RT-DETRv4 (Apache-2.0),
-  PaddleOCR (Apache-2.0), VLM `gemma4:12b` (локально) / любые OpenAI-совместимые
-- БД: PostgreSQL + pgvector; FAISS для локальной разработки
+- Backend: FastAPI, Python 3.14 (`requirements.txt`)
+- CV: PyTorch + transformers (MPS/ONNX), OpenCV (numpy-бэкенд индекса)
+- Модели: SigLIP 2 so400m / DINOv2 (Apache-2.0), RapidOCR и PaddleOCR-VL (Apache-2.0),
+  VLM `gemma4` (локально) / любые OpenAI-совместимые.
+  Нейросетевой детектор этикетки (D-FINE/RT-DETRv4) — кандидат, не подключён.
+- БД: PostgreSQL + pgvector (прод-цель); numpy-бэкенд для локальной разработки
 - UI: Nuxt 3
 - Инфра: Docker Compose (локально), Yandex Cloud Functions/Workflow/Object Storage (деплой)
 

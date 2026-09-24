@@ -83,6 +83,23 @@
         «/v1/eval/predict и /v1/scan возвращают 501 — подключаются в C-002» заменено фактическим состоянием.
         AGENTS.md: число архивных изменений 32, таблица дополнена до C-033 и сверена с содержимым архива.
         Код не изменялся: pytest остаётся 195 passed, метрики не пересчитывались.</Evidence>
+      <Scenario id="S-DEPLOY-12">Пакет сдачи (C-070): README/ARCHITECTURE/DEMO/LIMITATIONS соответствуют ТЗ, observer выключен по умолчанию, .env.example документирует флаги, воспроизводимость доказана make gate и docker compose config.</Scenario>
+      <Evidence note="C070-docs">C-070 (только документы, код не менялся): README приведён к ТЗ —
+        фактическая совместимость с настоящим скриптом организатора (reports/participant_run.json: 100 фото,
+        100/100 непустых slug, p95 1072.2 мс, 0 таймаутов, 0 ошибок), метрики reports/final.json (acc@1 0.775,
+        acc@5 0.97, p50 133.8 / p95 158.1 мс), таблица флагов с дефолтами (OBSERVER_ENABLED=0,
+        CALIBRATION_ENABLED=0, OCR_ENGINE=rapidocr, NEAR_DUP_DISAMBIGUATION=0, VLM_FALLBACK_ENABLED=0),
+        ссылка на requirements.txt. ARCHITECTURE.md: пайплайн (нормализация → Tier-1 CV → near-dup/OCR →
+        решение), observer как опциональный слой через text_search по всему каталогу, p_correct-гейт,
+        «не найдено» → аналоги, правило services/* не импортируют друг друга. docs/DEMO.md — сценарий
+        ≤7 минут по структуре ТЗ; docs/LIMITATIONS.md — решение владельца по observer и ограничения;
+        .env.example — блоки observer/calibration/near-dup. Рефакторинг не делался.</Evidence>
+      <Evidence note="C070-gates">Реальная проверка воспроизводимости (C-070): grace lint → 187 files,
+        162 governed, 158 XML, Errors 0 / Warnings 0; pytest → 484 passed, 2 warnings in 134.66s;
+        make eval → acc@1 0.775, acc@5 0.97, near-dup 0.7619 (n=21), p50 133.8 / p95 158.1 мс;
+        final_report --check → ГЕЙТ ПРОЙДЕН: acc@1 0.775 ≥ 0.75, p95 158.1 мс ≤ 3000.0 мс;
+        check_contract → HTTP 200 {"slug": "nebo-rossii-glera"}; docker compose config → exit 0,
+        сервисы postgres, gateway, normalize, retrieval, vlm, matcher, ocr, web.</Evidence>
     </V-M-DEPLOY>
   </VD-M6-DEPLOY>
 </GraceVerificationDocument>
