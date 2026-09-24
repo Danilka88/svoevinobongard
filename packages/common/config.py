@@ -215,6 +215,15 @@ class AppSettings:
         default_factory=lambda: _env_int("OBSERVER_MAX_TOKENS", 200))
     observer_threshold: float = field(
         default_factory=lambda: _env_float("OBSERVER_THRESHOLD", 0.95))
+    # C-071: бюджет цифрового сомелье. Вызов text-модели ограничен по времени, а при
+    # таймауте/ошибке/пустом ответе фича отдаёт детерминированный подбор по каталогу.
+    # Бюджет мал намеренно: локальная thinking-модель медленная, а retention-фича важнее
+    # полного ответа LLM. Прогрев text-модели — off по умолчанию: фича не должна зависеть
+    # от холодного старта, поэтому гарантию даёт fallback, а не прогретая модель.
+    sommelier_llm_timeout_s: float = field(
+        default_factory=lambda: _env_float("SOMMELIER_LLM_TIMEOUT_S", 4.0))
+    sommelier_warmup_enabled: bool = field(
+        default_factory=lambda: _env_bool("SOMMELIER_WARMUP_ENABLED", False))
     calibration_enabled: bool = field(default_factory=lambda: _env_bool("CALIBRATION_ENABLED", False))
     calibration_path: str = field(
         default_factory=lambda: _env("CALIBRATION_PATH", "data/calibration/platt_v1.json"))

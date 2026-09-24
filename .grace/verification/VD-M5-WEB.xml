@@ -182,6 +182,19 @@
         primaryCount 10 кандидатов (Ice Wine Каберне, Ice Wine Рислинг тихое, LETO Коллекция винодела 2020 сухое красное …),
         отдельный раздел «Похожие вина других виноделен» с altCount 6 аналогами (Adagum Cabernet Sauvignon, Appassimento, Arie Riserva …).
         Полный набор e2e scanner.js — PASS, неожиданных падений нет.</Evidence>
+      <Evidence note="C071-resilience">C-071: сомелье не зависит от холодного старта. /v1/sommelier оборачивает
+        весь LLM-вызов в asyncio.wait_for(timeout=sommelier_llm_timeout_s=4.0) и при таймауте/ошибке/пустом ответе
+        отдаёт детерминированный подбор из каталога (source=deterministic|official, llm_degraded=true) — без 5xx
+        и без «Сервис недоступен». UI получил отдельный бюджет NUXT_PUBLIC_API_SOMMELIER_TIMEOUT_MS=12000
+        (sommelierTimeoutMs) и нейтральную пометку о резервном подборе; состояние недоступности остаётся только
+        при source=unavailable. Живые доказательства: на холодной модели e2e apps/web/e2e/sommelier.js дал 31/31 PASS
+        (было 11 FAIL при холодной и 30/31 при прогретой), в DOM «Источник: deterministic», recs 8 (5 рекомендаций и
+        3 альтернативы), sensoryNotes=5, dishChips=12, тост ошибки null. Полный run_all.sh после пересборки и
+        перезапуска UI — 0 падений: smoke 71/0, theme 11/0, fixes 18/0, how-metrics 16/0, catalog 26/0,
+        sommelier 31/0, scanner 32/0, images 13/0, learning 15/0, catalog-search 9/0, консоль 0 строк / 0 ошибок.
+        Новые тесты tests/test_c071_sommelier_budget.py — 8 passed (медленный, пустой, отказывающий и корректный LLM,
+        грязный ответ через structured, схема, дефолты бюджета, сохранённый 404); полный pytest 492 passed;
+        grace lint --path . 0/0; make gate: acc@1 0.775, acc@5 0.97, p95 132.8 мс, контракт /v1/eval/predict OK.</Evidence>
     </V-M-WEB>
   </VD-M5-WEB>
 </GraceVerificationDocument>

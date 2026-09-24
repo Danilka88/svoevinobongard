@@ -1,0 +1,195 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-071>
+    <IntentSummary>Сделать цифрового сомелье устойчивым: ограничить весь вызов текстовой модели
+      целостным бюджетом по времени (env SOMMELIER_LLM_TIMEOUT_S, дефолт 4.0 с) и гарантировать
+      детерминированный fallback из каталога при таймауте, ошибке или пустом ответе. Ответ всегда
+      валиден (непустые recommendations при наличии аналогов, pairing/sensory из каталога) и несёт
+      аддитивные source (official|deterministic|llm) и llm_degraded. UI получает отдельный больший
+      бюджет ожидания сомелье и не показывает недоступность при валидном детерминированном подборе.
+      Прогрев text-модели — off-flag, чтобы фича не зависела от холодного старта. e2e sommelier.js
+      доводится до 31/31 PASS. Зачётный путь /v1/eval/predict и ML-метрики гейта не меняются.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-071/spec.xml</Value></MustExist>
+      <MustExist><Value>services/gateway/app/main.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/recommend.py</Value></MustExist>
+      <MustExist><Value>packages/common/config.py</Value></MustExist>
+      <MustExist><Value>packages/contracts/schemas.py</Value></MustExist>
+      <MustExist><Value>apps/web/composables/useGateway.ts</Value></MustExist>
+      <MustExist><Value>apps/web/pages/sommelier.vue</Value></MustExist>
+      <MustExist><Value>apps/web/e2e/sommelier.js</Value></MustExist>
+      <MustExist><Value>tests/test_recommend.py</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>grep -q "SOMMELIER_LLM_TIMEOUT_S" .env.example</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "sommelier_llm_timeout_s" packages/common/config.py &amp;&amp; grep -q "sommelier_warmup_enabled" packages/common/config.py</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "llm_degraded" packages/contracts/schemas.py</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "asyncio.wait_for" services/gateway/app/main.py &amp;&amp; grep -q "llm_degraded" services/gateway/app/main.py</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "deterministic" services/gateway/app/main.py &amp;&amp; grep -q "SOMMELIER_LLM_TIMEOUT_S" services/gateway/app/main.py</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "apiSommelierTimeoutMs" apps/web/nuxt.config.ts &amp;&amp; grep -q "sommelierTimeoutMs" apps/web/composables/useGateway.ts</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "llm_degraded" apps/web/composables/useGateway.ts</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c071_sommelier_budget.py -q</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-WEB</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/>
+      <M-WEB/>
+      <M-COMMON/>
+      <M-CONTRACTS/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>services/gateway/app/main.py</Path>
+      <Path>services/gateway/app/recommend.py</Path>
+      <Path>packages/common/config.py</Path>
+      <Path>packages/contracts/schemas.py</Path>
+      <Path>apps/web/composables/useGateway.ts</Path>
+      <Path>apps/web/nuxt.config.ts</Path>
+      <Path>apps/web/pages/sommelier.vue</Path>
+      <Path>apps/web/e2e/sommelier.js</Path>
+      <Path>tests/test_c071_sommelier_budget.py</Path>
+      <Path>.env.example</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/verification/VD-M5-WEB.xml</Path>
+      <Path>.grace/verification/VD-SHARED.xml</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Настройки бюджета и прогрева сомелье (M-COMMON)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>packages/common/config.py получает sommelier_llm_timeout_s (env SOMMELIER_LLM_TIMEOUT_S,
+            дефолт 4.0) и sommelier_warmup_enabled (env SOMMELIER_WARMUP_ENABLED, дефолт off).</Criterion>
+          <Criterion>MAP_MODE CONFIG сохраняется: разметка не перечисляет локальные символы.</Criterion>
+          <Criterion>.env.example документирует оба флага с дефолтами и пояснением про бюджет 10 с
+            организатора и независимость от холодного старта.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "sommelier_llm_timeout_s" packages/common/config.py &amp;&amp; grep -q "SOMMELIER_LLM_TIMEOUT_S" .env.example</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Аддитивные поля ответа сомелье (M-CONTRACTS)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>SommelierResponse получает llm_degraded: bool = False (аддитивно, дефолт сохраняет
+            прежнее поведение клиентов).</Criterion>
+          <Criterion>source остаётся строкой; канонические значения official|deterministic|llm
+            документированы в докстроке без ломающего переименования поля.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "llm_degraded" packages/contracts/schemas.py</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Бюджет LLM и гарантированный fallback в /v1/sommelier (M-GATEWAY)</Title>
+        <DependsOn>T-001, T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Весь LLM-вызов обёрнут в asyncio.wait_for с бюджетом sommelier_llm_timeout_s;
+            per-call timeout_s роутера также не превышает бюджет.</Criterion>
+          <Criterion>При asyncio.TimeoutError, LLMError или ином исключении, а также при пустом/неразбираемом
+            ответе — эндпоинт возвращает детерминированные recommendations, pairing и alternatives из
+            каталога; HTTP-статус 200, без 5xx.</Criterion>
+          <Criterion>source принимает official|deterministic|llm; llm_degraded=true при деградации;
+            успешный LLM даёт source=llm и llm_degraded=false.</Criterion>
+          <Criterion>Новые маркеры логирования LLM_TIMEOUT и DETERMINISTIC_FALLBACK фиксируют исход.</Criterion>
+          <Criterion>Сохраняется существующий контракт: 404 на неизвестный slug, pairing не теряется.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "asyncio.wait_for" services/gateway/app/main.py &amp;&amp; grep -q "deterministic" services/gateway/app/main.py</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Опциональный прогрев text-модели в lifespan (off по умолчанию)</Title>
+        <DependsOn>T-001, T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Функция прогрева вызывает text-модель best-effort и полностью защищена: сбой только
+            логируется и не мешает старту gateway.</Criterion>
+          <Criterion>Прогрев выполняется только при sommelier_warmup_enabled=true; по умолчанию старт не
+            удлиняется и поведение не меняется.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "sommelier_warmup_enabled" services/gateway/app/main.py</Command>
+        </Verification>
+      </T-004>
+
+      <T-005>
+        <Title>UI: бюджет сомелье и отсутствие ложной недоступности (M-WEB)</Title>
+        <DependsOn>T-002, T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>nuxt.config.ts получает NUXT_PUBLIC_API_SOMMELIER_TIMEOUT_MS (дефолт 12000); вызов
+            sommelier в useGateway.ts использует этот бюджет; тип SommelierResponse получает llm_degraded.</Criterion>
+          <Criterion>Экран sommelier.vue показывает рекомендации при source official|deterministic|llm и
+            переходит в состояние недоступности только при source=unavailable или реальном сбое; строка
+            source === 'unavailable' сохраняется (C-048).</Criterion>
+          <Criterion>При деградации UI показывает нейтральную пометку («резервный подбор по каталогу»),
+            а не ошибку; сообщение о реальной недоступности упоминает gateway (согласуется с e2e error-state).</Criterion>
+          <Criterion>Все вызовы $fetch сохраняют signal: requestTimeout(...) (C-049).</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "sommelierTimeoutMs" apps/web/composables/useGateway.ts &amp;&amp; grep -q "llm_degraded" apps/web/pages/sommelier.vue</Command>
+        </Verification>
+      </T-005>
+
+      <T-006>
+        <Title>e2e sommelier.js: превратить INFO submit в проверяемый ok (31/31)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Строка info("submit", ...) заменена на ok("submit", clickText("Подобрать вино") === "ok", ...),
+            поэтому набор содержит 31 проверяемый чек и может дать 31/31 PASS.</Criterion>
+          <Criterion>Существующие проверки мастера, рекомендаций, альтернатив и «Мой вкус» не ослаблены.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q 'ok("submit"' apps/web/e2e/sommelier.js</Command>
+        </Verification>
+      </T-006>
+
+      <T-007>
+        <Title>Тесты бюджета, source/llm_degraded и разбора ответа (M-GATEWAY, M-CONTRACTS)</Title>
+        <DependsOn>T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>tests/test_c071_sommelier_budget.py содержит MODULE_CONTRACT и MODULE_MAP (ROLE TEST,
+            MAP_MODE LOCALS) и зелёный.</Criterion>
+          <Criterion>Тест медленного LLM (мок со sleep) утверждает: ответ не 5xx, есть recommendations,
+            source=deterministic, llm_degraded=true, время в пределах бюджета.</Criterion>
+          <Criterion>Тест пустого ответа LLM даёт детерминированный подбор; тест успешного LLM даёт
+            source=llm и llm_degraded=false.</Criterion>
+          <Criterion>Тест «грязного» ответа сомелье (фенсы, текст вокруг, неизвестный slug) разбирается
+            через structured и фильтруется по каталогу (C-052).</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c071_sommelier_budget.py -q</Command>
+        </Verification>
+      </T-007>
+
+      <T-008>
+        <Title>Финальная верификация: линт, тесты, live curl, e2e, gate</Title>
+        <DependsOn>T-001, T-002, T-003, T-004, T-005, T-006, T-007</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>grace lint --path . — 0 errors / 0 warnings; Integrity 0/0.</Criterion>
+          <Criterion>Живой curl /v1/sommelier укладывается в бюджет и всегда возвращает непустые данные
+            (в том числе при холодной/остановленной text-модели).</Criterion>
+          <Criterion>e2e sommelier.js — 31/31 PASS; полный pytest зелёный; make gate без регрессий.</Criterion>
+          <Criterion>После гейтов код не меняется; evidence записано в verification-документы.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-008>
+    </ImplementationPlan>
+  </C-071>
+</GraceChangePlan>

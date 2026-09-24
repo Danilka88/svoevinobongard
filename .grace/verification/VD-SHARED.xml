@@ -51,6 +51,14 @@
       <Evidence note="providers">Конфигурация config/providers.yaml: ollama (local), lmstudio (local),
         openrouter (облако, ключ из env), yandex (облако), custom (выключен). Роли: vision_model,
         text_model, embedding_model. Лимиты: порог 3 отказа, cooldown 30 с, окно 60 с, множитель 10, open 30 с.</Evidence>
+      <Evidence note="C071-budget">C-071: добавлены настройки sommelier_llm_timeout_s (SOMMELIER_LLM_TIMEOUT_S,
+        дефолт 4.0) и sommelier_warmup_enabled (SOMMELIER_WARMUP_ENABLED, дефолт off через _env_bool).
+        Живая проверка на холодной text-модели (предварительно ollama stop qwen3-vl:2b): POST /v1/sommelier
+        вернул HTTP 200 за 4.06 с, source=deterministic, llm_degraded=true, 5 рекомендаций, pairing из каталога
+        и 3 альтернативы; маркеры gateway [M-GATEWAY][sommelier][LLM_TIMEOUT] budget_s=4.0 и
+        [M-GATEWAY][sommelier][DETERMINISTIC_FALLBACK] items=5 source=deterministic reason=llm timeout.
+        Три последовательных вызова — 4.03–4.04 с, каждый HTTP 200 и непустые данные. Бюджет накрывает всю
+        цепочку роли text_model (две ступени Ollama + облачные без ключей), а не одну ступень.</Evidence>
     </V-M-COMMON>
   </VD-SHARED>
 </GraceVerificationDocument>

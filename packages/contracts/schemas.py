@@ -177,7 +177,12 @@ class SommelierItem(BaseModel):
 
 
 class SommelierResponse(BaseModel):
-    """Ответ POST /v1/sommelier."""
+    """Ответ POST /v1/sommelier.
+
+    C-071: ``source`` принимает канонические значения ``official|deterministic|llm``,
+    а ``llm_degraded`` показывает, что LLM-путь не дал ответа и сработал детерминированный
+    подбор по каталогу. Оба поля аддитивны: старые клиенты продолжают работать.
+    """
 
     slug: str
     recommendations: list[SommelierItem] = Field(default_factory=list)
@@ -189,6 +194,8 @@ class SommelierResponse(BaseModel):
     pairing_cards: list[dict] = Field(default_factory=list)
     alternatives: list[dict] = Field(default_factory=list)
     sensory_note: str = ""
+    # C-071: витрина деградации LLM-пути (аддитивно)
+    llm_degraded: bool = False
 
 
 class EnotourismRegion(BaseModel):

@@ -56,7 +56,9 @@ try { page.selectOption({ selector: "#style", value: "сухое" }); } catch (e
 ev("(function(){var i=document.getElementById('region');i.value='Кубань';i.dispatchEvent(new Event('input',{bubbles:true}));return 1})()");
 ok("selects applied", ev("document.getElementById('budget').value") === "средний" && ev("document.getElementById('style').value") === "сухое", "budget/style");
 
-info("submit", String(clickText("Подобрать вино")));
+// C-071: submit раньше был INFO и не считался проверкой — превращаем в реальный чек,
+// чтобы набор давал 31/31 PASS, а не 30/31.
+ok("submit", clickText("Подобрать вино") === "ok", "Подобрать вино");
 const gotResult = waitFor("!!document.querySelector('.rec-grid') || !!document.querySelector('.toast')", 30000);
 const res = j("JSON.stringify({" +
   "recs:document.querySelectorAll('.rec').length," +

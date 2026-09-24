@@ -59,13 +59,15 @@ async function submit() {
     const payload: Record<string, string> = { ...answers };
     if (regionInput.value.trim()) payload.region = regionInput.value.trim();
     result.value = await sommelier(baseSlug.value, payload);
+    // C-071: недоступность — только когда gateway реально не ответил. Валидный
+    // детерминированный подбор (source official|deterministic) показывается как результат.
     if (result.value?.source === 'unavailable') {
       unavailable.value = true;
-      error.value = 'Сервис недоступен: подбор не получен.';
+      error.value = 'Сервис недоступен: gateway не ответил, подбор не получен.';
     }
   } catch (e) {
     unavailable.value = true;
-    error.value = 'Сервис недоступен: подбор не получен.';
+    error.value = 'Сервис недоступен: gateway не ответил, подбор не получен.';
     result.value = null;
   } finally {
     busy.value = false;
@@ -183,6 +185,9 @@ onMounted(() => { taste.load(); if (baseSlug.value) void submit(); });
         <h2>Рекомендации</h2>
         <p class="muted small">
           Источник: {{ result.source }}<template v-if="taste.likes.value.length"> · учтено вин из «Мой вкус»: {{ taste.likes.value.length }}</template>
+        </p>
+        <p v-if="result.llm_degraded" class="muted small" style="margin: 0">
+          Резервный подбор по каталогу: текстовая модель не успела или вернула пустой ответ — пары и сорта взяты из каталога.
         </p>
         <ul class="rec-grid">
           <li v-for="item in result.recommendations" :key="item.slug" class="rec">

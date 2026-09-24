@@ -9,7 +9,10 @@ export default defineNuxtConfig({
       // C-049: ограничение ожидания ответа gateway (мс). Против «висящего» соединения
       // интерфейс переходит в состояние недоступности, а не ждёт бесконечно.
       apiTimeoutMs: Number(process.env.NUXT_PUBLIC_API_TIMEOUT_MS || 8000),
-      apiScanTimeoutMs: Number(process.env.NUXT_PUBLIC_API_SCAN_TIMEOUT_MS || 15000)
+      apiScanTimeoutMs: Number(process.env.NUXT_PUBLIC_API_SCAN_TIMEOUT_MS || 15000),
+      // C-071: у сомелье отдельный, больший бюджет: gateway сам ограничивает LLM и обязан
+      // ответить детерминированным подбором, а UI не должен показывать недоступность раньше него.
+      apiSommelierTimeoutMs: Number(process.env.NUXT_PUBLIC_API_SOMMELIER_TIMEOUT_MS || 12000)
     }
   },
   app: {

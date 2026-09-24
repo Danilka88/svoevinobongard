@@ -51,6 +51,8 @@ export interface SommelierResponse {
   // C-036: аддитивные поля
   pairing_cards?: MediaImage[]; sensory_note?: string;
   alternatives?: { slug: string; name: string; winery: string; image_url?: string }[];
+  // C-071: source принимает official|deterministic|llm; llm_degraded=true при деградации LLM-пути
+  llm_degraded?: boolean;
 }
 
 // C-019: энотуризм и статьи — данные официального API портала через gateway
@@ -82,6 +84,9 @@ export function useGateway() {
   // оставлял интерфейс в скелетоне навсегда. Сканирование получает больший бюджет.
   const timeoutMs = Number(config.public.apiTimeoutMs || 8000);
   const scanTimeoutMs = Number(config.public.apiScanTimeoutMs || 15000);
+  // C-071: сомелье вне зачётного пути, поэтому у него отдельный бюджет: gateway ограничивает
+  // LLM собственным таймаутом, а интерфейс не должен сдаваться раньше и объявлять недоступность.
+  const sommelierTimeoutMs = Number(config.public.apiSommelierTimeoutMs || 12000);
 
   async function scan(file: File): Promise<ScanResponse> {
     const body = new FormData();
@@ -203,7 +208,7 @@ export function useGateway() {
           method: 'POST',
           body: { slug, answers },
           headers: hdr(),
-          signal: requestTimeout(timeoutMs),
+          signal: requestTimeout(sommelierTimeoutMs),
         }));
     } catch {
       return { slug, recommendations: [], pairing: [], source: 'unavailable', note: 'Сервис недоступен' } as SommelierResponse;

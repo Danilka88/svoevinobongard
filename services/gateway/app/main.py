@@ -32,6 +32,7 @@ Rich-ответ: slug, confidence, f1_top1, f1_top5, margin, path, latency_ms, t
 """
 from __future__ import annotations
 
+import asyncio
 import io
 import os
 import time
@@ -130,6 +131,10 @@ def _image_too_small(data: bytes) -> bool:
 
 VLM_MODEL = os.getenv("VLM_MODEL", "gemma4:12b")
 ENCODER = os.getenv("ENCODER", "siglip2")
+
+# C-071: целостный бюджет вызова text-модели сомелье. Модуль-константа, чтобы тесты
+# могли подменить её без сети; значение читается из окружения один раз при импорте.
+_SOMMELIER_LLM_TIMEOUT_S = settings.sommelier_llm_timeout_s
 
 _store: CatalogStore | None = None
 
@@ -362,21 +367,28 @@ async def sommelier(request: SommelierRequest) -> SommelierResponse:
     # пары берём из официальных гастросочетаний портала; LLM только формулирует
     dishes = official_dishes(get_official().get(request.slug) or {})
     pairing = pairing_for(record, dishes)
-    source = "catalog"
     note = ""
+    # C-071: LLM — необязательный слой. Считаем путь деградировавшим, пока не получен
+    # разобранный ответ модели; гарантию даёт детерминированный подбор по каталогу.
+    llm_degraded = True
 
     if fallback:
         try:
             router = LLMRouter()
-            result = await run_in_threadpool(
-                router.chat,
-                build_sommelier_prompt(record, request.answers, fallback),
-                role="text_model",
-                max_tokens=320,
-                temperature=0.0,
-                response_format={"type": "json_object"},
-                extra={"reasoning_effort": "none"},
-                timeout_s=8.0,
+            # Жёсткий бюджет на весь вызов, а не на один провайдер: цепочка text_model
+            # содержит несколько ступеней, и суммарное ожидание обязано уложиться в бюджет.
+            result = await asyncio.wait_for(
+                run_in_threadpool(
+                    router.chat,
+                    build_sommelier_prompt(record, request.answers, fallback),
+                    role="text_model",
+                    max_tokens=320,
+                    temperature=0.0,
+                    response_format={"type": "json_object"},
+                    extra={"reasoning_effort": "none"},
+                    timeout_s=_SOMMELIER_LLM_TIMEOUT_S,
+                ),
+                timeout=_SOMMELIER_LLM_TIMEOUT_S,
             )
             parsed = parse_sommelier_reply(result.text, allowed)
             if parsed:
@@ -390,13 +402,17 @@ async def sommelier(request: SommelierRequest) -> SommelierResponse:
                     )
                     for item in parsed["recommendations"]
                 ]
-                if parsed.get("pairing"):
-                    pairing = parsed["pairing"]
                 if recommendations:
+                    if parsed.get("pairing"):
+                        pairing = parsed["pairing"]
                     log_marker("M-GATEWAY", "sommelier", "LLM_OK", items=len(recommendations))
                     return SommelierResponse(slug=request.slug, recommendations=recommendations,
                                              pairing=pairing, official_dishes=dishes,
-                                             source="llm" if not dishes else "llm+official-dishes")
+                                             source="llm", llm_degraded=False)
+        except (asyncio.TimeoutError, TimeoutError):
+            note = "llm timeout"
+            log_marker("M-GATEWAY", "sommelier", "LLM_TIMEOUT",
+                       budget_s=_SOMMELIER_LLM_TIMEOUT_S)
         except LLMError as error:
             note = f"llm unavailable: {type(error).__name__}"
             log_marker("M-GATEWAY", "sommelier", "LLM_FAILED", error=type(error).__name__)
@@ -404,7 +420,11 @@ async def sommelier(request: SommelierRequest) -> SommelierResponse:
             note = f"llm error: {type(error).__name__}"
             log_marker("M-GATEWAY", "sommelier", "LLM_ERROR", error=type(error).__name__)
 
-    log_marker("M-GATEWAY", "sommelier", "CATALOG_FALLBACK", items=len(fallback))
+    # C-071: детерминированный ответ. Источник: official — есть официальные пары портала,
+    # deterministic — подбор по каталогу. Оба варианта валидны и не являются ошибкой.
+    source = "official" if dishes else "deterministic"
+    log_marker("M-GATEWAY", "sommelier", "DETERMINISTIC_FALLBACK", items=len(fallback),
+               source=source, reason=note or "llm-empty")
     entry = media_for(request.slug)
     dish_images = entry.get("dish_images") or []
     pairing_cards = [
@@ -451,11 +471,12 @@ async def sommelier(request: SommelierRequest) -> SommelierResponse:
         recommendations=enriched,
         pairing=pairing,
         official_dishes=dishes,
-        source="official-dishes" if dishes else source,
+        source=source,
         note=note,
         pairing_cards=pairing_cards,
         alternatives=alternatives,
         sensory_note=_sensory_note(catalog_record, pairing),
+        llm_degraded=llm_degraded,
     )
 
 
@@ -561,13 +582,45 @@ async def _warm_catalog_on_startup() -> None:
                    ms=round((time.perf_counter() - started) * 1000.0, 1))
 
 
+async def _warm_sommelier_on_startup() -> None:
+    """Опционально прогревает text-модель сомелье при старте gateway (C-071).
+
+    По умолчанию выключено (SOMMELIER_WARMUP_ENABLED=0): фича не должна зависеть от
+    холодного старта, гарантию даёт детерминированный fallback. Когда флаг включён,
+    прогрев best-effort и полностью защищён — сбой только логируется и не мешает старту.
+    """
+    started = time.perf_counter()
+    try:
+        router = LLMRouter()
+        await asyncio.wait_for(
+            run_in_threadpool(
+                router.chat,
+                [{"role": "user", "content": "ping"}],
+                role="text_model",
+                max_tokens=1,
+                temperature=0.0,
+                extra={"reasoning_effort": "none"},
+                timeout_s=_SOMMELIER_LLM_TIMEOUT_S,
+            ),
+            timeout=_SOMMELIER_LLM_TIMEOUT_S,
+        )
+        log_marker("M-GATEWAY", "startup", "SOMMELIER_WARMED",
+                   ms=round((time.perf_counter() - started) * 1000.0, 1))
+    except Exception as error:  # noqa: BLE001 - прогрев не обязателен для работы gateway
+        log_marker("M-GATEWAY", "startup", "SOMMELIER_WARM_FAILED", error=type(error).__name__,
+                   ms=round((time.perf_counter() - started) * 1000.0, 1))
+
+
 @asynccontextmanager
 async def _lifespan(application):
     """Жизненный цикл приложения: прогревает индекс форм каталога до приёма запросов (C-047).
 
     Прогрев обёрнут в защиту, поэтому сбой каталога не мешает сервису подняться.
+    C-071: прогрев text-модели сомелье включается отдельным флагом и по умолчанию выключен.
     """
     await _warm_catalog_on_startup()
+    if settings.sommelier_warmup_enabled:
+        await _warm_sommelier_on_startup()
     yield
 
 
