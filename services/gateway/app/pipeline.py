@@ -34,6 +34,8 @@ from packages.common.catalog import CatalogStore
 from packages.common.text_rank import fields_from_ocr, rrf, text_index, text_search
 from packages.common.config import settings
 from packages.common.logging import log_marker
+from packages.common.near_dup import build_groups, disambiguate
+from services.gateway.app.recommend import find_similar
 from packages.common.observer import (escalation_trigger, merge_candidates,
                                       observation_fields, observer_candidates,
                                       parse_observation)
@@ -190,6 +192,19 @@ def _calibrated_probability(raw: float) -> float | None:
     if not cached:
         return None
     return apply_calibration(cached, raw)  # type: ignore[arg-type]
+
+
+_NEAR_DUP_CACHE: dict[str, object] = {}
+
+
+def _near_dup_groups(store: CatalogStore) -> dict:
+    """Группы near-дубликатов каталога: строятся один раз и кэшируются по объекту каталога."""
+    key = str(id(store))
+    cached = _NEAR_DUP_CACHE.get(key)
+    if cached is None:
+        cached = build_groups(store.slug_to_record(), settings.near_dup_threshold)
+        _NEAR_DUP_CACHE[key] = cached
+    return cached  # type: ignore[return-value]
 
 
 def build_card(store: CatalogStore, slug: str, official: dict | None = None) -> Card:
@@ -354,6 +369,15 @@ async def run_scan(
         if item.get("slug")
     ]
     retrieval_scores = [item.score for item in top5]  # шкала для уверенности — до реранка
+    # C-065: расширенная выдача до десяти кандидатов. Прежнее поле top5 сохранено для совместимости,
+    # а кандидаты с шестого по десятый берутся в порядке поиска (реранк переупорядочивает только пятёрку).
+    top10 = list(top5) + [
+        TopKItem(slug=item.get("slug", ""), score=float(item.get("score", 0.0)), name=item.get("name"),
+                 winery=item.get("winery"), geo_score=float(item.get("geo_score", 0.0)),
+                 inliers=int(item.get("inliers", 0)))
+        for item in items[len(top5): max(5, int(settings.scan_top_k))]
+        if item.get("slug")
+    ]
 
     latency_ms = (time.perf_counter() - started) * 1000.0
     if not top5:
@@ -486,6 +510,41 @@ async def run_scan(
         else:
             diagnostics.notes.append("observer unavailable; Tier-1 kept")
 
+    # C-065: дизамбигуация near-дубликатов и аналоги при отказе. Флаг по умолчанию выключен, поэтому
+    # метрики гейта не меняются; при включении внутри одной серии выбираем по подтверждённым сигналам
+    # различия, а если различить нельзя — честно помечаем ответ неоднозначным и отдаём кандидатов.
+    ambiguous = False
+    alternatives: list[TopKItem] = []
+    if settings.near_dup_enabled and top10:
+        groups = _near_dup_groups(store)
+        decision = disambiguate([item.slug for item in top10], recognized_fields,
+                                store.slug_to_record(), groups)
+        if decision["ambiguous"]:
+            ambiguous = True
+            path = "ambiguous"
+            not_found = False
+            diagnostics.notes.append(f"near-dup: {decision['reason']}")
+        elif decision["slug"] and decision["slug"] != best.slug:
+            matched = next((item for item in top10 if item.slug == decision["slug"]), None)
+            if matched is not None:
+                top10 = [matched] + [item for item in top10 if item.slug != decision["slug"]]
+                top5 = top10[:5]
+                best = top5[0]
+                path = "near_dup"
+                not_found = False
+                confident = True
+                diagnostics.notes.append(f"near-dup: {decision['reason']}")
+    if not_found and best.slug:
+        # Аналоги из других виноделен — именно этого ждёт организатор при отказе.
+        try:
+            alternatives = [TopKItem(slug=str(item.get("slug") or ""),
+                                     score=float(item.get("score") or 0.0),
+                                     name=item.get("name"), winery=item.get("winery"))
+                            for item in find_similar(store, best.slug, limit=6)
+                            if item.get("slug")]
+        except Exception:  # noqa: BLE001 - аналоги не обязательны для ответа
+            alternatives = []
+
     log_marker("M-GATEWAY", "run_scan", "DECISION", slug=best.slug if not not_found else "none",
                score=round(best.score, 4), margin=margin, confidence=confidence,
                confident=str(confident), path=path, vlm_latency_ms=round(vlm_latency_ms, 1),
@@ -504,6 +563,9 @@ async def run_scan(
         path=path,
         latency_ms=round(latency_ms, 1),
         top5=top5,
+        top10=top10,
+        ambiguous=ambiguous,
+        alternatives=alternatives,
         not_found=not_found,
         confident=confident,
         vlm_used=vlm_used,

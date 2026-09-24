@@ -190,6 +190,11 @@ class AppSettings:
     margin_delta: float = field(default_factory=lambda: _env_float("MARGIN_DELTA", 0.0058))
     # C-061: калиброванный гейт включается флагом; по умолчанию выключен, решение не меняется.
     # C-062: режим наблюдателя выключен по умолчанию, поведение не меняется.
+    # C-065: дизамбигуация near-дубликатов выключена по умолчанию: метрики гейта не меняются.
+    near_dup_enabled: bool = field(default_factory=lambda: _env_bool("NEAR_DUP_DISAMBIGUATION", False))
+    near_dup_threshold: float = field(
+        default_factory=lambda: _env_float("NEAR_DUP_THRESHOLD", 0.86))
+    scan_top_k: int = field(default_factory=lambda: _env_int("SCAN_TOP_K", 10))
     observer_enabled: bool = field(default_factory=lambda: _env_bool("OBSERVER_ENABLED", False))
     observer_model: str = field(# C-063: дефолт выбран бенчем по точности (gemma4:12b-mlx: identity@1 0.333 против 0.0 у 2b и e4b).
         # C-064: онлайн-наблюдатель выбирается по бюджету десять секунд: gemma4:e4b-mlx даёт

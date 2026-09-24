@@ -1,0 +1,71 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-065>
+    <IntentSummary>Построить группы near-дубликатов, добавить дизамбигуацию по подтверждённым сигналам
+      с честной неоднозначностью, расширить выдачу до десяти кандидатов и вернуть аналоги при отказе.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/matcher/app/merge.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/pipeline.py</Value></MustExist>
+      <MustExist><Value>packages/common/text_norm.py</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-MATCHER</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>packages/common/near_dup.py</Value></MustExist>
+      <MustExist><Value>reports/near_dup_groups.json</Value></MustExist>
+      <MustExist><Value>reports/near_dup_report.json</Value></MustExist>
+      <MustExist><Value>reports/near_dup_report.md</Value></MustExist>
+      <MustExist><Value>tests/test_c065_near_dup.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustPassCommand><Command>make gate</Command></MustPassCommand>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/><M-MATCHER/><M-CONTRACTS/><M-EVAL/><V-M-GATEWAY/><V-M-EVAL/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>services/gateway/app/</Path>
+      <Path>packages/contracts/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>reports/</Path>
+      <Path>tests/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Группы дубликатов и дизамбигуация</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Группы строятся по винодельне и схожести названия с различием в годе, сладости или категории.</Criterion>
+          <Criterion>Дизамбигуация применяется только при совпадении кандидатов в одной группе и только по сигналам различия.</Criterion>
+          <Criterion>Без сигналов решение помечается неоднозначным, и возвращаются кандидаты, а не догадка.</Criterion>
+          <Criterion>Флаг выключен по умолчанию: метрики гейта не меняются.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c065_near_dup.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Десять кандидатов, аналоги и отчёт</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Ответ содержит десять кандидатов отдельным полем, прежнее поле сохранено.</Criterion>
+          <Criterion>При отсутствии вина в каталоге возвращаются аналоги из других виноделен.</Criterion>
+          <Criterion>Отчёт содержит размеры групп и метрики до и после дизамбигуации.</Criterion>
+          <Criterion>Общий замер не деградирует.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/near_dup_report.py</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-065>
+</GraceChangePlan>

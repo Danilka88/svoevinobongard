@@ -95,6 +95,10 @@ class ScanResponse(BaseModel):
     path: str = "retrieval"
     latency_ms: float = 0.0
     top5: list[TopKItem] = Field(default_factory=list)
+    # C-065: расширенная выдача до десяти кандидатов (top5 сохранён для совместимости).
+    top10: list[TopKItem] = Field(default_factory=list)
+    ambiguous: bool = False
+    alternatives: list[TopKItem] = Field(default_factory=list)
     not_found: bool = False
     confident: bool = False
     vlm_used: bool = False
