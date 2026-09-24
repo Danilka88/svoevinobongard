@@ -1,0 +1,70 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-063>
+    <IntentSummary>Исправить конфигурацию моделей и вызов наблюдателя, улучшить промпт, измерить три
+      модели бенчем и переобучить калибровку на proxy-пер-парах.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>config/providers.yaml</Value></MustExist>
+      <MustExist><Value>services/vlm/app/extract.py</Value></MustExist>
+      <MustExist><Value>packages/common/observer.py</Value></MustExist>
+      <MustExist><Value>reports/baseline_pairs.jsonl</Value></MustExist>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>scripts/eval/observer_bench.py</Value></MustExist>
+      <MustExist><Value>reports/observer_bench.json</Value></MustExist>
+      <MustExist><Value>reports/observer_bench.md</Value></MustExist>
+      <MustExist><Value>tests/test_c063_observer_llm.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-VLM</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-VLM/><M-EVAL/><M-GATEWAY/><V-M-EVAL/><V-M-VLM/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>config/</Path>
+      <Path>packages/common/</Path>
+      <Path>services/vlm/app/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>data/calibration/</Path>
+      <Path>reports/</Path>
+      <Path>tests/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Конфигурация моделей и корректный вызов наблюдателя</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Имена моделей в цепочках соответствуют реестру; вызов на реальном фото не даёт ошибки провайдера.</Criterion>
+          <Criterion>Thinking-модели не теряют контент: reasoning срезается, бюджет токенов достаточен.</Criterion>
+          <Criterion>Наблюдение непустое и осмысленное минимум для двух моделей.</Criterion>
+          <Criterion>Инструкция содержит пример и не вызывает эхо у компактных моделей.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -c "from services.vlm.app.extract import observe_label; print('ok')"</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Бенч моделей и переобучение калибровки</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Бенч даёт таблицу модели → точность, задержка, доля корректного отказа; выбор фиксируется в конфиге.</Criterion>
+          <Criterion>Калибровка переобучена на proxy-пер-парах; ECE и пороги показаны раздельно по распределениям.</Criterion>
+          <Criterion>Страж конфигурации проверяет наличие моделей в реестре с мягким пропуском.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/observer_bench.py --limit 6</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-063>
+</GraceChangePlan>

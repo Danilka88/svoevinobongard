@@ -189,6 +189,23 @@ class AppSettings:
     score_tau: float = field(default_factory=lambda: _env_float("SCORE_TAU", 0.7615))
     margin_delta: float = field(default_factory=lambda: _env_float("MARGIN_DELTA", 0.0058))
     # C-061: калиброванный гейт включается флагом; по умолчанию выключен, решение не меняется.
+    # C-062: режим наблюдателя выключен по умолчанию, поведение не меняется.
+    observer_enabled: bool = field(default_factory=lambda: _env_bool("OBSERVER_ENABLED", False))
+    observer_model: str = field(# C-063: дефолт выбран бенчем по точности (gemma4:12b-mlx: identity@1 0.333 против 0.0 у 2b и e4b).
+        # C-064: онлайн-наблюдатель выбирается по бюджету десять секунд: gemma4:e4b-mlx даёт
+        # наблюдение за ~4.4 с, gemma4:12b-mlx не укладывается (около 60 с) и остаётся для офлайна.
+        default_factory=lambda: _env("OBSERVER_MODEL", "gemma4:e4b-mlx"))
+    observer_top_k: int = field(default_factory=lambda: _env_int("OBSERVER_TOP_K", 10))
+    # C-064: бюджет наблюдателя. Скрипт организатора даёт 10 с на запрос, поэтому наблюдатель
+    # обязан уложиться в свой таймаут и не блокировать ответ.
+    observer_timeout_s: float = field(
+        default_factory=lambda: _env_float("OBSERVER_TIMEOUT_S", 6.5))
+    observer_max_side: int = field(
+        default_factory=lambda: _env_int("OBSERVER_MAX_SIDE", 512))
+    observer_max_tokens: int = field(
+        default_factory=lambda: _env_int("OBSERVER_MAX_TOKENS", 200))
+    observer_threshold: float = field(
+        default_factory=lambda: _env_float("OBSERVER_THRESHOLD", 0.95))
     calibration_enabled: bool = field(default_factory=lambda: _env_bool("CALIBRATION_ENABLED", False))
     calibration_path: str = field(
         default_factory=lambda: _env("CALIBRATION_PATH", "data/calibration/platt_v1.json"))

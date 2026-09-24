@@ -31,7 +31,8 @@ import numpy as np
 from packages.common.llm.errors import LLMError
 from packages.common.llm.router import LLMRouter, get_router
 from packages.common.logging import log_marker
-from services.vlm.app.prompt import LABEL_FIELDS, build_messages
+from packages.common.observer import OBSERVER_INSTRUCTION
+from services.vlm.app.prompt import LABEL_FIELDS, build_messages, encode_image_data_url
 
 __all__ = ["VlmFields", "parse_fields", "extract_fields"]
 
@@ -144,6 +145,129 @@ def parse_fields(text: str, finish_reason: str = "") -> dict:
         if text_value and text_value.lower() not in _EMPTY_VALUES:
             cleaned[name] = text_value
     return cleaned
+
+
+def _strip_reasoning(text: str) -> str:
+    """Убирает блок рассуждений thinking-модели: наблюдению нужен только сам ответ."""
+    value = str(text or "")
+    for marker in ("<｜end▁of▁thinking｜>", "[/THINK]", "[/thinking]"):
+        if marker in value:
+            value = value.split(marker, 1)[-1]
+    value = re.sub(r"^\s*(thinking|размышлени[а-я]*)\s*:.*?\n\n", "", value, flags=re.IGNORECASE | re.DOTALL)
+    return value.strip()
+
+
+
+def _resize_for_observer(image, max_side: int):
+    """Один уменьшенный кадр для наблюдателя: тайлы не нужны, важнее бюджет времени."""
+    import numpy as _np
+    from PIL import Image as _Image
+    height, width = image.shape[:2]
+    scale = float(max_side) / max(height, width, 1)
+    if scale >= 1.0:
+        return image
+    resized = _Image.fromarray(image[:, :, ::-1]).resize(
+        (max(1, int(width * scale)), max(1, int(height * scale))), _Image.BILINEAR)
+    return _np.asarray(resized)[:, :, ::-1].copy()
+
+
+def _observe_native_ollama(images: list, model: str, *, max_tokens: int, timeout_s: float) -> dict | None:
+    """Нативный вызов Ollama для thinking-моделей (C-063).
+
+    Совместимый с OpenAI путь не даёт отключить рассуждения: модель тратит бюджет на reasoning и
+    возвращает пустой ответ при finish_reason=length. Нативный API принимает think=false и images,
+    поэтому используется как запасной путь только для таких случаев.
+    """
+    import base64
+    import json
+    import urllib.request
+
+    from packages.common.config import settings
+
+    base = str(getattr(settings, "ollama_base_url", "") or "http://127.0.0.1:11434").rstrip("/")
+    if base.endswith("/v1"):
+        base = base[:-3]
+    payload = {"model": model, "prompt": OBSERVER_INSTRUCTION, "stream": False, "think": False,
+               "images": [base64.b64encode(_png_bytes(image)).decode() for image in images[:2]],
+               "options": {"num_predict": max_tokens, "temperature": 0.0}}
+    try:
+        request = urllib.request.Request(f"{base}/api/generate",
+                                         data=json.dumps(payload).encode(),
+                                         headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(request, timeout=timeout_s) as response:  # noqa: S310
+            data = json.loads(response.read().decode())
+    except Exception as error:  # noqa: BLE001 - запасной путь не должен ломать вызов
+        log_marker("M-VLM", "observe_native", "FAILED", error=type(error).__name__)
+        return None
+    text = str(data.get("response") or "").strip()
+    return {"ok": bool(text), "raw_text": text, "model": model, "native": True,
+            "finish_reason": "stop"}
+
+
+def _png_bytes(image) -> bytes:
+    """Кодирует кадр в PNG для нативного API."""
+    import io
+
+    from PIL import Image as _Image
+    buffer = io.BytesIO()
+    _Image.fromarray(image[:, :, ::-1]).save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def observe_label(
+    images: list,
+    router=None,
+    *,
+    role: str = "vision_model",
+    model: str | None = None,
+    max_tokens: int | None = None,
+    timeout_s: float | None = None,
+    num_ctx: int = 8192,
+    reasoning_effort: str = "none",
+) -> dict:
+    """Наблюдение этикетки в жёстком бюджете времени.
+
+    Скрипт организатора даёт десять секунд на запрос, поэтому наблюдатель обязан уложиться в свой
+    таймаут: вызывается один уменьшенный кадр, рассуждения отключены, а на превышении бюджета
+    возвращается неуспех — gateway в этом случае отдаёт результат поиска, а не ошибку.
+    """
+    from packages.common.config import settings
+
+    if not images:
+        return {"ok": False, "reason": "no images provided"}
+    selected = model or settings.observer_model
+    budget_tokens = int(max_tokens or getattr(settings, "observer_max_tokens", 200))
+    max_side = int(getattr(settings, "observer_max_side", 512))
+    hard_budget = min(float(timeout_s or 1e9), float(getattr(settings, "observer_timeout_s", 6.5)))
+    frame = _resize_for_observer(images[0], max_side)
+
+    # Локальная модель: нативный путь Ollama. Он принимает think=false и один кадр, поэтому
+    # укладывается в бюджет; совместимый с OpenAI путь оставлен для облачных провайдеров.
+    if "/" not in str(selected):
+        native = _observe_native_ollama([frame], str(selected), max_tokens=budget_tokens,
+                                        timeout_s=hard_budget)
+        if native is not None:
+            return native
+        # Локальная модель не уложилась в бюджет: второй путь не пробуем, иначе суммарное время
+        # удвоится и лимит организатора (10 с) будет нарушен.
+        return {"ok": False, "reason": "observer budget exceeded", "model": str(selected),
+                "budget_s": hard_budget}
+
+    active = router or get_router()
+    content = [{"type": "text", "text": OBSERVER_INSTRUCTION}]
+    content.append({"type": "image_url", "image_url": {"url": encode_image_data_url(frame)}})
+    payload = {"reasoning_effort": reasoning_effort, "options": {"num_ctx": num_ctx}, "think": False}
+    try:
+        result = active.chat([{"role": "user", "content": content}], role=role, model=selected,
+                             max_tokens=budget_tokens, temperature=0.0, extra=payload,
+                             timeout_s=hard_budget)
+    except LLMError as error:
+        log_marker("M-VLM", "observe_label", "VLM_FAILED", error=type(error).__name__)
+        return {"ok": False, "reason": f"{type(error).__name__}: {error}"[:200]}
+    text = _strip_reasoning(str(getattr(result, "text", "") or ""))
+    return {"ok": bool(text.strip()), "raw_text": text, "model": str(selected),
+            "finish_reason": str(getattr(result, "finish_reason", "") or ""),
+            "latency_ms": float(getattr(result, "latency_ms", 0.0) or 0.0)}
 
 
 def extract_fields(

@@ -87,6 +87,8 @@ class ScanResponse(BaseModel):
     confidence: float = 0.0
     # C-061: калиброванная вероятность правильного ответа; None, если калибровка выключена.
     p_correct: float | None = None
+    # C-062: наблюдение модели-наблюдателя (пусто, если режим выключен).
+    observation: dict = Field(default_factory=dict)
     f1_top1: float | None = None
     f1_top5: float | None = None
     margin: float = 0.0

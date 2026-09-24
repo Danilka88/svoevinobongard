@@ -22,6 +22,8 @@
 # forms - набор канонических вариантов строки для сопоставления
 # tokens - значимые токены с сохранением чисел и различающих слов
 # similarity - максимум fuzzy-похожести по вариантам написания
+# GREEK_LOOKALIKES - греческие визуальные двойники кириллицы
+# greek_to_cyrillic - перевод омоглифов наблюдения в кириллицу
 # END_MODULE_MAP
 """Нормализация текста для сопоставления.
 
@@ -132,8 +134,9 @@ ALIASES: dict[str, tuple[str, ...]] = {
     "геленджик": ("gelendzhik", "геленджик"),
     "кубань вино": ("kuban vino", "kuban-vino", "кубань вино"),
 }
-__all__ = ["ALIASES", "LAT_ORDER", "LAT_TO_RU", "LOOKALIKES", "MAX_FORMS", "RU_TO_LAT", "apply_aliases",
-           "cyr_to_lat", "delookalike", "fold", "forms", "lat_to_cyr", "similarity", "tokens"]
+__all__ = ["ALIASES", "GREEK_LOOKALIKES", "LAT_ORDER", "LAT_TO_RU", "LOOKALIKES", "MAX_FORMS", "RU_TO_LAT", "apply_aliases",
+           "cyr_to_lat",
+    "greek_to_cyrillic", "delookalike", "fold", "forms", "lat_to_cyr", "similarity", "tokens"]
 
 
 def fold(text: str | None) -> str:
@@ -151,6 +154,35 @@ def fold(text: str | None) -> str:
     value = "".join(cleaned)
     value = value.replace("ё", "е").replace("'", "").replace("’", "")
     return " ".join(re.sub(r"[^0-9a-zа-я\s]+", " ", value).split())
+
+
+# C-064: греческие визуальные двойники кириллицы. Модели читают кириллические этикетки греческими
+# буквами («ΛΗΚΥΘΟΣ», «ΛΣΚΙΦ»), поэтому наблюдение переводится в кириллицу перед поиском по каталогу.
+# Применяется только к наблюдениям: латинские бренды не трогаются.
+GREEK_LOOKALIKES = {
+    "Λ": "Л", "Σ": "С", "Κ": "К", "Η": "Н", "Υ": "У", "Θ": "О", "Φ": "Ф", "Ι": "И", "Ο": "О",
+    "Α": "А", "Ε": "Е", "Ρ": "Р", "Τ": "Т", "Χ": "Х", "Ν": "Н", "Β": "В", "Μ": "М", "Π": "П",
+    "Δ": "Д", "Ζ": "З", "Γ": "Г", "Ω": "О", "Ψ": "ПС", "Ξ": "КС", "ς": "с", "α": "а", "β": "в",
+    "γ": "г", "δ": "д", "ε": "е", "η": "н", "ι": "и", "κ": "к", "λ": "л", "μ": "м", "ν": "н",
+    "ο": "о", "π": "п", "ρ": "р", "σ": "с", "τ": "т", "υ": "у", "φ": "ф", "χ": "х", "ω": "о",
+}
+_GREEK_CHARS = set(GREEK_LOOKALIKES)
+
+
+def greek_to_cyrillic(text: str | None) -> str:
+    """Переводит греческие визуальные двойники в кириллицу.
+
+    Заменяется только то слово, в котором есть хотя бы одна греческая буква: так «ΛΗΚΥΘΟΣ»
+    становится ближе к «Лекютос», а латинские бренды («FANAGORIA») остаются как есть.
+    """
+    if not text:
+        return ""
+    out: list[str] = []
+    for token in str(text).split():
+        if any(char in _GREEK_CHARS for char in token):
+            token = "".join(GREEK_LOOKALIKES.get(char, char) for char in token)
+        out.append(token)
+    return " ".join(out)
 
 
 def delookalike(text: str | None) -> str:

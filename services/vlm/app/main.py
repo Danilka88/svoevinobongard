@@ -11,6 +11,7 @@
 # app - FastAPI-приложение VLM-сервиса
 # health - GET /health с параметрами препроцессинга и провайдера
 # extract_endpoint - POST /extract (multipart image) → поля этикетки с полного кадра
+# observe_endpoint - POST /observe (multipart image) → наблюдение этикетки свободным текстом
 # END_MODULE_MAP
 """Сервис VLM для полного кадра.
 
@@ -30,11 +31,11 @@ from packages.common.images import load_bgr
 from packages.common.logging import log_marker
 from packages.common.preprocess import PreprocessConfig
 from services.normalize.app.tta import build_vlm_inputs
-from services.vlm.app.extract import extract_fields
+from services.vlm.app.extract import extract_fields, observe_label
 
 app = FastAPI(title="Svoe Vino Scanner — VLM", version="0.2.0")
 
-__all__ = ["app", "health", "extract_endpoint"]
+__all__ = ["app", "health", "extract_endpoint", "observe_endpoint"]
 
 
 @app.get("/health")
@@ -53,6 +54,28 @@ def health() -> dict:
         "timeout_s": settings.vlm_timeout_s,
         "fallback_enabled": settings.vlm_fallback_enabled,
     }
+
+
+@app.post("/observe")
+async def observe_endpoint(image: UploadFile = File(...)) -> dict:
+    """Наблюдение этикетки: свободный текст для поиска по всему каталогу (C-062).
+
+    Отличие от извлечения полей: модель описывает видимое и не пытается назвать товар. Разбор
+    наблюдения и поиск выполняются на стороне gateway.
+    """
+    data = await image.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="empty image")
+    frame = load_bgr(data)
+    if frame is None:
+        raise HTTPException(status_code=400, detail="image not decodable")
+    images, _ = build_vlm_inputs(frame, PreprocessConfig(pas_tiles=settings.pas_tiles))
+    started = time.perf_counter()
+    result = await run_in_threadpool(observe_label, images, None, model=settings.observer_model)
+    result["latency_ms"] = round((time.perf_counter() - started) * 1000.0, 1)
+    log_marker("M-VLM", "observe", "DONE", ok=str(result.get("ok")),
+               model=settings.observer_model, latency_ms=result["latency_ms"])
+    return result
 
 
 @app.post("/extract")

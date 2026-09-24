@@ -193,6 +193,7 @@ def main(argv: list[str] | None = None) -> int:
     self_hits: list[tuple[str, str]] = []
     self_scores: list[float] = []
     gold: list[str] = []
+    top1_scores: list[float] = []
     top1: list[str] = []
     top5: list[list[str]] = []
     top1_geo: list[float] = []
@@ -263,6 +264,9 @@ def main(argv: list[str] | None = None) -> int:
         predicted = ranked[0] if ranked else ""
         gold.append(slug)
         top1.append(predicted)
+        # C-062: сохраняем скор топ-1 по каждому запросу — иначе калибровку нельзя
+        # обучить на in-distribution данных (были доступны только агрегаты).
+        top1_scores.append(float(hits[0].score) if hits else 0.0)
         top5.append(ranked[:_TOP_K])
         top1_geo.append(float(hits[0].geo_score) if hits else 0.0)
         if predicted == slug:
@@ -345,6 +349,15 @@ def main(argv: list[str] | None = None) -> int:
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    # C-062: пер-пары «скор, правильность» для калибровки на in-distribution данных.
+    pairs_path = out_path.with_name(out_path.stem + "_pairs.jsonl")
+    with pairs_path.open("w", encoding="utf-8") as handle:
+        for slug, predicted, score in zip(gold, top1, top1_scores):
+            handle.write(json.dumps({"gold": slug, "predicted": predicted,
+                                     "score": round(float(score), 6),
+                                     "correct": int(predicted == slug)}, ensure_ascii=False) + "\n")
+    report["pairs_file"] = str(pairs_path)
+    report["pairs_count"] = len(gold)
     out_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     log_marker("M-EVAL", "baseline", "DONE", self_acc1=self_acc1,
                acc1=report["synthetic_field"]["accuracy@1"],

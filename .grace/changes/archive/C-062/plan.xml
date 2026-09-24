@@ -1,0 +1,46 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-062>
+    <IntentSummary>Добавить наблюдение этикетки моделью, поиск по всему каталогу с гибридом и
+      включение режима флагом, не меняя поведение по умолчанию.</IntentSummary>
+    <BaselineAssertions>
+      <MustExist><Value>packages/common/text_rank.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/pipeline.py</Value></MustExist>
+      <MustExist><Value>services/vlm/app/extract.py</Value></MustExist>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+    <TargetAssertions>
+      <MustExist><Value>packages/common/observer.py</Value></MustExist>
+      <MustExist><Value>tests/test_c062_observer.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+    </TargetAssertions>
+    <DurableScope><M-EVAL/><M-GATEWAY/><M-VLM/><M-CONTRACTS/><V-M-EVAL/></DurableScope>
+    <ObservedWriteScope>
+      <Path>packages/common/</Path><Path>services/</Path><Path>scripts/eval/</Path>
+      <Path>tests/</Path><Path>reports/</Path><Path>.grace/</Path>
+    </ObservedWriteScope>
+    <ImplementationPlan>
+      <T-001>
+        <Title>Наблюдение и поиск по всему каталогу</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Наблюдение разбирается в поля и нормализуется; нераспознанный текст сохраняется.</Criterion>
+          <Criterion>Поиск идёт по всему каталогу; гибрид даёт буст за совпадение и допускает победителя только из наблюдения.</Criterion>
+        </AcceptanceCriteria>
+        <Verification><Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c062_observer.py -q</Command></Verification>
+      </T-001>
+      <T-002>
+        <Title>Включение флагом и сохранение пер-пар</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Режим выключен по умолчанию; при уверенном ответе наблюдатель не вызывается.</Criterion>
+          <Criterion>Контракт организатора остаётся плоским.</Criterion>
+          <Criterion>Пер-примеры калибровки сохраняются в файл.</Criterion>
+        </AcceptanceCriteria>
+        <Verification><Command>cd apps/web &amp;&amp; bun run build</Command></Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-062>
+</GraceChangePlan>

@@ -34,6 +34,9 @@ from packages.common.catalog import CatalogStore
 from packages.common.text_rank import fields_from_ocr, rrf, text_index, text_search
 from packages.common.config import settings
 from packages.common.logging import log_marker
+from packages.common.observer import (escalation_trigger, merge_candidates,
+                                      observation_fields, observer_candidates,
+                                      parse_observation)
 from packages.contracts.schemas import Card, ScanResponse, TopKItem
 from services.gateway.app.clients import ServiceClients
 from services.gateway.app.flywheel_log import append_query_log, build_log_record
@@ -451,6 +454,38 @@ async def run_scan(
     path = ("text_first" if text_first_used else
             ("vlm_fallback" if vlm_used else ("ocr_fallback" if ocr_used else "retrieval")))
 
+    # C-062: режим наблюдателя. Включается флагом и срабатывает только при недостаточной уверенности:
+    # модель описывает этикетку, поиск идёт по ВСЕМУ каталогу, а гибрид с визуальным топом может дать
+    # кандидата, которого нет в галерее эталонов (новые и перерисованные этикетки). Каталог остаётся
+    # источником истины: наблюдатель не выбирает товар, он лишь описывает видимое.
+    observer_hits: list[tuple[str, float]] = []
+    observation: dict = {}
+    observer_used = False
+    if settings.observer_enabled and escalation_trigger(
+            _calibrated_probability(best.score), confident, settings.observer_threshold):
+        observed = await active_clients.observe(payload, "query.png")
+        if observed and observed.get("ok"):
+            observation = parse_observation(observed.get("raw_text") or "")
+            observer_used = bool(observation_fields(observation))
+            observer_hits = observer_candidates(observation, store.slug_to_record(),
+                                                limit=settings.observer_top_k)
+            image_slugs = {item.slug for item in top5}
+            if observer_hits:
+                merged = merge_candidates(observer_hits, [(item.slug, item.score) for item in top5])
+                if merged and merged[0][0] not in image_slugs:
+                    # Наблюдатель нашёл то, чего нет в визуальном топе: он получает право победить.
+                    winner = merged[0][0]
+                    summary = store.summary(winner)
+                    top5 = [TopKItem(slug=winner, score=float(merged[0][1]),
+                                     name=summary.get("name"), winery=summary.get("winery"))] + top5[:4]
+                    best = top5[0]
+                    margin = round(best.score - (top5[1].score if len(top5) > 1 else 0.0), 6)
+                    path = "observer"
+                    not_found = False
+                    confident = True
+        else:
+            diagnostics.notes.append("observer unavailable; Tier-1 kept")
+
     log_marker("M-GATEWAY", "run_scan", "DECISION", slug=best.slug if not not_found else "none",
                score=round(best.score, 4), margin=margin, confidence=confidence,
                confident=str(confident), path=path, vlm_latency_ms=round(vlm_latency_ms, 1),
@@ -476,6 +511,7 @@ async def run_scan(
         ocr_used=ocr_used,
         ocr_latency_ms=round(ocr_latency_ms, 1),
         degraded=degraded,
+        observation=observation,
         recognized_fields=recognized_fields,
         reason=scan_reason or _resolve_scan_reason(not_found, confident, recognized_fields, len(top5)),
         card=build_card(store, best.slug, (official_index or {}).get(best.slug)),

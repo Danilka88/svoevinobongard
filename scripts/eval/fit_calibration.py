@@ -9,6 +9,7 @@
 # END_MODULE_CONTRACT
 # START_MODULE_MAP
 # THRESHOLDS - пороги вероятности для таблицы эскалации
+# pairs_from_proxy - пары из proxy-eval (in-distribution)
 # load_labels - читает разметку C-041 с кандидатами каталога
 # pairs_from_consensus - пары для отложенной проверки по консенсус-меткам
 # pairs_from_scans - строит пары «скор, правильность» из прогона сканера и правильных ответов
@@ -48,7 +49,7 @@ from packages.common.logging import log_marker  # noqa: E402
 THRESHOLDS = (0.90, 0.95, 0.99)
 
 __all__ = ["THRESHOLDS", "build_report", "load_labels", "main", "pairs_from_consensus",
-           "pairs_from_scans", "threshold_table"]
+           "pairs_from_proxy", "pairs_from_scans", "threshold_table"]
 
 
 def load_labels(path: str | Path) -> dict[str, dict]:
@@ -115,6 +116,22 @@ def pairs_from_consensus(scan_path: str | Path, consensus_path: str | Path) -> l
         pairs.append((float(row["confidence"]), 1 if row.get("slug") == gt else 0))
     return pairs
 
+
+
+def pairs_from_proxy(path: str | Path) -> list[tuple[float, int]]:
+    """Пары из proxy-eval: там истина известна, поэтому это in-distribution основа калибровки."""
+    target = Path(path)
+    if not target.is_file():
+        return []
+    pairs: list[tuple[float, int]] = []
+    for line in target.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        if row.get("score") is None:
+            continue
+        pairs.append((float(row["score"]), int(row.get("correct") or 0)))
+    return pairs
 
 def threshold_table(pairs: list[tuple[float, int]], params, *, title: str) -> list[dict]:
     """Таблица «порог → доля эскалаций → точность на остатке», отдельно по сырому и калиброванному сигналу."""
@@ -185,6 +202,8 @@ def build_report(params, diagnostics: dict, fit_pairs, holdout_pairs, out_json: 
 def main(argv: list[str] | None = None) -> int:
     """Обучает калибровку и пишет отчёт."""
     parser = argparse.ArgumentParser(description="Обучение калибровки уверенности")
+    parser.add_argument("--fit-pairs", default=str(_ROOT / "reports" / "baseline_pairs.jsonl"),
+                        help="пер-пары proxy-eval: истина in-distribution")
     parser.add_argument("--fit-scans", default=str(_ROOT / "reports" / "real100_scan.jsonl"))
     parser.add_argument("--labels", default=str(_ROOT / "reports" / "real100_labels.json"))
     parser.add_argument("--holdout-scans", default=str(_ROOT / "reports" / "baseline_clean_scan.jsonl"))
@@ -194,9 +213,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--md", default=str(_ROOT / "reports" / "calibration_report.md"))
     args = parser.parse_args(argv)
     labels = load_labels(args.labels)
-    fit_pairs = pairs_from_scans(args.fit_scans, labels)
+    # C-063: приоритет у proxy-пер-пар (in-distribution, истина известна); реальные фото —
+    # отложенная проверка, поэтому переоценка на них видна сразу.
+    fit_pairs = pairs_from_proxy(args.fit_pairs) or pairs_from_scans(args.fit_scans, labels)
+    fit_source = 'proxy' if pairs_from_proxy(args.fit_pairs) else 'real100'
     holdout_pairs = pairs_from_consensus(args.holdout_scans, args.consensus)
-    print(f"  пар: обучение {len(fit_pairs)} · отложенная проверка {len(holdout_pairs)}")
+    print(f"  пар: обучение {len(fit_pairs)} ({fit_source}) · отложенная проверка {len(holdout_pairs)} (реальные фото)")
     if not fit_pairs:
         print("пар для обучения нет")
         return 1

@@ -9,6 +9,7 @@
 # START_MODULE_MAP
 # ServiceClients - асинхронные клиенты normalize и retrieval
 # post_image - multipart-POST изображения с обработкой ошибки связи
+# ServiceClients.observe - наблюдение этикетки через VLM-сервис
 # END_MODULE_MAP
 """Клиенты внутренних сервисов.
 
@@ -101,6 +102,17 @@ class ServiceClients:
         """Ищет Top-K по каталогу (POST /search)."""
         return await post_image(
             self.client, f"{self.retrieval_url}/search", data, filename, self.timeout
+        )
+
+    async def observe(self, data: bytes, filename: str = "query.png",
+                      timeout: float | None = None) -> dict | None:
+        """Наблюдение этикетки свободным текстом (POST /observe).
+
+        Таймаут больше, чем у извлечения полей: наблюдатель генерирует текст, а не короткий JSON.
+        """
+        return await post_image(
+            self.client, f"{self.vlm_url}/observe", data, filename,
+            timeout or settings.observer_timeout_s,
         )
 
     async def extract(self, data: bytes, filename: str = "query.png",

@@ -1,0 +1,69 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-064>
+    <IntentSummary>Ограничить бюджет наблюдателя по времени, размеру и токенам с деградацией к поиску,
+      нормализовать омоглифы наблюдения и измерить результат бенчем.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/vlm/app/extract.py</Value></MustExist>
+      <MustExist><Value>packages/common/observer.py</Value></MustExist>
+      <MustExist><Value>packages/common/text_norm.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/observer_bench.py</Value></MustExist>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>reports/observer_bench.json</Value></MustExist>
+      <MustExist><Value>reports/observer_bench.md</Value></MustExist>
+      <MustExist><Value>tests/test_c064_budget.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustPassCommand><Command>make gate</Command></MustPassCommand>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-VLM</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-VLM/><M-EVAL/><M-GATEWAY/><V-M-VLM/><V-M-EVAL/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>services/vlm/app/</Path>
+      <Path>services/gateway/app/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>reports/</Path>
+      <Path>tests/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Бюджет наблюдателя и нормализация омоглифов</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Размер стороны, лимит токенов, температура и таймаут берутся из настроек.</Criterion>
+          <Criterion>Локальная модель вызывается нативным путём с отключёнными рассуждениями и одним уменьшенным кадром.</Criterion>
+          <Criterion>Омоглифы приводятся к кириллице, латинские бренды остаются нетронутыми.</Criterion>
+          <Criterion>При таймауте или пустом наблюдении ответ деградирует к поиску без ошибки.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c064_budget.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Бенч с бюджетом и эффект нормализации</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Бенч даёт точность, задержки p50/p95 и долю запросов в пределах лимита для двух моделей.</Criterion>
+          <Criterion>Показан эффект нормализации до и после на реальном наблюдении.</Criterion>
+          <Criterion>Модель и размер стороны зафиксированы по фактическому бюджету и точности.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/observer_bench.py --limit 4 --models gemma4:e4b-mlx</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-064>
+</GraceChangePlan>
