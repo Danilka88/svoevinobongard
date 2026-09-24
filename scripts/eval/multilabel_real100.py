@@ -16,6 +16,7 @@
 # PRIMARY_MODEL - сильная VLM-модель ридера R1
 # SMALL_MODEL - слабая VLM-модель ридера R3
 # FALLBACK_SMALL_MODEL - запасная слабая модель, если основной нет в реестре
+# QWEN_MODEL - четвёртый ридер: компактная мультимодальная модель
 # DEFAULT_LABELS - чекпоинт прогона
 # DEFAULT_CONSENSUS - сводка консенсуса
 # DEFAULT_DATASET - принятые метки
@@ -72,13 +73,14 @@ from services.vlm.app.extract import extract_fields  # noqa: E402
 PRIMARY_MODEL = "gemma4:26b-mlx"
 SMALL_MODEL = "gemma4:e4b-mlx"
 FALLBACK_SMALL_MODEL = "gemma4:12b-mlx"
+QWEN_MODEL = "qwen3-vl:2b"
 DEFAULT_LABELS = "reports/real100_multilabel.jsonl"
 DEFAULT_CONSENSUS = "reports/real100_consensus.json"
 DEFAULT_DATASET = "data/annotation/consensus.jsonl"
 DEFAULT_ESCALATIONS = "data/annotation/escalations.jsonl"
 DEFAULT_AUGMENTED = "data/annotation/augmented.jsonl"
 
-__all__ = ["PRIMARY_MODEL", "SMALL_MODEL", "FALLBACK_SMALL_MODEL", "DEFAULT_LABELS",
+__all__ = ["PRIMARY_MODEL", "SMALL_MODEL", "FALLBACK_SMALL_MODEL", "QWEN_MODEL", "DEFAULT_LABELS",
            "available_models", "build_readings", "dataset", "judge", "main", "parse_args",
            "read_ocr", "read_vlm", "report", "run"]
 
@@ -162,6 +164,7 @@ def build_readings(image: np.ndarray, models: dict[str, str], timeout: float) ->
     """Собирает показания всех трёх ридеров для одного фото."""
     return {"vlm_primary": read_vlm(image, models["primary"], timeout),
             "ocr_fusion": read_ocr(image),
+            "vlm_qwen": read_vlm(image, models["qwen"], timeout),
             "vlm_small": read_vlm(image, models["small"], timeout)}
 
 
@@ -249,9 +252,10 @@ def run(args: argparse.Namespace) -> int:
                      if path.suffix.lower() in {".webp", ".jpg", ".jpeg", ".png"}), key=lambda p: p.name)
     registry = available_models()
     models = {"primary": PRIMARY_MODEL,
+              "qwen": QWEN_MODEL,
               "small": SMALL_MODEL if SMALL_MODEL in registry else FALLBACK_SMALL_MODEL}
-    print(f"  модели: R1={models['primary']} · R3={models['small']}"
-          f"{'' if SMALL_MODEL in registry else ' (основная слабая модель отсутствует в реестре)'}")
+    print(f"  модели: R1={models['primary']} · R2=OCR fusion · R3={models['qwen']} · R4={models['small']}"
+          f"{'' if SMALL_MODEL in registry else ' (запасная вместо отсутствующей слабой)'}")
     done = _load_done(labels_path) if args.resume else {}
     pending = [path for path in photos if path.name not in done]
     if args.limit:
@@ -308,8 +312,9 @@ def dataset(args: argparse.Namespace) -> int:
             "in_catalog": decision.get("in_catalog", "none"),
             "catalog_candidates": decision.get("catalog_candidates") or [],
             "reasons": decision.get("reasons") or [],
-            "provenance": {"readers": ["vlm_primary", "ocr_fusion", "vlm_small"],
+            "provenance": {"readers": ["vlm_primary", "ocr_fusion", "vlm_qwen", "vlm_small"],
                            "models": {"vlm_primary": models.get("primary", ""),
+                                      "vlm_qwen": models.get("qwen", ""),
                                       "vlm_small": models.get("small", "")},
                            "ocr_engine": (record.get("readings", {}).get("ocr_fusion") or {}).get("engine", ""),
                            "used_paddle": record.get("used_paddle", False)},

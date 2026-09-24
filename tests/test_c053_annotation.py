@@ -101,7 +101,9 @@ def test_field_consensus_weights_readers() -> None:
                               "ocr_fusion": {"winery": "Массандра"},
                               "vlm_small": {"winery": "Массандра"}}, "winery")
     assert result["value"] == "Массандра"
-    assert result["weight"] == pytest.approx(sum(READER_WEIGHTS.values()), abs=1e-6)
+    # Сумма весов только тех ридеров, чьи показания пришли: ридеров в пайплайне может быть больше.
+    assert result["weight"] == pytest.approx(READER_WEIGHTS["vlm_primary"] + READER_WEIGHTS["ocr_fusion"]
+                                             + READER_WEIGHTS["vlm_small"], abs=1e-6)
     assert result["tie"] is False
 
 

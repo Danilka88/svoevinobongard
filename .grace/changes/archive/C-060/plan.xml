@@ -1,0 +1,54 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-060>
+    <IntentSummary>Добавить четвёртого ридера, прогнать разметку с ограничением времени, посчитать
+      метрики на подмножестве и таблицу порогов эскалации.</IntentSummary>
+    <BaselineAssertions>
+      <MustExist><Value>packages/common/annotation.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/multilabel_real100.py</Value></MustExist>
+      <MustExist><Value>reports/real100_metrics.json</Value></MustExist>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+    <TargetAssertions>
+      <MustExist><Value>scripts/eval/baseline_clean.py</Value></MustExist>
+      <MustExist><Value>tests/test_c060_baseline.py</Value></MustExist>
+      <MustExist><Value>reports/baseline_clean.json</Value></MustExist>
+      <MustExist><Value>reports/baseline_clean.md</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+    </TargetAssertions>
+    <DurableScope><M-EVAL/><M-DATA/><V-M-EVAL/></DurableScope>
+    <ObservedWriteScope>
+      <Path>packages/common/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>data/annotation/</Path>
+      <Path>reports/</Path>
+      <Path>tests/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+    <ImplementationPlan>
+      <T-001>
+        <Title>Четвёртый ридер в разметке</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Компактная мультимодальная модель опрашивается как отдельный ридер с отдельным весом.</Criterion>
+          <Criterion>Веса нормированы, провенанс содержит все четыре ридера и версии моделей.</Criterion>
+          <Criterion>Прогон остаётся возобновляемым и ограничен по времени.</Criterion>
+        </AcceptanceCriteria>
+        <Verification><Command>PYTHONPATH=. .venv/bin/python scripts/eval/multilabel_real100.py run --limit 1 --resume --labels reports/c060_smoke.jsonl</Command></Verification>
+      </T-001>
+      <T-002>
+        <Title>Baseline и инструментация эскалации</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Метрики считаются на подмножестве принятых меток и отдельно на сериях-двойниках.</Criterion>
+          <Criterion>Отказ вне каталога измеряется на эскалированных случаях.</Criterion>
+          <Criterion>Таблица порогов даёт долю эскалаций и точность на остатке.</Criterion>
+          <Criterion>Отчёт содержит оговорку об относительности чисел.</Criterion>
+        </AcceptanceCriteria>
+        <Verification><Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c060_baseline.py -q</Command></Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-060>
+</GraceChangePlan>

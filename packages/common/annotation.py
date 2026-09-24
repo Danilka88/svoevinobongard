@@ -8,7 +8,7 @@
 # MAP_MODE: EXPORTS
 # END_MODULE_CONTRACT
 # START_MODULE_MAP
-# READER_WEIGHTS - веса ридеров по умолчанию: сильная модель важнее слабой, OCR вспомогательный
+# READER_WEIGHTS - веса ридеров: сильная модель важнее, затем OCR, qwen3-vl и слабая модель
 # ACCEPT_AGREEMENT - порог согласия для принятия метки
 # ESCALATE_AGREEMENT - порог, ниже которого случай уходит на ручную проверку
 # KEY_FIELDS - поля, по которым считается согласие ридеров
@@ -47,7 +47,8 @@ __all__ = [
 ]
 
 # Сильная модель весит больше слабой: декоррелированные ошибки полезны, но разная точность важна.
-READER_WEIGHTS = {"vlm_primary": 0.5, "vlm_small": 0.2, "ocr_fusion": 0.3}
+# C-060: добавлен четвёртый ридер (qwen3-vl:2b) — вес меньше сильной модели, но выше слабой.
+READER_WEIGHTS = {"vlm_primary": 0.4, "ocr_fusion": 0.25, "vlm_qwen": 0.2, "vlm_small": 0.15}
 ACCEPT_AGREEMENT = 0.75
 ESCALATE_AGREEMENT = 0.6
 KEY_FIELDS = ("winery", "wine_name", "vintage", "grape", "color", "sweetness")
