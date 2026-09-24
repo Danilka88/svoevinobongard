@@ -30,6 +30,11 @@ def _env(name: str, default: str) -> str:
     return value if value not in (None, "") else default
 
 
+def _env_bool(name: str, default: bool = False) -> bool:
+    """Читает булеву переменную окружения: 1/true/yes включают, остальное выключает."""
+    return _env(name, "1" if default else "0").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _env_float(name: str, default: float) -> float:
     try:
         return float(os.getenv(name, "") or default)
@@ -183,6 +188,12 @@ class AppSettings:
 # оставлены прежними, потому что их прирост separation F1 оказался нулевым (+0.0000 / +0.0007).
     score_tau: float = field(default_factory=lambda: _env_float("SCORE_TAU", 0.7615))
     margin_delta: float = field(default_factory=lambda: _env_float("MARGIN_DELTA", 0.0058))
+    # C-061: калиброванный гейт включается флагом; по умолчанию выключен, решение не меняется.
+    calibration_enabled: bool = field(default_factory=lambda: _env_bool("CALIBRATION_ENABLED", False))
+    calibration_path: str = field(
+        default_factory=lambda: _env("CALIBRATION_PATH", "data/calibration/platt_v1.json"))
+    calibration_threshold: float = field(
+        default_factory=lambda: _env_float("CALIBRATION_THRESHOLD", 0.95))
     confidence_temperature: float = field(
         default_factory=lambda: _env_float("CONFIDENCE_TEMPERATURE", 0.2))
 

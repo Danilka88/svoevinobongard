@@ -166,6 +166,29 @@ def build_trace(response, diagnostics=None) -> dict:
 from packages.common.official_api import MEDIA_SIZE_HERO, image_proxy_url
 
 
+from packages.common.calibration import apply as apply_calibration  # noqa: E402
+from packages.common.calibration import load as load_calibration  # noqa: E402
+
+_CALIBRATION_CACHE: dict[str, object] = {}
+
+
+def _calibrated_probability(raw: float) -> float | None:
+    """Калиброванная вероятность правильного ответа (C-061).
+
+    По умолчанию калибровка выключена и поле остаётся пустым: решение и поведение не меняются.
+    Параметры читаются один раз и кэшируются по пути.
+    """
+    if not settings.calibration_enabled:
+        return None
+    cached = _CALIBRATION_CACHE.get("params")
+    if cached is None:
+        cached = load_calibration(settings.calibration_path)
+        _CALIBRATION_CACHE["params"] = cached or False
+    if not cached:
+        return None
+    return apply_calibration(cached, raw)  # type: ignore[arg-type]
+
+
 def build_card(store: CatalogStore, slug: str, official: dict | None = None) -> Card:
     """Собирает карточку вина: данные CSV плюс официальные поля API (C-018).
 
@@ -436,6 +459,8 @@ async def run_scan(
     response = ScanResponse(
         slug=best.slug,
         confidence=confidence,
+        # Оценка на шкале поиска остаётся; вероятность заполняется только при включённой калибровке.
+        p_correct=_calibrated_probability(best.score),
         # f1_top1 — уверенность решения по первому кандидату, f1_top5 — средний скор пятёрки:
         # это разные величины (раньше стояла копипаста), и обе — рантайм-прокси, а не измеренный F1
         f1_top1=round(confidence, 6),

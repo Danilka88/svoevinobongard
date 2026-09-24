@@ -1,0 +1,49 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-061>
+    <IntentSummary>Добавить модуль калибровки с обучением и консервативной поправкой, скрипт обучения
+      с отчётом и аддитивное поле вероятности в ответе под флагом.</IntentSummary>
+    <BaselineAssertions>
+      <MustExist><Value>reports/real100_scan.jsonl</Value></MustExist>
+      <MustExist><Value>reports/real100_labels.json</Value></MustExist>
+      <MustExist><Value>packages/common/config.py</Value></MustExist>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+    <TargetAssertions>
+      <MustExist><Value>packages/common/calibration.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/fit_calibration.py</Value></MustExist>
+      <MustExist><Value>data/calibration/platt_v1.json</Value></MustExist>
+      <MustExist><Value>reports/calibration_report.json</Value></MustExist>
+      <MustExist><Value>tests/test_c061_calibration.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+    </TargetAssertions>
+    <DurableScope><M-EVAL/><M-GATEWAY/><M-CONTRACTS/><V-M-EVAL/></DurableScope>
+    <ObservedWriteScope>
+      <Path>packages/common/</Path><Path>scripts/eval/</Path><Path>data/calibration/</Path>
+      <Path>reports/</Path><Path>tests/</Path><Path>.grace/</Path>
+    </ObservedWriteScope>
+    <ImplementationPlan>
+      <T-001>
+        <Title>Модуль калибровки и обучение</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Отображение обучается по парам и монотонно; параметры сохраняются и читаются.</Criterion>
+          <Criterion>Поправка включается при переоценке на отложенной выборке.</Criterion>
+          <Criterion>Отчёт содержит ECE до и после и таблицу порогов для двух выборок.</Criterion>
+        </AcceptanceCriteria>
+        <Verification><Command>PYTHONPATH=. .venv/bin/python scripts/eval/fit_calibration.py</Command></Verification>
+      </T-001>
+      <T-002>
+        <Title>Поле вероятности в ответе под флагом</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Поле заполняется только при включённом флаге, иначе остаётся пустым.</Criterion>
+          <Criterion>Решение и поведение по умолчанию не меняются.</Criterion>
+        </AcceptanceCriteria>
+        <Verification><Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c061_calibration.py -q</Command></Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-061>
+</GraceChangePlan>
