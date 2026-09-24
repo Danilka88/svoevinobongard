@@ -1,0 +1,153 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-069>
+    <IntentSummary>Устранить cross-service импорт VLM → normalize, вынеся общую логику вариантов входа в
+      packages/common/preprocess.py с сохранением поведения; переключить VLM и клиентские скрипты на общую
+      библиотеку; синхронизировать graph/modules.xml с LINKS тестов; довести roadmap AGENTS.md до C-068.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>packages/common/preprocess.py</Value></MustExist>
+      <MustExist><Value>services/normalize/app/tta.py</Value></MustExist>
+      <MustExist><Value>services/vlm/app/main.py</Value></MustExist>
+      <MustExist><Value>services/vlm/Dockerfile</Value></MustExist>
+      <MustExist><Value>scripts/kb/build_label_kb.py</Value></MustExist>
+      <MustExist><Value>scripts/kb/enrich_vlm.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/real_field_label.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/real_field_probe.py</Value></MustExist>
+      <MustExist><Value>.grace/graph/modules.xml</Value></MustExist>
+      <MustExist><Value>tests/test_preprocessing.py</Value></MustExist>
+      <MustExist><Value>tests/test_cylinder.py</Value></MustExist>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-NORMALIZE</Module></MustVerify>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-TEXT</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>.venv/bin/python -c "import pathlib,re,sys; bad=[(f.as_posix(),i,l.strip()) for f in pathlib.Path('services').rglob('*.py') for i,l in enumerate(f.read_text(encoding='utf-8').splitlines(),1) if ((m:=re.search(r'from (services\.[a-z_]+)\.',l)) and m.group(1)!='services.'+f.relative_to('services').parts[0])]; print('cross-service:',bad); sys.exit(1 if bad else 0)"</Command></MustPassCommand>
+      <MustPassCommand><Command>.venv/bin/python -c "import pathlib,re,sys; bad=[(f.as_posix(),i,l.strip()) for f in pathlib.Path('packages').rglob('*.py') for i,l in enumerate(f.read_text(encoding='utf-8').splitlines(),1) if re.search(r'(?:from|import)\s+services\b',l)]; print('packages-deps-services:',bad); sys.exit(1 if bad else 0)"</Command></MustPassCommand>
+      <MustPassCommand><Command>.venv/bin/python -c "import pathlib,re,sys; xml=pathlib.Path('.grace/graph/modules.xml').read_text(encoding='utf-8'); mods={('M-'+m.group(1)):re.findall(r'&lt;Test&gt;(.*?)&lt;/Test&gt;',m.group(2)) for m in re.finditer(r'&lt;M-([A-Z0-9-]+)&gt;(.*?)&lt;/M-\1&gt;',xml,re.S)}; miss=sum(len([1 for mid in [x.strip() for x in re.search(r'^# LINKS:\s*(.+)$',f.read_text(encoding='utf-8'),re.M).group(1).split(',') if x.strip().startswith('M-')] if 'tests/'+f.name not in mods.get(mid,[])]) for f in pathlib.Path('tests').glob('test_*.py')); bad=[p for v in mods.values() for p in v if not pathlib.Path(p).is_file()]; print('missing-links:',miss,'unresolved:',bad); sys.exit(1 if (miss or bad) else 0)"</Command></MustPassCommand>
+      <MustPassCommand><Command>.venv/bin/python -c "import re,sys,pathlib; t=pathlib.Path('.grace/graph/modules.xml').read_text(encoding='utf-8'); m=re.search(r'&lt;M-RETRIEVAL&gt;(.*?)&lt;/M-RETRIEVAL&gt;',t,re.S); sys.exit(1 if 'test_cylinder.py' in m.group(1) else 0)"</Command></MustPassCommand>
+      <MustPassCommand><Command>test "$(grep -c '&lt;Test&gt;tests/test_cylinder.py&lt;/Test&gt;' .grace/graph/modules.xml)" = "1"</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. .venv/bin/python -c "from packages.common.preprocess import build_variants, build_vlm_inputs; from services.normalize.app.tta import build_variants as bv2; assert build_vlm_inputs is not None and callable(build_variants) and callable(bv2)"</Command></MustPassCommand>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-NORMALIZE</Module></MustVerify>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-COMMON</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-NORMALIZE</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-VLM</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-COMMON/>
+      <M-NORMALIZE/>
+      <M-VLM/>
+      <M-TEXT/>
+      <M-EVAL/>
+      <M-DATA/>
+      <M-GATEWAY/>
+      <M-WEB/>
+      <M-RETRIEVAL/>
+      <M-MATCHER/>
+      <M-ACTIVE-LEARNING/>
+      <M-CATALOG/>
+      <M-CONTRACTS/>
+      <M-ENOTOURISM/>
+      <M-OCR/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/preprocess.py</Path>
+      <Path>services/normalize/app/tta.py</Path>
+      <Path>services/vlm/app/main.py</Path>
+      <Path>scripts/kb/build_label_kb.py</Path>
+      <Path>scripts/kb/enrich_vlm.py</Path>
+      <Path>scripts/eval/real_field_label.py</Path>
+      <Path>scripts/eval/real_field_probe.py</Path>
+      <Path>.grace/graph/modules.xml</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Вынести общую логику вариантов входа в packages/common/preprocess.py</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>build_variants, build_vlm_inputs и приватные помощники _fingerprint/_dedupe, а также MAX_VARIANTS/PAD_RATIO описаны в packages/common/preprocess.py и перечислены в __all__/MODULE_MAP.</Criterion>
+          <Criterion>Порядок вариантов, дедупликация по отпечатку и кроп за флагом PreprocessConfig.crop идентичны прежнему поведению.</Criterion>
+          <Criterion>Перспективное выпрямление передаётся инъекцией (warper), чтобы packages/common не импортировал services/*.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -c "import packages.common.preprocess as p; assert 'build_variants' in p.__all__ and 'build_vlm_inputs' in p.__all__"</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Обратная совместимость normalize через tta.py</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>services/normalize/app/tta.py ре-экспортирует build_vlm_inputs и оставляет build_variants тонкой обёрткой, подставляющей warp_quad.</Criterion>
+          <Criterion>tests/test_preprocessing.py и tests/test_normalize_service.py проходят без правок (кроп за флагом виден в tagged-вариантах).</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_preprocessing.py tests/test_normalize_service.py -q</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Переключить VLM и скрипты на packages.common.preprocess</Title>
+        <DependsOn>T-001, T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>services/vlm/app/main.py импортирует build_vlm_inputs из packages.common.preprocess; MODULE_CONTRACT.DEPENDS/ LINKS обновлены.</Criterion>
+          <Criterion>scripts/kb/build_label_kb.py, scripts/kb/enrich_vlm.py, scripts/eval/real_field_label.py, scripts/eval/real_field_probe.py импортируют из packages.common.preprocess; DEPENDS обновлены.</Criterion>
+          <Criterion>Cross-service импортов в services/ нет; packages/ не импортирует services/.</Criterion>
+          <Criterion>Dockerfile VLM не меняется: контейнеру достаточно COPY packages + services/vlm.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -c "import pathlib,re,sys; bad=[(f.as_posix(),i,l.strip()) for f in pathlib.Path('services').rglob('*.py') for i,l in enumerate(f.read_text(encoding='utf-8').splitlines(),1) if ((m:=re.search(r'from (services\.[a-z_]+)\.',l)) and m.group(1)!='services.'+f.relative_to('services').parts[0])]; sys.exit(1 if bad else 0)"</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Синхронизировать graph/modules.xml с LINKS тестов (F2, F3)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>test_cylinder.py перенесён из M-RETRIEVAL в M-NORMALIZE (его LINKS: M-NORMALIZE).</Criterion>
+          <Criterion>Каждый тест добавлен во все модули своего поля LINKS; каждый тег Test резолвится на существующий файл.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -c "import pathlib,re,sys; xml=pathlib.Path('.grace/graph/modules.xml').read_text(encoding='utf-8'); mods={('M-'+m.group(1)):re.findall(r'&lt;Test&gt;(.*?)&lt;/Test&gt;',m.group(2)) for m in re.finditer(r'&lt;M-([A-Z0-9-]+)&gt;(.*?)&lt;/M-\1&gt;',xml,re.S)}; miss=sum(len([1 for mid in [x.strip() for x in re.search(r'^# LINKS:\s*(.+)$',f.read_text(encoding='utf-8'),re.M).group(1).split(',') if x.strip().startswith('M-')] if 'tests/'+f.name not in mods.get(mid,[])]) for f in pathlib.Path('tests').glob('test_*.py')); sys.exit(1 if miss else 0)"</Command>
+        </Verification>
+      </T-004>
+
+      <T-005>
+        <Title>Обновить roadmap и раздел про слепой участок в AGENTS.md (F4)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Roadmap покрывает C-001…C-068 с пометкой, что C-045 поглощён изменением C-046.</Criterion>
+          <Criterion>Раздел «Слепой участок» описывает его закрытие в C-059 (прошедшее время), сохраняя регламент разметки и роль стражи.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -c '| C-068 |' AGENTS.md</Command>
+        </Verification>
+      </T-005>
+
+      <T-006>
+        <Title>Финальная верификация: lint, pytest, гейт</Title>
+        <DependsOn>T-003, T-004, T-005</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>grace lint --path . — 0 errors / 0 warnings; Integrity 0/0, Active 0, Archive 68. Наблюдаемый drift рабочего дерева ожидаем: C-069 выполняется без коммита, поэтому правки остаются unexplained до коммита или grace-refresh вне scope change.</Criterion>
+          <Criterion>pytest зелёный; make gate проходит с acc@1 0.775 и p95 в пределах SLA.</Criterion>
+          <Criterion>После гейтов код не меняется — архивация бандла не требует перепроверки поведения.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>make gate</Command>
+        </Verification>
+      </T-006>
+    </ImplementationPlan>
+  </C-069>
+</GraceChangePlan>

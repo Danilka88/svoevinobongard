@@ -3,7 +3,7 @@
 # PURPOSE: Псевдо-разметка реальных полевых фото локальными моделями (OCR fusion + gemma4:26b)
 # SCOPE: parse_args, load_manifest, label_one, main
 # DEPENDS: numpy, PIL, packages.common.images, packages.common.logging, packages.common.ocr,
-#          packages.common.preprocess, services.normalize.app.tta, services.vlm.app.extract
+#          packages.common.preprocess, services.vlm.app.extract
 # LINKS: M-EVAL, M-VLM, M-DATA
 # ROLE: SCRIPT
 # MAP_MODE: LOCALS
@@ -43,8 +43,7 @@ from packages.common.config import settings  # noqa: E402
 from packages.common.images import flatten_alpha  # noqa: E402
 from packages.common.logging import log_marker  # noqa: E402
 from packages.common.ocr import parse_fields, run_ocr  # noqa: E402
-from packages.common.preprocess import PreprocessConfig  # noqa: E402
-from services.normalize.app.tta import build_vlm_inputs  # noqa: E402
+from packages.common.preprocess import PreprocessConfig, build_vlm_inputs  # noqa: E402
 from services.vlm.app.extract import extract_fields  # noqa: E402
 
 DEFAULT_DIR = "data/samples/real_field"

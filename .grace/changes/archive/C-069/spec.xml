@@ -1,0 +1,52 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-069>
+    <Summary>Устранён cross-service импорт VLM → normalize: общая логика build_variants/build_vlm_inputs
+      перенесена в packages/common/preprocess.py, normalize ре-экспортирует её тонкими обёртками, а импорты
+      VLM и скриптов переключены на общую библиотеку. Граф синхронизирован с фактическими LINKS тестов
+      (stale CrossLink test_cylinder, 22 отсутствовавших governed-теста), roadmap AGENTS.md доведён до C-068.</Summary>
+    <Goals>Убрать единственный cross-service import (services/vlm/app/main.py → services/normalize.app.tta),
+      из-за которого контейнер svoe-vlm падал с ModuleNotFoundError: Dockerfile VLM копирует только packages,
+      config и services/vlm. Общая логика вариантов входа обязана жить в packages/common — библиотеке, доступной
+      любому сервису. Привести graph/modules.xml в соответствие с полем LINKS каждого теста и обновить
+      человекочитаемую документацию (roadmap, слепой участок).</Goals>
+    <Constraints>Поведение build_variants и build_vlm_inputs сохраняется побитово: тот же порядок вариантов,
+      та же дедупликация по отпечатку, тот же счётчик MAX_VARIANTS и PAD_RATIO, кроп только за флагом
+      PreprocessConfig.crop. packages/* не импортируют services/* ни в одной строке (включая ленивые импорты) —
+      иначе контейнер VLM снова сломается. /v1/eval/predict и ML-метрики не изменяются: acc@1 0.775,
+      p95 ≤ 3000 мс. Dockerfile-ы не меняются. old/, my/ и материалы конкурса не трогаются. Коммит не создаётся.</Constraints>
+    <NonGoals>Изменение логики препроцессинга и порогов. Перенос warp_quad/homography. Правка Dockerfile.
+      Повторные замеры качества. Редактирование архивных бандлов и verification-записей. Добавление новых
+      тестов — F3 синхронизирует только граф-артефакт.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>В services/ нет cross-service импортов: каждый "from services.&lt;svc&gt;.app..." остаётся внутри своего сервиса.</Criterion>
+      <Criterion>packages/common/preprocess.py определяет build_variants и build_vlm_inputs; services/normalize/app/tta.py их ре-экспортирует.</Criterion>
+      <Criterion>services/vlm/app/main.py импортирует build_vlm_inputs из packages.common.preprocess, а не из services.normalize.</Criterion>
+      <Criterion>В packages/ нет ни одного импорта из services/.</Criterion>
+      <Criterion>Каждый тест из tests/ добавлен во все модули своего поля LINKS; каждый тег Test резолвится на существующий файл.</Criterion>
+      <Criterion>test_cylinder.py привязан ровно к M-NORMALIZE и больше не висит у M-RETRIEVAL.</Criterion>
+      <Criterion>Roadmap AGENTS.md покрывает C-001…C-068 (C-045 отмечен как поглощённый), раздел «Слепой участок» описывает закрытие в C-059.</Criterion>
+      <Criterion>grace lint --path . даёт 0 errors / 0 warnings, pytest зелёный, make gate проходит с acc@1 0.775.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-COMMON/>
+      <M-NORMALIZE/>
+      <M-VLM/>
+      <M-TEXT/>
+      <M-EVAL/>
+      <M-DATA/>
+      <M-CATALOG/>
+      <M-CONTRACTS/>
+      <M-ENOTOURISM/>
+      <M-GATEWAY/>
+      <M-WEB/>
+      <M-RETRIEVAL/>
+      <M-MATCHER/>
+      <M-ACTIVE-LEARNING/>
+      <M-OCR/>
+    </AffectedAreas>
+    <VerificationIntent>Cross-service независимость подтверждается машинной проверкой импортов services/ и
+      отсутствием обратных зависимостей packages/ → services/; эквивалентность поведения — зелёным pytest
+      (test_preprocessing, test_normalize_service) и неизменным acc@1 в make gate. Гигиена графа — проверкой
+      покрытия LINKS→modules.xml и резолвом каждого Test-пути. Целостность артефактов — grace lint 0/0.</VerificationIntent>
+  </C-069>
+</GraceChangeSpec>

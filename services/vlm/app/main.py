@@ -2,8 +2,8 @@
 # PURPOSE: FastAPI-сервис VLM: POST /extract собирает letterbox-базу и P&S-тайлы полного кадра и отдаёт поля
 # SCOPE: app, health, extract_endpoint
 # DEPENDS: fastapi, packages.common.config, packages.common.images, packages.common.logging,
-#          packages.common.preprocess, services.normalize.app.tta, services.vlm.app.extract
-# LINKS: M-VLM, M-NORMALIZE
+#          packages.common.preprocess, services.vlm.app.extract
+# LINKS: M-VLM
 # ROLE: RUNTIME
 # MAP_MODE: EXPORTS
 # END_MODULE_CONTRACT
@@ -29,8 +29,7 @@ from fastapi.concurrency import run_in_threadpool
 from packages.common.config import settings
 from packages.common.images import load_bgr
 from packages.common.logging import log_marker
-from packages.common.preprocess import PreprocessConfig
-from services.normalize.app.tta import build_vlm_inputs
+from packages.common.preprocess import PreprocessConfig, build_vlm_inputs
 from services.vlm.app.extract import extract_fields, observe_label
 
 app = FastAPI(title="Svoe Vino Scanner — VLM", version="0.2.0")

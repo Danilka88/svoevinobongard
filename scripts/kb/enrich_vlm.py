@@ -4,7 +4,7 @@
 # SCOPE: parse_args, target_slugs, load_done, enrich_one, run, merge, main
 # DEPENDS: numpy, PIL, packages.common.catalog, packages.common.config, packages.common.images,
 #          packages.common.logging, packages.common.ocr, packages.common.preprocess,
-#          services.matcher.app.textfusion, services.normalize.app.tta, services.vlm.app.extract
+#          services.matcher.app.textfusion, services.vlm.app.extract
 # LINKS: M-VLM, M-TEXT, M-CATALOG, M-OCR
 # ROLE: SCRIPT
 # MAP_MODE: LOCALS
@@ -51,9 +51,8 @@ from packages.common.config import settings  # noqa: E402
 from packages.common.images import flatten_alpha  # noqa: E402
 from packages.common.logging import log_marker  # noqa: E402
 from packages.common.ocr import parse_fields  # noqa: E402
-from packages.common.preprocess import PreprocessConfig  # noqa: E402
+from packages.common.preprocess import PreprocessConfig, build_vlm_inputs  # noqa: E402
 from services.matcher.app.textfusion import near_dup_key  # noqa: E402
-from services.normalize.app.tta import build_vlm_inputs  # noqa: E402
 from services.vlm.app.extract import extract_fields  # noqa: E402
 
 ENRICH_KEYS = ("year", "sweetness", "grape")

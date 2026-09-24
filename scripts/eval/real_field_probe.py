@@ -55,9 +55,8 @@ from packages.common.config import settings  # noqa: E402
 from packages.common.images import flatten_alpha  # noqa: E402
 from packages.common.logging import log_marker  # noqa: E402
 from packages.common.ocr import run_ocr  # noqa: E402
-from packages.common.preprocess import PreprocessConfig, enhance_clahe_wb  # noqa: E402
+from packages.common.preprocess import PreprocessConfig, build_variants, enhance_clahe_wb  # noqa: E402
 from scripts.eval.real_field_eval import identity_candidates, parse_label  # noqa: E402
-from services.normalize.app.tta import build_variants  # noqa: E402
 from services.retrieval.app.encoder import load_encoder  # noqa: E402
 from services.retrieval.app.head import apply_head, load_head  # noqa: E402
 from services.retrieval.app.index import load_index  # noqa: E402

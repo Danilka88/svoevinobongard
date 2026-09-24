@@ -1,8 +1,8 @@
 # START_MODULE_CONTRACT
-# PURPOSE: Неразрушающий препроцессинг: letterbox до квадрата, multi-scale, pan-and-scan тайлы, CLAHE и баланс белого
-# SCOPE: letterbox_square, multi_scale_variants, pan_and_scan_tiles, enhance_clahe_wb, PreprocessConfig
+# PURPOSE: Общий неразрушающий препроцессинг: letterbox, multi-scale, pan-and-scan тайлы, CLAHE и готовые варианты входа для энкодера и VLM
+# SCOPE: PreprocessConfig, letterbox_square, multi_scale_variants, pan_and_scan_tiles, enhance_clahe_wb, build_variants, build_vlm_inputs
 # DEPENDS: numpy, cv2
-# LINKS: M-COMMON
+# LINKS: M-COMMON, M-NORMALIZE, M-VLM
 # ROLE: RUNTIME
 # MAP_MODE: EXPORTS
 # END_MODULE_CONTRACT
@@ -12,6 +12,8 @@
 # multi_scale_variants - варианты по длинной стороне (по умолчанию 896 и 1280)
 # pan_and_scan_tiles - перекрывающиеся тайлы по всему кадру без знания о положении этикетки
 # enhance_clahe_wb - выравнивание контраста (CLAHE) и баланс белого
+# build_variants - варианты для энкодера: полный кадр, letterbox 896 и 1280, кроп только за флагом
+# build_vlm_inputs - набор для VLM: letterbox-база плюс pan-and-scan тайлы всего кадра
 # END_MODULE_MAP
 """Неразрушающий препроцессинг для vision-энкодеров с фиксированным входом.
 
@@ -19,20 +21,28 @@ Vision-энкодер Gemma работает на 896x896 (256 токенов) �
 кадра искажает текст этикетки; pan-and-scan в Ollama не реализован. Поэтому кадр
 готовится без обрезки: letterbox сохраняет пропорции, multi-scale даёт деталь,
 а P&S-тайлы (нарезанные по всему кадру) возвращают мелкий текст.
+
+Здесь же живут готовые наборы входа (build_variants, build_vlm_inputs), общие для
+normalize и VLM: раньше они лежали в services/normalize.app.tta, из-за чего VLM
+импортировал чужой сервис. Теперь общий код — в этой библиотеке, а перспективное
+выпрямление кропа передаётся инъекцией (warper), чтобы packages не зависел от services.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Callable
 
 import cv2
 import numpy as np
 
 __all__ = ["PreprocessConfig", "letterbox_square", "multi_scale_variants",
-           "pan_and_scan_tiles", "enhance_clahe_wb"]
+           "pan_and_scan_tiles", "enhance_clahe_wb", "build_variants", "build_vlm_inputs"]
 
 DEFAULT_SCALES = (896, 1280)
 DEFAULT_TILE_GRID = 2  # 2x2 = 4 тайла, 2x3 = 6 тайлов
 TILE_OVERLAP = 0.15
+MAX_VARIANTS = 8
+PAD_RATIO = 0.06
 
 
 @dataclass(frozen=True)
@@ -152,3 +162,105 @@ def enhance_clahe_wb(image: np.ndarray, clip_limit: float = 2.0) -> np.ndarray:
     gains = np.clip(target / np.maximum(means, 1.0), 0.7, 1.3)
     balanced = np.clip(float_image * gains, 0, 255).astype(np.uint8)
     return balanced
+
+
+def _fingerprint(image: np.ndarray) -> tuple[int, int, int]:
+    """Компактный отпечаток кадра для дедупликации вариантов."""
+    if image.size == 0:
+        return (0, 0, 0)
+    small = cv2.resize(image, (16, 16), interpolation=cv2.INTER_AREA)
+    gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
+    return (int(gray.mean()), int(gray.std()), int(gray[0, 0]))
+
+
+def _dedupe(candidates: list[tuple[str, np.ndarray]], limit: int) -> list[tuple[str, np.ndarray]]:
+    """Убирает дубликаты по отпечатку и ограничивает число вариантов."""
+    out: list[tuple[str, np.ndarray]] = []
+    seen: set[tuple[int, int, int]] = set()
+    for kind, variant in candidates:
+        if variant.size == 0:
+            continue
+        key = _fingerprint(variant)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append((kind, variant))
+        if len(out) >= limit:
+            break
+    return out
+
+
+def build_variants(image: np.ndarray, quad: np.ndarray | None = None,
+                   config: PreprocessConfig | None = None,
+                   tagged: bool = False,
+                   warper: Callable[[np.ndarray, np.ndarray], np.ndarray] | None = None) -> list:
+    """Собирает варианты входа для энкодера.
+
+    По умолчанию (``config.crop = False``) кадр не обрезается: первым идёт
+    полный кадр, затем letterbox-масштабы 896 и 1280.
+
+    Args:
+        image: BGR-полный кадр.
+        quad: четырехугольник этикетки; используется только при ``config.crop``.
+        config: параметры препроцессинга.
+        tagged: если True, возвращает пары (kind, изображение) для диагностики.
+        warper: перспективное выпрямление четырехугольника; нужен только при
+            ``config.crop`` (передаётся сервисом нормализации, чтобы библиотека
+            не зависела от services).
+
+    Returns:
+        Непустой список изображений (или пар kind/изображение).
+    """
+    active = config or PreprocessConfig()
+    candidates: list[tuple[str, np.ndarray]] = []
+
+    if active.crop and quad is not None and warper is not None:
+        warped = warper(image, quad)
+        candidates.append(("crop", warped))
+        height, width = warped.shape[:2]
+        pad_y, pad_x = int(height * PAD_RATIO), int(width * PAD_RATIO)
+        candidates.append(("crop_padded", cv2.copyMakeBorder(
+            warped, pad_y, pad_y, pad_x, pad_x, cv2.BORDER_REPLICATE)))
+        ratio = 0.85
+        crop_h, crop_w = int(height * ratio), int(width * ratio)
+        top, left = max(0, (height - crop_h) // 2), max(0, (width - crop_w) // 2)
+        candidates.append(("crop_center", warped[top:top + crop_h, left:left + crop_w]))
+
+    variants: list[tuple[str, np.ndarray]] = [("full", image)]
+    if active.enhance:
+        variants.append(("full_enhanced", enhance_clahe_wb(image)))
+    base = enhance_clahe_wb(image) if active.enhance else image
+    variants.extend(multi_scale_variants(base, scales=active.scales or DEFAULT_SCALES))
+
+    unique = _dedupe(candidates + variants, MAX_VARIANTS)
+    if not unique:
+        unique = [("full", image)]
+    if tagged:
+        return unique
+    return [variant for _, variant in unique]
+
+
+def build_vlm_inputs(image: np.ndarray, config: PreprocessConfig | None = None,
+                     base_size: int = 896) -> tuple[list[np.ndarray], list[str]]:
+    """Собирает набор изображений для VLM: letterbox-база плюс P&S-тайлы.
+
+    Правило: этикетку не обрезаем. База даёт общий вид кадра, тайлы — мелкий
+    текст; нарезка идёт по всему кадру, без знания о положении этикетки.
+
+    Args:
+        image: BGR-полный кадр.
+        config: параметры (число тайлов, enhance).
+        base_size: сторона квадрата (896 — вход vision-энкодера).
+
+    Returns:
+        Кортеж (список изображений, список их kind-меток).
+    """
+    active = config or PreprocessConfig()
+    source = enhance_clahe_wb(image) if active.enhance else image
+    images: list[np.ndarray] = [letterbox_square(source, size=base_size)]
+    kinds: list[str] = ["base_letterbox"]
+    for index, tile in enumerate(pan_and_scan_tiles(source, tiles=active.pas_tiles,
+                                                    size=base_size), start=1):
+        images.append(tile)
+        kinds.append(f"tile_{index}")
+    return images, kinds

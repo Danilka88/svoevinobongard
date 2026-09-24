@@ -11,8 +11,26 @@
       <Scope>POST /v1/eval/predict (плоский slug), POST /v1/scan (rich), GET /v1/similar, POST /v1/sommelier,
         GET /v1/health. Внутренние сервисы наружу не публикуются.</Scope>
       <Source>services/gateway/app/</Source>
-            <Test>tests/test_gateway_health.py</Test>
+      <Test>tests/test_gateway_health.py</Test>
       <Test>tests/test_gateway_pipeline.py</Test>
+      <Test>tests/test_c030_fixes.py</Test>
+      <Test>tests/test_c043_robustness.py</Test>
+      <Test>tests/test_c044_telemetry.py</Test>
+      <Test>tests/test_c046_fixes.py</Test>
+      <Test>tests/test_c047_warmup.py</Test>
+      <Test>tests/test_c050_media.py</Test>
+      <Test>tests/test_c052_structured.py</Test>
+      <Test>tests/test_c054_feedback.py</Test>
+      <Test>tests/test_c055_learning_page.py</Test>
+      <Test>tests/test_c058_media_proxy.py</Test>
+      <Test>tests/test_c061_calibration.py</Test>
+      <Test>tests/test_c062_observer.py</Test>
+      <Test>tests/test_c064_budget.py</Test>
+      <Test>tests/test_c065_near_dup.py</Test>
+      <Test>tests/test_c067_organizer_contract.py</Test>
+      <Test>tests/test_flywheel.py</Test>
+      <Test>tests/test_gateway_media.py</Test>
+      <Test>tests/test_recommend.py</Test>
       <Exports>health, eval_predict, scan, similar, sommelier</Exports>
       <Invokes>
         <M-NORMALIZE/>
@@ -38,8 +56,9 @@
       <Scope>EXIF-ориентация, ресайз, денойз, баланс белого; детекция этикетки/бутылки (D-FINE, RT-DETRv4, RF-DETR —
         Apache-2.0); выпрямление перспективы; TTA-кропы; fallback OpenCV-эвристики.</Scope>
       <Source>services/normalize/</Source>
-            <Test>tests/test_normalize_service.py</Test>
+      <Test>tests/test_normalize_service.py</Test>
       <Test>tests/test_preprocessing.py</Test>
+      <Test>tests/test_cylinder.py</Test>
       <Interface>POST /normalize (image) → список нормализованных изображений</Interface>
       <Depends>
         <M-COMMON/>
@@ -58,12 +77,13 @@
         домен-адаптации (C-009, 1152→512→256); геоверификация ORB/SIFT + BFMatcher + RANSAC с фьюжном
         скоров (C-003); прогрев модели, головы и признаков при старте (SLA).</Scope>
       <Source>services/retrieval/</Source>
-            <Test>tests/test_retrieval_index.py</Test>
+      <Test>tests/test_retrieval_index.py</Test>
       <Test>tests/test_geo_verify.py</Test>
       <Test>tests/test_search_dedupe.py</Test>
       <Test>tests/test_winery.py</Test>
       <Test>tests/test_color_tiebreak.py</Test>
-      <Test>tests/test_cylinder.py</Test>
+      <Test>tests/test_c030_fixes.py</Test>
+      <Test>tests/test_projection_head.py</Test>
       <Interface>POST /search (image) → Top-K + скоры; POST /warmup → прогрев</Interface>
       <Depends>
         <M-COMMON/>
@@ -89,8 +109,12 @@
         temperature=0, строгая JSON-схема полей этикетки, ремонт JSON, учет finish_reason, деградация ok=false.
         Онлайн — быстрая модель с reasoning_effort=none и жёстким таймаутом; тяжёлая модель — офлайн.</Scope>
       <Source>services/vlm/</Source>
-            <Test>tests/test_vlm_matcher.py</Test>
+      <Test>tests/test_vlm_matcher.py</Test>
       <Test>tests/test_llm_router.py</Test>
+      <Test>tests/test_c052_structured.py</Test>
+      <Test>tests/test_c062_observer.py</Test>
+      <Test>tests/test_c063_observer_llm.py</Test>
+      <Test>tests/test_c064_budget.py</Test>
       <Interface>POST /extract (image) → поля этикетки; вызов только через router.chat(role=vision_model)</Interface>
       <Depends>
         <M-COMMON/>
@@ -109,11 +133,12 @@
       <Scope>Текстовый матч полей с каталогом (rapidfuzz по винодельне и названию); фьюжн retrieval + geo + text
         с бонусами за год, сладость и цвет; дизамбигуация near-duplicates; переранжирование Top-K.</Scope>
       <Source>services/matcher/</Source>
-            <Test>tests/test_vlm_matcher.py</Test>
+      <Test>tests/test_vlm_matcher.py</Test>
       <Test>tests/test_text_fusion.py</Test>
       <Test>tests/test_text_norm.py</Test>
       <Test>tests/test_text_first.py</Test>
       <Test>tests/test_text_ce.py</Test>
+      <Test>tests/test_c065_near_dup.py</Test>
       <Interface>POST /rerank (candidates + fields) → переранжированные кандидаты с объяснением</Interface>
       <Depends>
         <M-COMMON/>
@@ -135,6 +160,8 @@
         за флагом TEXT_FUSION_ENABLED.</Scope>
       <Source>scripts/kb/</Source>
       <Test>tests/test_text_fusion.py</Test>
+      <Test>tests/test_text_ce.py</Test>
+      <Test>tests/test_text_first.py</Test>
       <Exports>build_label_kb, load_enriched_catalog, enriched_record, color_normalize, fusion_weights, text_fusion_enabled</Exports>
       <Invokes>
         <M-OCR/>
@@ -161,7 +188,8 @@
       <Scope>ETL CSV + wines_sitemap → catalog.jsonl / slug_to_image.json / stats.json (готово);
         загрузка в PostgreSQL + pgvector; построение и обновление векторного индекса.</Scope>
       <Source>services/catalog/</Source>
-            <Test>tests/test_catalog_etl.py</Test>
+      <Test>tests/test_catalog_etl.py</Test>
+      <Test>tests/test_gateway_media.py</Test>
       <Exports>etl_catalog, parse_sitemap, detect_year, detect_sweetness, load_to_postgres, build_index</Exports>
       <Depends>
         <M-COMMON/>
@@ -180,7 +208,7 @@
         парсинг года по regex, сладости по словарю с обратной заменой латиница→кириллица;
         сервис POST /ocr со строками и полями; graceful деградация при отсутствии движка.</Scope>
       <Source>services/ocr/</Source>
-            <Test>tests/test_ocr.py</Test>
+      <Test>tests/test_ocr.py</Test>
       <Test>tests/test_ocr_engines.py</Test>
       <Test>tests/test_c066_cyrillic_ocr.py</Test>
       <Interface>POST /ocr (image) → строки и поля (vintage, sweetness)</Interface>
@@ -209,7 +237,7 @@
       <Scope>Лог запросов, очередь ревью, синтетическая аугментация (Albumentations), дообучение Tier-1,
         оценка F1@1/@5, реестр версий (MLflow/DVC), деплой новой версии.</Scope>
       <Source>services/active_learning/</Source>
-            <Test>tests/test_flywheel.py</Test>
+      <Test>tests/test_flywheel.py</Test>
       <Writes>
         <M-CATALOG/>
       </Writes>
@@ -230,6 +258,13 @@
         (до десяти) и аналогами из других виноделен при отсутствии вина в каталоге (C-067).
         Единственный HTTP-клиент — composables/useGateway.ts с базой NUXT_PUBLIC_API_BASE.</Scope>
       <Source>apps/web/</Source>
+      <Test>tests/test_c046_fixes.py</Test>
+      <Test>tests/test_c048_error_state.py</Test>
+      <Test>tests/test_c049_timeouts.py</Test>
+      <Test>tests/test_c050_media.py</Test>
+      <Test>tests/test_c051_contrast.py</Test>
+      <Test>tests/test_c054_feedback.py</Test>
+      <Test>tests/test_c055_learning_page.py</Test>
       <Depends>
         <M-GATEWAY/>
       </Depends>
@@ -249,8 +284,10 @@
         с цепочкой Ollama gemma4:12b → gemma4:e4b → OpenRouter → YandexGPT, per-provider circuit breaker,
         cost-velocity breaker и локальным режимом (C-008).</Scope>
       <Source>packages/common/</Source>
-            <Test>tests/test_text_norm.py</Test>
+      <Test>tests/test_text_norm.py</Test>
       <Test>tests/test_llm_router.py</Test>
+      <Test>tests/test_c030_fixes.py</Test>
+      <Test>tests/test_preprocessing.py</Test>
       <Exports>LLMRouter, get_router, build_adapter, OpenAICompatAdapter, ChatResult, EmbedResult,
         CircuitBreaker, CostVelocityBreaker, RouterConfig, load_router_config, CatalogStore, load_catalog</Exports>
       <Depends>
@@ -268,7 +305,10 @@
       <Purpose>Единый источник истины для контрактов API — чтобы gateway, UI и ML-сервисы не расходились.</Purpose>
       <Scope>JSON-схемы API, тип slug, структуры scan/card/similar/sommelier, модель ошибки.</Scope>
       <Source>packages/contracts/</Source>
-            <Test>tests/test_contracts_schemas.py</Test>
+      <Test>tests/test_contracts_schemas.py</Test>
+      <Test>tests/test_c043_robustness.py</Test>
+      <Test>tests/test_c058_media_proxy.py</Test>
+      <Test>tests/test_c067_organizer_contract.py</Test>
       <Depends>none (листовой модуль)</Depends>
       <Verification>V-M-CONTRACTS</Verification>
       <Note>Реализация схем — change C-002.</Note>
@@ -283,7 +323,15 @@
         accuracy@1/@5 и macro-F1 при наличии ground truth; прогон настоящего скрипта организатора
         и отчёт совместимости (scripts/eval/participant_run.py, C-067).</Scope>
       <Source>scripts/eval/</Source>
-            <Test>tests/test_eval_harness.py</Test>
+      <Test>tests/test_eval_harness.py</Test>
+      <Test>tests/test_c053_annotation.py</Test>
+      <Test>tests/test_c060_baseline.py</Test>
+      <Test>tests/test_c061_calibration.py</Test>
+      <Test>tests/test_c062_observer.py</Test>
+      <Test>tests/test_c063_observer_llm.py</Test>
+      <Test>tests/test_c064_budget.py</Test>
+      <Test>tests/test_c065_near_dup.py</Test>
+      <Test>tests/test_c067_organizer_contract.py</Test>
       <Exports>post_image, extract_slug, extract_top5, load_ground_truth, compute_metrics, percentile,
         field_augment, random_background, synthetic pairs CLI (scripts/train/synthetic_pairs.py),
         head training CLI (scripts/train/train_head.py, модуль головы живёт в M-RETRIEVAL),
@@ -323,6 +371,10 @@
       <Test>tests/test_governance_markup.py</Test>
       <Test>tests/test_c053_annotation.py</Test>
       <Test>tests/test_c060_baseline.py</Test>
+      <Test>tests/test_c044_telemetry.py</Test>
+      <Test>tests/test_c047_warmup.py</Test>
+      <Test>tests/test_c050_media.py</Test>
+      <Test>tests/test_c054_feedback.py</Test>
       <Verification>V-M-DATA</Verification>
       <Note>C-011: правило закреплено в AGENTS.md, constraints.xml (D-3) и requirements.xml (AN-3);
         архивные бандлы C-001/C-002/C-004/C-010 не редактировались (история).</Note>
@@ -339,6 +391,7 @@
         по совпадению региона, категории и сорта без тяжёлого поиска; graceful деградация в пустые списки.</Scope>
       <Source>services/gateway/app/enotourism.py</Source>
       <Test>tests/test_enotourism.py</Test>
+      <Test>tests/test_c030_fixes.py</Test>
       <Exports>load_collections, region_of, tours_for, articles_for, enotourism_for, tour_url</Exports>
       <Invokes>
         <M-COMMON/>

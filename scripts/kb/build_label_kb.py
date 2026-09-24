@@ -3,8 +3,7 @@
 # PURPOSE: Label-text KB: точечное чтение текста эталонов (OCR везде, 12b для пробелов) и обогащение каталога
 # SCOPE: parse_args, main
 # DEPENDS: numpy, PIL, rapidfuzz, packages.common.catalog, packages.common.config, packages.common.images,
-#          packages.common.logging, packages.common.ocr, packages.common.preprocess, packages.normalize биндинг через tta,
-#          services.normalize.app.tta, services.vlm.app.extract
+#          packages.common.logging, packages.common.ocr, packages.common.preprocess, services.vlm.app.extract
 # LINKS: M-TEXT, M-OCR, M-CATALOG, M-VLM
 # ROLE: SCRIPT
 # MAP_MODE: LOCALS
@@ -49,8 +48,7 @@ from packages.common.config import settings  # noqa: E402
 from packages.common.images import flatten_alpha  # noqa: E402
 from packages.common.logging import log_marker  # noqa: E402
 from packages.common.ocr import run_ocr  # noqa: E402
-from packages.common.preprocess import PreprocessConfig  # noqa: E402
-from services.normalize.app.tta import build_vlm_inputs  # noqa: E402
+from packages.common.preprocess import PreprocessConfig, build_vlm_inputs  # noqa: E402
 from services.vlm.app.extract import extract_fields  # noqa: E402
 
 _DEFAULT_MATERIALS = (
