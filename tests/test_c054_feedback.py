@@ -1,3 +1,35 @@
+# START_MODULE_CONTRACT
+# PURPOSE: Правила доверия к голосам, дедуп, лимит частоты и очередь модерации
+# SCOPE: SHA, test_sanitize_accepts_only_known_votes_and_reasons, test_vote_key_uses_session_and_image, test_dedupe_keeps_one_vote_per_session_and_image, test_rate_limit_blocks_flood_from_one_session, test_single_vote_never_influences, test_three_independent_sessions_with_agent_consensus_are_trusted, test_three_sessions_without_agent_consensus_are_not_trusted, test_split_vote_fails_agreement_threshold, test_single_outlier_is_ignored, test_duplicate_votes_from_one_session_do_not_add_sessions, test_append_and_load_roundtrip, test_broken_storage_is_non_fatal, test_summary_counts_and_queue, test_wrong_wine_reason_goes_to_queue, test_feedback_endpoint_single_vote_goes_to_queue, test_feedback_endpoint_three_sessions_become_trusted, test_feedback_endpoint_rejects_unknown_vote, test_feedback_reason_codes_are_known, test_learning_summary_and_queue_endpoints, test_feedback_writes_telemetry_event
+# DEPENDS: packages.common.learning (FEEDBACK_REASONS, MIN_TRUSTED_SESSIONS, RATE_LIMIT_PER_MINUTE, TRUST_AGREEMENT, append_feedback, dedupe_votes, evaluate_trust, feedback_summary, load_feedback, moderation_queue, rate_limit_exceeded, sanitize_feedback, vote_key), services.gateway.app (main)
+# LINKS: M-GATEWAY, M-DATA, M-WEB
+# ROLE: TEST
+# MAP_MODE: LOCALS
+# END_MODULE_CONTRACT
+# START_MODULE_MAP
+# client - константа теста
+# SHA - константа теста SHA
+# test_sanitize_accepts_only_known_votes_and_reasons - проверяет: sanitize accepts only known votes and reasons
+# test_vote_key_uses_session_and_image - проверяет: vote key uses session and image
+# test_dedupe_keeps_one_vote_per_session_and_image - проверяет: dedupe keeps one vote per session and image
+# test_rate_limit_blocks_flood_from_one_session - проверяет: rate limit blocks flood from one session
+# test_single_vote_never_influences - проверяет: single vote never influences
+# test_three_independent_sessions_with_agent_consensus_are_trusted - проверяет: three independent sessions with agent consensus are trusted
+# test_three_sessions_without_agent_consensus_are_not_trusted - проверяет: three sessions without agent consensus are not trusted
+# test_split_vote_fails_agreement_threshold - проверяет: split vote fails agreement threshold
+# test_single_outlier_is_ignored - Одиночный голос против сильного консенсуса агентов влияния не получает
+# test_duplicate_votes_from_one_session_do_not_add_sessions - проверяет: duplicate votes from one session do not add sessions
+# test_append_and_load_roundtrip - проверяет: append and load roundtrip
+# test_broken_storage_is_non_fatal - проверяет: broken storage is non fatal
+# test_summary_counts_and_queue - проверяет: summary counts and queue
+# test_wrong_wine_reason_goes_to_queue - проверяет: wrong wine reason goes to queue
+# test_feedback_endpoint_single_vote_goes_to_queue - проверяет: feedback endpoint single vote goes to queue
+# test_feedback_endpoint_three_sessions_become_trusted - проверяет: feedback endpoint three sessions become trusted
+# test_feedback_endpoint_rejects_unknown_vote - проверяет: feedback endpoint rejects unknown vote
+# test_feedback_reason_codes_are_known - проверяет: feedback reason codes are known
+# test_learning_summary_and_queue_endpoints - проверяет: learning summary and queue endpoints
+# test_feedback_writes_telemetry_event - Событие фидбека попадает в телеметрию: видно, что пользователь голосовал
+# END_MODULE_MAP
 """Тесты C-054: правила доверия к голосам, дедуп, лимит частоты и очередь модерации.
 
 Проверяется главная гарантия анти-накрутки: одиночный голос не влияет никогда, влияние появляется
@@ -32,7 +64,34 @@ from packages.common.learning import (  # noqa: E402
     sanitize_feedback,
     vote_key,
 )
+
+
 from services.gateway.app import main as gw  # noqa: E402
+
+__all__ = [
+    "client",
+    "SHA",
+    "test_sanitize_accepts_only_known_votes_and_reasons",
+    "test_vote_key_uses_session_and_image",
+    "test_dedupe_keeps_one_vote_per_session_and_image",
+    "test_rate_limit_blocks_flood_from_one_session",
+    "test_single_vote_never_influences",
+    "test_three_independent_sessions_with_agent_consensus_are_trusted",
+    "test_three_sessions_without_agent_consensus_are_not_trusted",
+    "test_split_vote_fails_agreement_threshold",
+    "test_single_outlier_is_ignored",
+    "test_duplicate_votes_from_one_session_do_not_add_sessions",
+    "test_append_and_load_roundtrip",
+    "test_broken_storage_is_non_fatal",
+    "test_summary_counts_and_queue",
+    "test_wrong_wine_reason_goes_to_queue",
+    "test_feedback_endpoint_single_vote_goes_to_queue",
+    "test_feedback_endpoint_three_sessions_become_trusted",
+    "test_feedback_endpoint_rejects_unknown_vote",
+    "test_feedback_reason_codes_are_known",
+    "test_learning_summary_and_queue_endpoints",
+    "test_feedback_writes_telemetry_event",
+]
 
 client = TestClient(gw.app)
 SHA = "a" * 64

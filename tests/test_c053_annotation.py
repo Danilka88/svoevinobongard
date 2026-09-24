@@ -1,3 +1,31 @@
+# START_MODULE_CONTRACT
+# PURPOSE: Консенсус ридеров и политика разбиения датасета
+# SCOPE: MASSANDRA, UNANIMOUS, test_cluster_values_merges_similar_and_skips_empty, test_field_consensus_weights_readers, test_unanimous_readers_are_accepted, test_two_of_three_with_catalog_support_are_accepted, test_incompatible_readings_are_escalated, test_tie_is_escalated_even_with_catalog_match, test_catalog_contradiction_blocks_acceptance, test_name_pointing_to_other_winery_is_conflict, test_empty_readings_are_escalated, test_judge_payload_matches_judge_schema, test_weights_are_configurable, test_accepted_real_eval_photo_stays_eval, test_escalated_case_goes_to_holdout, test_synthetic_inherits_source_split, test_train_only_from_train_origins, test_split_policy_is_documented
+# DEPENDS: packages.common.annotation (ACCEPT_AGREEMENT, READER_WEIGHTS, adjudicate, assign_split, cluster_values, field_consensus, judge_payload, split_policy), packages.common.llm.structured (parse_structured)
+# LINKS: M-EVAL, M-DATA
+# ROLE: TEST
+# MAP_MODE: LOCALS
+# END_MODULE_CONTRACT
+# START_MODULE_MAP
+# MASSANDRA - константа теста MASSANDRA
+# UNANIMOUS - константа теста UNANIMOUS
+# test_cluster_values_merges_similar_and_skips_empty - проверяет: cluster values merges similar and skips empty
+# test_field_consensus_weights_readers - проверяет: field consensus weights readers
+# test_unanimous_readers_are_accepted - проверяет: unanimous readers are accepted
+# test_two_of_three_with_catalog_support_are_accepted - Слабая модель ошибается, но сильная и OCR согласны, и каталог это подтверждает
+# test_incompatible_readings_are_escalated - проверяет: incompatible readings are escalated
+# test_tie_is_escalated_even_with_catalog_match - Ничья между двумя сильными показаниями не разрешается автоматически
+# test_catalog_contradiction_blocks_acceptance - Ридеры согласны между собой, но каталог такого вина не знает — принимает человек
+# test_name_pointing_to_other_winery_is_conflict - Название совпало с винодельней каталога: значит этикетка прочитана неверно
+# test_empty_readings_are_escalated - проверяет: empty readings are escalated
+# test_judge_payload_matches_judge_schema - Вердикт представляется в форме схемы судьи и проходит её проверку
+# test_weights_are_configurable - Веса ридеров настраиваются: с другим весом OCR меняется победитель
+# test_accepted_real_eval_photo_stays_eval - Фото оценочного набора не попадают в обучение даже при полном согласии
+# test_escalated_case_goes_to_holdout - проверяет: escalated case goes to holdout
+# test_synthetic_inherits_source_split - Аугментация оценочного фото остаётся оценочной: иначе копии просочились бы в обучение
+# test_train_only_from_train_origins - проверяет: train only from train origins
+# test_split_policy_is_documented - проверяет: split policy is documented
+# END_MODULE_MAP
 """Тесты C-053: консенсус ридеров и политика разбиения — на моках, без запуска моделей.
 
 Проверяется чистая логика: единогласие, согласие двух из трёх с поддержкой каталога, несовместимые
@@ -24,6 +52,29 @@ from packages.common.annotation import (  # noqa: E402
     judge_payload,
     split_policy,
 )
+
+__all__ = [
+    "MASSANDRA",
+    "UNANIMOUS",
+    "test_cluster_values_merges_similar_and_skips_empty",
+    "test_field_consensus_weights_readers",
+    "test_unanimous_readers_are_accepted",
+    "test_two_of_three_with_catalog_support_are_accepted",
+    "test_incompatible_readings_are_escalated",
+    "test_tie_is_escalated_even_with_catalog_match",
+    "test_catalog_contradiction_blocks_acceptance",
+    "test_name_pointing_to_other_winery_is_conflict",
+    "test_empty_readings_are_escalated",
+    "test_judge_payload_matches_judge_schema",
+    "test_weights_are_configurable",
+    "test_accepted_real_eval_photo_stays_eval",
+    "test_escalated_case_goes_to_holdout",
+    "test_synthetic_inherits_source_split",
+    "test_train_only_from_train_origins",
+    "test_split_policy_is_documented",
+]
+
+
 
 # Кандидаты каталога: запись, которую подтверждают ридеры
 MASSANDRA = {"slug": "massandra-muskatel", "name": "Мускатель Массандра белый",

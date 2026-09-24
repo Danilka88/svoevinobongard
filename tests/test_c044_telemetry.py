@@ -1,3 +1,29 @@
+# START_MODULE_CONTRACT
+# PURPOSE: Обезличенная телеметрия интерфейса, санитайз и сводка
+# SCOPE: test_sanitize_drops_unknown_fields, test_sanitize_rejects_unknown_type_and_non_objects, test_sanitize_truncates_long_strings_and_route, test_sanitize_keeps_only_valid_latency_and_seq, test_sanitize_accepts_all_declared_types, test_append_events_writes_only_valid_and_stamps, test_append_events_rotates_by_size, test_append_events_best_effort_on_broken_path, test_summary_structure_and_scenarios, test_summary_on_missing_file_is_empty, test_telemetry_endpoint_writes_and_reports, test_telemetry_endpoint_enforces_batch_limit, test_telemetry_endpoint_tolerates_garbage, test_telemetry_summary_endpoint, test_scan_accepts_session_header_without_changing_contract
+# DEPENDS: packages.common.telemetry (ALLOWED_TYPES, MAX_EVENTS_PER_BATCH, append_events, load_events, sanitize_event, telemetry_summary), services.gateway.app (main), packages.contracts.schemas (ScanResponse)
+# LINKS: M-GATEWAY, M-DATA
+# ROLE: TEST
+# MAP_MODE: LOCALS
+# END_MODULE_CONTRACT
+# START_MODULE_MAP
+# client - константа теста
+# test_sanitize_drops_unknown_fields - проверяет: sanitize drops unknown fields
+# test_sanitize_rejects_unknown_type_and_non_objects - проверяет: sanitize rejects unknown type and non objects
+# test_sanitize_truncates_long_strings_and_route - проверяет: sanitize truncates long strings and route
+# test_sanitize_keeps_only_valid_latency_and_seq - проверяет: sanitize keeps only valid latency and seq
+# test_sanitize_accepts_all_declared_types - проверяет: sanitize accepts all declared types
+# test_append_events_writes_only_valid_and_stamps - проверяет: append events writes only valid and stamps
+# test_append_events_rotates_by_size - проверяет: append events rotates by size
+# test_append_events_best_effort_on_broken_path - Плохой путь не поднимает исключение: телеметрия не ломает основной сценарий
+# test_summary_structure_and_scenarios - проверяет: summary structure and scenarios
+# test_summary_on_missing_file_is_empty - проверяет: summary on missing file is empty
+# test_telemetry_endpoint_writes_and_reports - проверяет: telemetry endpoint writes and reports
+# test_telemetry_endpoint_enforces_batch_limit - проверяет: telemetry endpoint enforces batch limit
+# test_telemetry_endpoint_tolerates_garbage - Мусорный батч не приводит к ошибке: приём всегда успешен
+# test_telemetry_summary_endpoint - проверяет: telemetry summary endpoint
+# test_scan_accepts_session_header_without_changing_contract - Заголовок сессии не меняет форму ответа сканера
+# END_MODULE_MAP
 """Тесты телеметрии C-044: санитайз, лимиты, ротация, сводка и best-effort приём.
 
 Ключевая гарантия — приватность: всё, что не входит в белый список, не попадает в лог.
@@ -24,7 +50,28 @@ from packages.common.telemetry import (  # noqa: E402
     sanitize_event,
     telemetry_summary,
 )
+
+
 from services.gateway.app import main as gw  # noqa: E402
+
+__all__ = [
+    "client",
+    "test_sanitize_drops_unknown_fields",
+    "test_sanitize_rejects_unknown_type_and_non_objects",
+    "test_sanitize_truncates_long_strings_and_route",
+    "test_sanitize_keeps_only_valid_latency_and_seq",
+    "test_sanitize_accepts_all_declared_types",
+    "test_append_events_writes_only_valid_and_stamps",
+    "test_append_events_rotates_by_size",
+    "test_append_events_best_effort_on_broken_path",
+    "test_summary_structure_and_scenarios",
+    "test_summary_on_missing_file_is_empty",
+    "test_telemetry_endpoint_writes_and_reports",
+    "test_telemetry_endpoint_enforces_batch_limit",
+    "test_telemetry_endpoint_tolerates_garbage",
+    "test_telemetry_summary_endpoint",
+    "test_scan_accepts_session_header_without_changing_contract",
+]
 
 client = TestClient(gw.app)
 

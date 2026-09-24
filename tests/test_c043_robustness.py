@@ -1,3 +1,33 @@
+# START_MODULE_CONTRACT
+# PURPOSE: Устойчивость эндпоинтов к плохим входам и понятный отказ
+# SCOPE: test_scan_response_has_new_fields_with_defaults, test_eval_predict_flat_contract_unchanged, test_empty_file_scan_400, test_empty_file_predict_400, test_non_image_scan_400, test_non_image_predict_400, test_oversized_file_rejected, test_scan_internal_error_is_degraded_not_500, test_scan_retrieval_unavailable_503, test_predict_internal_error_never_500, test_predict_retrieval_unavailable_503, test_no_label_gray_photo_returns_not_found_with_reason, test_empty_retrieval_returns_no_candidates_reason, test_multiple_bottles_low_scores_stay_uncertain, test_blurred_and_glared_photo_do_not_crash, test_ocr_unavailable_sets_reason_and_does_not_fail, test_recognized_fields_filled_from_ocr_and_empty_without, test_collect_recognized_fields_merges_and_normalizes, test_resolve_scan_reason_matrix
+# DEPENDS: packages.contracts.schemas (ScanResponse), services.gateway.app (main), services.gateway.app.pipeline (_collect_recognized_fields, _resolve_scan_reason, run_scan)
+# LINKS: M-GATEWAY, M-CONTRACTS
+# ROLE: TEST
+# MAP_MODE: LOCALS
+# END_MODULE_CONTRACT
+# START_MODULE_MAP
+# client - константа теста
+# test_scan_response_has_new_fields_with_defaults - проверяет: scan response has new fields with defaults
+# test_eval_predict_flat_contract_unchanged - Плоский контракт проверяем на подставном пайплайне: тест не должен зависеть от сети
+# test_empty_file_scan_400 - проверяет: empty file scan 400
+# test_empty_file_predict_400 - проверяет: empty file predict 400
+# test_non_image_scan_400 - проверяет: non image scan 400
+# test_non_image_predict_400 - проверяет: non image predict 400
+# test_oversized_file_rejected - проверяет: oversized file rejected
+# test_scan_internal_error_is_degraded_not_500 - проверяет: scan internal error is degraded not 500
+# test_scan_retrieval_unavailable_503 - проверяет: scan retrieval unavailable 503
+# test_predict_internal_error_never_500 - проверяет: predict internal error never 500
+# test_predict_retrieval_unavailable_503 - проверяет: predict retrieval unavailable 503
+# test_no_label_gray_photo_returns_not_found_with_reason - Однотонная сцена без этикетки: система не падает и говорит, что не нашла
+# test_empty_retrieval_returns_no_candidates_reason - Каталог не дал ни одного кандидата: отказ без исключения
+# test_multiple_bottles_low_scores_stay_uncertain - Несколько бутылок дают близкие слабые скоры: ответ остаётся отказом, но с кандидатами
+# test_blurred_and_glared_photo_do_not_crash - Сильный блюр и блик: пайплайн отрабатывает до конца без исключений
+# test_ocr_unavailable_sets_reason_and_does_not_fail - OCR-сервис недоступен: причина фиксируется, запрос не падает
+# test_recognized_fields_filled_from_ocr_and_empty_without - Поля с этикетки заполняются при сигнале OCR и остаются пустыми без него
+# test_collect_recognized_fields_merges_and_normalizes - проверяет: collect recognized fields merges and normalizes
+# test_resolve_scan_reason_matrix - проверяет: resolve scan reason matrix
+# END_MODULE_MAP
 """Гарантии устойчивости C-043: плохие входы не роняют сервис, отказ объясняется.
 
 Тесты делятся на три группы:
@@ -30,7 +60,32 @@ from services.gateway.app.pipeline import (  # noqa: E402
     _collect_recognized_fields,
     _resolve_scan_reason,
     run_scan,
+
+
 )
+
+__all__ = [
+    "client",
+    "test_scan_response_has_new_fields_with_defaults",
+    "test_eval_predict_flat_contract_unchanged",
+    "test_empty_file_scan_400",
+    "test_empty_file_predict_400",
+    "test_non_image_scan_400",
+    "test_non_image_predict_400",
+    "test_oversized_file_rejected",
+    "test_scan_internal_error_is_degraded_not_500",
+    "test_scan_retrieval_unavailable_503",
+    "test_predict_internal_error_never_500",
+    "test_predict_retrieval_unavailable_503",
+    "test_no_label_gray_photo_returns_not_found_with_reason",
+    "test_empty_retrieval_returns_no_candidates_reason",
+    "test_multiple_bottles_low_scores_stay_uncertain",
+    "test_blurred_and_glared_photo_do_not_crash",
+    "test_ocr_unavailable_sets_reason_and_does_not_fail",
+    "test_recognized_fields_filled_from_ocr_and_empty_without",
+    "test_collect_recognized_fields_merges_and_normalizes",
+    "test_resolve_scan_reason_matrix",
+]
 
 client = TestClient(gw.app)
 

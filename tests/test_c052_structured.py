@@ -1,3 +1,37 @@
+# START_MODULE_CONTRACT
+# PURPOSE: Структурированный вывод моделей: восстановление, нормализация, валидация
+# SCOPE: CLEAN, test_exact_json, test_markdown_fence, test_text_around_json, test_single_quotes, test_smart_quotes, test_trailing_comma, test_uppercase_and_cyrillic_keys, test_truncated_response_is_flagged, test_empty_and_none_are_safe, test_wrong_types_are_reported, test_sweetness_synonyms, test_color_synonyms, test_vintage_is_coerced_to_year, test_unknown_enum_value_is_rejected, test_retry_with_strengthened_prompt, test_failed_after_retry_returns_safe_default, test_model_refusal_is_not_an_exception, test_schemas_are_closed_for_enum_fields, test_repair_json_direct, test_validate_returns_errors_not_exceptions, test_normalize_keys_is_recursive, test_provider_response_format, test_stats_shape
+# DEPENDS: packages.common.llm.structured (SCHEMAS, normalize_keys, parse_structured, provider_response_format, repair_json, reset_validation_stats, validate, validation_stats)
+# LINKS: M-VLM, M-GATEWAY
+# ROLE: TEST
+# MAP_MODE: LOCALS
+# END_MODULE_CONTRACT
+# START_MODULE_MAP
+# CLEAN - константа теста CLEAN
+# test_exact_json - проверяет: exact json
+# test_markdown_fence - проверяет: markdown fence
+# test_text_around_json - проверяет: text around json
+# test_single_quotes - проверяет: single quotes
+# test_smart_quotes - проверяет: smart quotes
+# test_trailing_comma - проверяет: trailing comma
+# test_uppercase_and_cyrillic_keys - проверяет: uppercase and cyrillic keys
+# test_truncated_response_is_flagged - Обрыв ответа: скобки достраиваются, факт усечения фиксируется отдельно
+# test_empty_and_none_are_safe - проверяет: empty and none are safe
+# test_wrong_types_are_reported - проверяет: wrong types are reported
+# test_sweetness_synonyms - проверяет: sweetness synonyms
+# test_color_synonyms - проверяет: color synonyms
+# test_vintage_is_coerced_to_year - проверяет: vintage is coerced to year
+# test_unknown_enum_value_is_rejected - Неизвестное значение перечисления не выдумывается: оно фиксируется как ошибка
+# test_retry_with_strengthened_prompt - При невалидном ответе делается один повтор, и подсказка содержит поля и пример
+# test_failed_after_retry_returns_safe_default - После повтора возвращается безопасный дефолт, исключение не поднимается
+# test_model_refusal_is_not_an_exception - проверяет: model refusal is not an exception
+# test_schemas_are_closed_for_enum_fields - проверяет: schemas are closed for enum fields
+# test_repair_json_direct - проверяет: repair json direct
+# test_validate_returns_errors_not_exceptions - проверяет: validate returns errors not exceptions
+# test_normalize_keys_is_recursive - проверяет: normalize keys is recursive
+# test_provider_response_format - Схема передаётся провайдеру, где поддерживается, но валидация остаётся клиентской
+# test_stats_shape - проверяет: stats shape
+# END_MODULE_MAP
 """Тесты C-052: разбор структурированных ответов моделей на реальных архетипах «грязного» вывода.
 
 Каждый архетип прогоняется через настоящий `parse_structured`, а не через вспомогательные вызовы:
@@ -24,6 +58,35 @@ from packages.common.llm.structured import (  # noqa: E402
     validate,
     validation_stats,
 )
+
+__all__ = [
+    "CLEAN",
+    "test_exact_json",
+    "test_markdown_fence",
+    "test_text_around_json",
+    "test_single_quotes",
+    "test_smart_quotes",
+    "test_trailing_comma",
+    "test_uppercase_and_cyrillic_keys",
+    "test_truncated_response_is_flagged",
+    "test_empty_and_none_are_safe",
+    "test_wrong_types_are_reported",
+    "test_sweetness_synonyms",
+    "test_color_synonyms",
+    "test_vintage_is_coerced_to_year",
+    "test_unknown_enum_value_is_rejected",
+    "test_retry_with_strengthened_prompt",
+    "test_failed_after_retry_returns_safe_default",
+    "test_model_refusal_is_not_an_exception",
+    "test_schemas_are_closed_for_enum_fields",
+    "test_repair_json_direct",
+    "test_validate_returns_errors_not_exceptions",
+    "test_normalize_keys_is_recursive",
+    "test_provider_response_format",
+    "test_stats_shape",
+]
+
+
 
 CLEAN = '{"winery": "Массандра", "wine_name": "Мускатель белый", "vintage": 2023, "sweetness": "сладкое"}'
 

@@ -1,3 +1,27 @@
+# START_MODULE_CONTRACT
+# PURPOSE: Страница обучения, решения модератора, счётчики датасета и навигация
+# SCOPE: WEB, SHA, test_decision_requires_known_choice, test_decision_is_recorded_with_provenance, test_decision_removes_case_from_queue_and_updates_summary, test_decision_without_target_is_rejected, test_dataset_endpoint_counts_splits, test_dataset_endpoint_is_empty_safe, test_learning_page_exists_and_uses_endpoints, test_navigation_keeps_five_primary_and_more_sheet, test_all_pages_are_reachable_from_navigation, test_primary_nav_has_exactly_five_items, test_gateway_client_exposes_learning_calls
+# DEPENDS: services.gateway.app (main)
+# LINKS: M-WEB, M-GATEWAY
+# ROLE: TEST
+# MAP_MODE: LOCALS
+# END_MODULE_CONTRACT
+# START_MODULE_MAP
+# client - константа теста
+# WEB - константа теста WEB
+# SHA - константа теста SHA
+# test_decision_requires_known_choice - проверяет: decision requires known choice
+# test_decision_is_recorded_with_provenance - проверяет: decision is recorded with provenance
+# test_decision_removes_case_from_queue_and_updates_summary - После решения модератора кейс уходит из очереди, а сводка это отражает
+# test_decision_without_target_is_rejected - проверяет: decision without target is rejected
+# test_dataset_endpoint_counts_splits - проверяет: dataset endpoint counts splits
+# test_dataset_endpoint_is_empty_safe - проверяет: dataset endpoint is empty safe
+# test_learning_page_exists_and_uses_endpoints - проверяет: learning page exists and uses endpoints
+# test_navigation_keeps_five_primary_and_more_sheet - проверяет: navigation keeps five primary and more sheet
+# test_all_pages_are_reachable_from_navigation - Страница не должна теряться: каждая есть либо в основных пунктах, либо в «Ещё»
+# test_primary_nav_has_exactly_five_items - проверяет: primary nav has exactly five items
+# test_gateway_client_exposes_learning_calls - проверяет: gateway client exposes learning calls
+# END_MODULE_MAP
 """Тесты C-055: страница обучения, решения модератора, счётчики датасета и навигация «5 + Ещё».
 
 Проверяется аддитивность решения модератора (оно фиксируется с провенансом и отражается в сводке),
@@ -17,7 +41,26 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+
+
 from services.gateway.app import main as gw  # noqa: E402
+
+__all__ = [
+    "client",
+    "WEB",
+    "SHA",
+    "test_decision_requires_known_choice",
+    "test_decision_is_recorded_with_provenance",
+    "test_decision_removes_case_from_queue_and_updates_summary",
+    "test_decision_without_target_is_rejected",
+    "test_dataset_endpoint_counts_splits",
+    "test_dataset_endpoint_is_empty_safe",
+    "test_learning_page_exists_and_uses_endpoints",
+    "test_navigation_keeps_five_primary_and_more_sheet",
+    "test_all_pages_are_reachable_from_navigation",
+    "test_primary_nav_has_exactly_five_items",
+    "test_gateway_client_exposes_learning_calls",
+]
 
 client = TestClient(gw.app)
 WEB = _ROOT / "apps" / "web"

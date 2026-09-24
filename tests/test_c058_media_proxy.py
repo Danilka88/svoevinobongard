@@ -1,3 +1,27 @@
+# START_MODULE_CONTRACT
+# PURPOSE: Нормализация адресов изображений на границе ответа gateway
+# SCOPE: SLUG, IMAGE, GEOJSON, test_image_paths_are_recognised, test_image_gets_proxy_url, test_geojson_is_never_proxied, test_already_proxied_and_local_and_foreign_untouched, test_nested_structures_are_normalised, test_resize_helper_changes_only_size, test_scan_card_is_normalised_by_boundary, test_media_endpoints_have_no_raw_images, test_sommelier_and_wine_keep_geojson_untouched, test_catalog_endpoint_returns_proxy_images
+# DEPENDS: packages.common.official_api (MEDIA_SIZE_CARD, MEDIA_SIZE_HERO, image_proxy_url, is_image_path, proxy_images_in, resize_proxy_url), services.gateway.app (main), packages.contracts.schemas (Card, ScanResponse)
+# LINKS: M-GATEWAY, M-CONTRACTS
+# ROLE: TEST
+# MAP_MODE: LOCALS
+# END_MODULE_CONTRACT
+# START_MODULE_MAP
+# client - константа теста
+# SLUG - константа теста SLUG
+# IMAGE - константа теста IMAGE
+# GEOJSON - константа теста GEOJSON
+# test_image_paths_are_recognised - проверяет: image paths are recognised
+# test_image_gets_proxy_url - проверяет: image gets proxy url
+# test_geojson_is_never_proxied - Данные не изображение: прокси отдаёт на них 404, поэтому путь остаётся как есть
+# test_already_proxied_and_local_and_foreign_untouched - проверяет: already proxied and local and foreign untouched
+# test_nested_structures_are_normalised - проверяет: nested structures are normalised
+# test_resize_helper_changes_only_size - проверяет: resize helper changes only size
+# test_scan_card_is_normalised_by_boundary - Скан — главный сценарий: карточка приходит с сырым адресом и нормализуется на границе
+# test_media_endpoints_have_no_raw_images - Защита от забвения: любой сырой адрес изображения в любом эндпоинте ломает тест
+# test_sommelier_and_wine_keep_geojson_untouched - Файлы данных не должны превращаться в прокси-адреса изображений
+# test_catalog_endpoint_returns_proxy_images - проверяет: catalog endpoint returns proxy images
+# END_MODULE_MAP
 """Тесты C-058: нормализация адресов изображений на границе ответа gateway.
 
 Первая часть проверяет правила на уровне помощников (что проксируется, что нет), вторая —
@@ -26,7 +50,26 @@ from packages.common.official_api import (  # noqa: E402
     proxy_images_in,
     resize_proxy_url,
 )
+
+
 from services.gateway.app import main as gw  # noqa: E402
+
+__all__ = [
+    "client",
+    "SLUG",
+    "IMAGE",
+    "GEOJSON",
+    "test_image_paths_are_recognised",
+    "test_image_gets_proxy_url",
+    "test_geojson_is_never_proxied",
+    "test_already_proxied_and_local_and_foreign_untouched",
+    "test_nested_structures_are_normalised",
+    "test_resize_helper_changes_only_size",
+    "test_scan_card_is_normalised_by_boundary",
+    "test_media_endpoints_have_no_raw_images",
+    "test_sommelier_and_wine_keep_geojson_untouched",
+    "test_catalog_endpoint_returns_proxy_images",
+]
 
 client = TestClient(gw.app)
 SLUG = "nebo-rossii-glera"

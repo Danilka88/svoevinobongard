@@ -1,3 +1,23 @@
+# START_MODULE_CONTRACT
+# PURPOSE: Контраст токенов интерфейса по WCAG AA
+# SCOPE: CSS_PATH, TEXT_MIN, UI_MIN, UI_SELECTOR_HINTS, contrast, test_tokens_are_parsed, test_contrast_report_is_printed, test_all_token_pairs_meet_wcag_aa, test_badges_are_not_removed, test_soft_background_text_uses_dedicated_token
+# DEPENDS: none
+# LINKS: M-WEB
+# ROLE: TEST
+# MAP_MODE: LOCALS
+# END_MODULE_CONTRACT
+# START_MODULE_MAP
+# CSS_PATH - константа теста CSS_PATH
+# TEXT_MIN - константа теста TEXT_MIN
+# UI_MIN - константа теста UI_MIN
+# UI_SELECTOR_HINTS - константа теста UI_SELECTOR_HINTS
+# contrast - Контраст по WCAG 2.1 для двух цветов в шестнадцатеричной записи
+# test_tokens_are_parsed - Проверка, что тест действительно читает файл стилей, а не пустой набор
+# test_contrast_report_is_printed - Печатает таблицу пар с числами: это отчёт для ревью, он же доказательство
+# test_all_token_pairs_meet_wcag_aa - Каждая пара «текст на фоне» обязана проходить порог: регрессия контраста недопустима
+# test_badges_are_not_removed - Запрещено «чинить» контраст удалением бейджей: они обязаны остаться в стилях
+# test_soft_background_text_uses_dedicated_token - Текст на мягком фоне берёт отдельный токен, а не светлый акцент
+# END_MODULE_MAP
 """Тесты C-051: контраст токенов интерфейса по WCAG AA.
 
 Тест читает `apps/web/assets/css/main.css`, сам извлекает токены светлой и тёмной темы и пары
@@ -11,6 +31,21 @@ import re
 from pathlib import Path
 
 import pytest
+
+__all__ = [
+    "CSS_PATH",
+    "TEXT_MIN",
+    "UI_MIN",
+    "UI_SELECTOR_HINTS",
+    "contrast",
+    "test_tokens_are_parsed",
+    "test_contrast_report_is_printed",
+    "test_all_token_pairs_meet_wcag_aa",
+    "test_badges_are_not_removed",
+    "test_soft_background_text_uses_dedicated_token",
+]
+
+
 
 CSS_PATH = Path(__file__).resolve().parents[1] / "apps" / "web" / "assets" / "css" / "main.css"
 TEXT_MIN = 4.5

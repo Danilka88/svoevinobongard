@@ -1,3 +1,24 @@
+# START_MODULE_CONTRACT
+# PURPOSE: Подпись кэша форм каталога и прогрев индекса на старте
+# SCOPE: test_signature_is_content_based_not_order_based, test_signature_changes_when_catalog_changes, test_signature_counts_records, test_cache_is_reused_without_rebuild, test_cache_signature_matches_catalog, test_changed_catalog_invalidates_cache, test_small_catalog_is_not_persisted, test_startup_warmup_is_registered, test_startup_warmup_builds_index, test_first_catalog_search_after_warmup_is_fast, test_real_catalog_cache_is_reusable
+# DEPENDS: packages.common.catalog (load_catalog), packages.common.config (settings), services.gateway.app (main), services.gateway.app (media), services.gateway.app.media (_forms_signature, _load_forms_cache, catalog_search, warm_catalog_index)
+# LINKS: M-GATEWAY, M-DATA
+# ROLE: TEST
+# MAP_MODE: LOCALS
+# END_MODULE_CONTRACT
+# START_MODULE_MAP
+# test_signature_is_content_based_not_order_based - Порядок записей не должен влиять на подпись: иначе кэш теряется без причины
+# test_signature_changes_when_catalog_changes - проверяет: signature changes when catalog changes
+# test_signature_counts_records - проверяет: signature counts records
+# test_cache_is_reused_without_rebuild - Второй прогрев берёт формы с диска и не пересчитывает их
+# test_cache_signature_matches_catalog - проверяет: cache signature matches catalog
+# test_changed_catalog_invalidates_cache - проверяет: changed catalog invalidates cache
+# test_small_catalog_is_not_persisted - Синтетические наборы не затирают кэш боевого каталога
+# test_startup_warmup_is_registered - Прогрев подключён к жизненному циклу приложения, а не вызывается вручную
+# test_startup_warmup_builds_index - Прогрев на старте наполняет индекс: первый запрос пользователя приходит на тёплый индекс
+# test_first_catalog_search_after_warmup_is_fast - SLA первого запроса каталога: после прогрева поиск укладывается в секунду
+# test_real_catalog_cache_is_reusable - Боевой каталог достаточно велик, чтобы попадать в кэш на диске
+# END_MODULE_MAP
 """Тесты C-047: подпись кэша форм, переиспользование между запусками и прогрев на старте.
 
 Главная проверка — первый запрос каталога после старта укладывается в SLA, а кэш форм реально
@@ -28,6 +49,22 @@ from services.gateway.app.media import (  # noqa: E402
     catalog_search,
     warm_catalog_index,
 )
+
+__all__ = [
+    "test_signature_is_content_based_not_order_based",
+    "test_signature_changes_when_catalog_changes",
+    "test_signature_counts_records",
+    "test_cache_is_reused_without_rebuild",
+    "test_cache_signature_matches_catalog",
+    "test_changed_catalog_invalidates_cache",
+    "test_small_catalog_is_not_persisted",
+    "test_startup_warmup_is_registered",
+    "test_startup_warmup_builds_index",
+    "test_first_catalog_search_after_warmup_is_fast",
+    "test_real_catalog_cache_is_reusable",
+]
+
+
 
 
 @lru_cache(maxsize=1)

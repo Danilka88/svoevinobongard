@@ -1,3 +1,25 @@
+# START_MODULE_CONTRACT
+# PURPOSE: Адреса картинок портала через прокси и устойчивое отображение
+# SCOPE: WEB, MEDIA_FILE, FILE, test_proxy_url_from_relative_path, test_proxy_url_from_full_portal_url, test_proxy_size_is_configurable, test_local_and_foreign_urls_are_untouched, test_proxy_images_in_recurses, test_media_file_uses_proxy_urls, test_catalog_search_returns_proxy_url, test_ui_uses_single_image_wrapper, test_image_wrapper_is_robust
+# DEPENDS: packages.common.official_api (MEDIA_SIZE_CARD, MEDIA_SIZE_HERO, image_proxy_url, proxy_images_in), services.gateway.app.media (catalog_search)
+# LINKS: M-GATEWAY, M-DATA, M-WEB
+# ROLE: TEST
+# MAP_MODE: LOCALS
+# END_MODULE_CONTRACT
+# START_MODULE_MAP
+# WEB - константа теста WEB
+# MEDIA_FILE - константа теста MEDIA_FILE
+# FILE - константа теста FILE
+# test_proxy_url_from_relative_path - проверяет: proxy url from relative path
+# test_proxy_url_from_full_portal_url - В кэше API адреса полные — помощник обязан понимать и их
+# test_proxy_size_is_configurable - проверяет: proxy size is configurable
+# test_local_and_foreign_urls_are_untouched - Локальные ассеты и чужие домены переписывать нельзя
+# test_proxy_images_in_recurses - проверяет: proxy images in recurses
+# test_media_file_uses_proxy_urls - Производный файл медиа не должен содержать сырых адресов портала
+# test_catalog_search_returns_proxy_url - Даже при сыром адресе в производном файле выдача каталога отдаёт рабочий адрес
+# test_ui_uses_single_image_wrapper - Сырых изображений вне обёртки быть не должно
+# test_image_wrapper_is_robust - проверяет: image wrapper is robust
+# END_MODULE_MAP
 """Тесты C-050: прокси-адреса картинок портала и устойчивое отображение.
 
 Сырые адреса портала отдают 404, рабочий путь — прокси изображений. Тесты проверяют построение
@@ -16,6 +38,23 @@ from packages.common.official_api import (  # noqa: E402
     proxy_images_in,
 )
 from services.gateway.app.media import catalog_search  # noqa: E402
+
+__all__ = [
+    "WEB",
+    "MEDIA_FILE",
+    "FILE",
+    "test_proxy_url_from_relative_path",
+    "test_proxy_url_from_full_portal_url",
+    "test_proxy_size_is_configurable",
+    "test_local_and_foreign_urls_are_untouched",
+    "test_proxy_images_in_recurses",
+    "test_media_file_uses_proxy_urls",
+    "test_catalog_search_returns_proxy_url",
+    "test_ui_uses_single_image_wrapper",
+    "test_image_wrapper_is_robust",
+]
+
+
 
 WEB = Path(__file__).resolve().parents[1] / "apps" / "web"
 MEDIA_FILE = Path(__file__).resolve().parents[1] / "data" / "catalog" / "catalog_media.json"

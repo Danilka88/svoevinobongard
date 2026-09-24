@@ -1,3 +1,21 @@
+# START_MODULE_CONTRACT
+# PURPOSE: Таймауты запросов к gateway на всех вызовах
+# SCOPE: WEB, test_timeout_utility_exists_and_classifies, test_every_gateway_call_has_timeout, test_scan_gets_larger_budget_than_auxiliary_calls, test_timeouts_are_configurable, test_timeout_is_treated_as_unavailable_not_exception, test_telemetry_sending_is_not_time_bounded, test_timeout_check_uses_real_utility
+# DEPENDS: none
+# LINKS: M-WEB
+# ROLE: TEST
+# MAP_MODE: LOCALS
+# END_MODULE_CONTRACT
+# START_MODULE_MAP
+# WEB - константа теста WEB
+# test_timeout_utility_exists_and_classifies - проверяет: timeout utility exists and classifies
+# test_every_gateway_call_has_timeout - Ни один вызов gateway не должен ждать ответ бесконечно
+# test_scan_gets_larger_budget_than_auxiliary_calls - проверяет: scan gets larger budget than auxiliary calls
+# test_timeouts_are_configurable - проверяет: timeouts are configurable
+# test_timeout_is_treated_as_unavailable_not_exception - Срабатывание таймаута ведёт к различимому результату, а не к исключению
+# test_telemetry_sending_is_not_time_bounded - Телеметрия не должна зависеть от основного сценария и по времени не ограничивается
+# test_timeout_check_uses_real_utility - Проверка на зависшем соединении использует ту же утилиту, что и клиент
+# END_MODULE_MAP
 """Тесты C-049: таймауты вызовов gateway и отсутствие необработанных отклонений.
 
 Поведение браузера в питоновском тесте не воспроизвести, поэтому здесь проверяются гарантии в
@@ -9,6 +27,19 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+
+__all__ = [
+    "WEB",
+    "test_timeout_utility_exists_and_classifies",
+    "test_every_gateway_call_has_timeout",
+    "test_scan_gets_larger_budget_than_auxiliary_calls",
+    "test_timeouts_are_configurable",
+    "test_timeout_is_treated_as_unavailable_not_exception",
+    "test_telemetry_sending_is_not_time_bounded",
+    "test_timeout_check_uses_real_utility",
+]
+
+
 
 WEB = Path(__file__).resolve().parents[1] / "apps" / "web"
 

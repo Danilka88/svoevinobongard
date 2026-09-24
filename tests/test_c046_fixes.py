@@ -1,3 +1,34 @@
+# START_MODULE_CONTRACT
+# PURPOSE: Исправления поведенческих дефектов: скорость поиска, вырожденные изображения, CORS, разметка, отказы сети
+# SCOPE: WEB, test_catalog_search_is_fast_on_full_catalog, test_catalog_search_returns_correct_record_and_paging, test_catalog_search_filters_by_region_and_grape, test_catalog_index_is_reused_between_calls, test_tiny_image_scan_is_degraded_not_503, test_tiny_image_predict_returns_flat_slug, test_tiny_image_does_not_reach_retrieval, test_zero_bytes_and_non_image_still_rejected, test_normal_image_is_not_treated_as_tiny, test_cors_preflight_returns_headers, test_cors_origins_are_configurable, test_cors_header_on_actual_request, test_nuxt_config_declares_language, test_layout_has_no_h1, test_telemetry_plugin_ignores_network_rejections, test_gateway_client_has_safe_fallbacks, test_prepared_similarity_matches_original_decisions, test_search_total_matches_previous_logic_on_real_catalog, test_search_is_fast_on_real_catalog
+# DEPENDS: services.gateway.app (main), packages.common.catalog (load_catalog), packages.common.config (settings), packages.common.text_norm (fold, forms, similarity), services.gateway.app.media (_catalog_index, _prepared_similarity, catalog_search)
+# LINKS: M-GATEWAY, M-WEB
+# ROLE: TEST
+# MAP_MODE: LOCALS
+# END_MODULE_CONTRACT
+# START_MODULE_MAP
+# client - константа теста
+# WEB - константа теста WEB
+# test_catalog_search_is_fast_on_full_catalog - Поиск по каталогу размера боевого укладывается в SLA: было 13-16 с, стало меньше секунды
+# test_catalog_search_returns_correct_record_and_paging - проверяет: catalog search returns correct record and paging
+# test_catalog_search_filters_by_region_and_grape - проверяет: catalog search filters by region and grape
+# test_catalog_index_is_reused_between_calls - Индекс строится один раз: повторный поиск не должен пересобирать формы
+# test_tiny_image_scan_is_degraded_not_503 - Крошечное изображение даёт корректный отказ с причиной, а не падение поиска
+# test_tiny_image_predict_returns_flat_slug - проверяет: tiny image predict returns flat slug
+# test_tiny_image_does_not_reach_retrieval - Вырожденный кадр отсекается до обращения к поиску — иначе был бы 503
+# test_zero_bytes_and_non_image_still_rejected - проверяет: zero bytes and non image still rejected
+# test_normal_image_is_not_treated_as_tiny - проверяет: normal image is not treated as tiny
+# test_cors_preflight_returns_headers - проверяет: cors preflight returns headers
+# test_cors_origins_are_configurable - проверяет: cors origins are configurable
+# test_cors_header_on_actual_request - проверяет: cors header on actual request
+# test_nuxt_config_declares_language - проверяет: nuxt config declares language
+# test_layout_has_no_h1 - Заголовок оболочки не должен быть первого уровня: на странице остаётся один h1
+# test_telemetry_plugin_ignores_network_rejections - проверяет: telemetry plugin ignores network rejections
+# test_gateway_client_has_safe_fallbacks - Отказ gateway даёт состояние экрана, а не необработанный отказ промиса
+# test_prepared_similarity_matches_original_decisions - Решение по каждой записи совпадает с прежним вызовом similarity
+# test_search_total_matches_previous_logic_on_real_catalog - Итоговый отбор по боевому каталогу совпадает с прежней формулой
+# test_search_is_fast_on_real_catalog - SLA поиска на боевом каталоге: было 13-16 с, требуется меньше секунды
+# END_MODULE_MAP
 """Тесты исправлений C-046: скорость поиска, вырожденные изображения, CORS, разметка, отказы сети.
 
 Первые четыре группы проверяют поведение бэкенда и разметки. Последняя группа — проверки на уровне
@@ -29,7 +60,33 @@ from services.gateway.app.media import (  # noqa: E402
     _catalog_index,
     _prepared_similarity,
     catalog_search,
+
+
 )
+
+__all__ = [
+    "client",
+    "WEB",
+    "test_catalog_search_is_fast_on_full_catalog",
+    "test_catalog_search_returns_correct_record_and_paging",
+    "test_catalog_search_filters_by_region_and_grape",
+    "test_catalog_index_is_reused_between_calls",
+    "test_tiny_image_scan_is_degraded_not_503",
+    "test_tiny_image_predict_returns_flat_slug",
+    "test_tiny_image_does_not_reach_retrieval",
+    "test_zero_bytes_and_non_image_still_rejected",
+    "test_normal_image_is_not_treated_as_tiny",
+    "test_cors_preflight_returns_headers",
+    "test_cors_origins_are_configurable",
+    "test_cors_header_on_actual_request",
+    "test_nuxt_config_declares_language",
+    "test_layout_has_no_h1",
+    "test_telemetry_plugin_ignores_network_rejections",
+    "test_gateway_client_has_safe_fallbacks",
+    "test_prepared_similarity_matches_original_decisions",
+    "test_search_total_matches_previous_logic_on_real_catalog",
+    "test_search_is_fast_on_real_catalog",
+]
 
 client = TestClient(gw.app)
 WEB = _ROOT / "apps" / "web"

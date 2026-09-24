@@ -1,0 +1,41 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-059>
+    <IntentSummary>Разметить тесты без контракта, добавить стражу обязательности разметки и
+      зафиксировать трассируемость пропущенного номера.</IntentSummary>
+    <BaselineAssertions>
+      <MustExist><Value>AGENTS.md</Value></MustExist>
+      <MustExist><Value>tests/test_governance_markup.py</Value></MustExist>
+      <MustVerify><Module>M-DATA</Module></MustVerify>
+    </BaselineAssertions>
+    <TargetAssertions>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustVerify><Module>M-DATA</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-DATA</Anchor></MustOwn>
+    </TargetAssertions>
+    <DurableScope><M-DATA/><V-M-DATA/></DurableScope>
+    <ObservedWriteScope>
+      <Path>tests/</Path><Path>AGENTS.md</Path><Path>.grace/</Path>
+    </ObservedWriteScope>
+    <ImplementationPlan>
+      <T-001>
+        <Title>Разметка тестов и стража</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Каждый ранее неразмеченный тест получил контракт и карту по единому образцу.</Criterion>
+          <Criterion>Стража падает на файле без разметки и не проверяет vendored модели.</Criterion>
+        </AcceptanceCriteria>
+        <Verification><Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_governance_markup.py -q</Command></Verification>
+      </T-001>
+      <T-002>
+        <Title>Регламент и трассируемость</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Регламент разметки и правила нумерации описаны в документации проекта.</Criterion>
+          <Criterion>Пропущенный номер изменения имеет отметку о поглощении.</Criterion>
+        </AcceptanceCriteria>
+        <Verification><Command>grace lint --path .</Command></Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-059>
+</GraceChangePlan>

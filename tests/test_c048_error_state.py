@@ -1,3 +1,23 @@
+# START_MODULE_CONTRACT
+# PURPOSE: Состояние недоступности сервиса и отсутствие необработанных отклонений
+# SCOPE: WEB, PAGES, test_component_exists_and_has_retry, test_every_page_wires_unavailable_state, test_catalog_does_not_mask_outage_as_empty, test_metrics_distinguishes_outage_from_no_data, test_sommelier_distinguishes_outage_from_empty_pick, test_auxiliary_gateway_calls_do_not_throw, test_telemetry_sending_is_guarded, test_error_state_e2e_covers_unavailable_block
+# DEPENDS: none
+# LINKS: M-WEB
+# ROLE: TEST
+# MAP_MODE: LOCALS
+# END_MODULE_CONTRACT
+# START_MODULE_MAP
+# WEB - константа теста WEB
+# PAGES - константа теста PAGES
+# test_component_exists_and_has_retry - проверяет: component exists and has retry
+# test_every_page_wires_unavailable_state - Сбой связи должен показываться явно, а не как пустой результат
+# test_catalog_does_not_mask_outage_as_empty - Пустая выдача и сбой связи — разные состояния
+# test_metrics_distinguishes_outage_from_no_data - проверяет: metrics distinguishes outage from no data
+# test_sommelier_distinguishes_outage_from_empty_pick - проверяет: sommelier distinguishes outage from empty pick
+# test_auxiliary_gateway_calls_do_not_throw - Ни один вспомогательный вызов не должен создавать необработанный отказ промиса
+# test_telemetry_sending_is_guarded - проверяет: telemetry sending is guarded
+# test_error_state_e2e_covers_unavailable_block - Проверка ошибок описывает новое состояние: блок и кнопка повтора
+# END_MODULE_MAP
 """Тесты C-048: состояние недоступности сервиса и отсутствие необработанных отклонений.
 
 Поведение браузера в питоновском тесте не воспроизвести, поэтому проверяются гарантии в исходниках
@@ -7,6 +27,21 @@
 from __future__ import annotations
 
 from pathlib import Path
+
+__all__ = [
+    "WEB",
+    "PAGES",
+    "test_component_exists_and_has_retry",
+    "test_every_page_wires_unavailable_state",
+    "test_catalog_does_not_mask_outage_as_empty",
+    "test_metrics_distinguishes_outage_from_no_data",
+    "test_sommelier_distinguishes_outage_from_empty_pick",
+    "test_auxiliary_gateway_calls_do_not_throw",
+    "test_telemetry_sending_is_guarded",
+    "test_error_state_e2e_covers_unavailable_block",
+]
+
+
 
 WEB = Path(__file__).resolve().parents[1] / "apps" / "web"
 PAGES = ("index", "metrics", "catalog", "sommelier", "how")
