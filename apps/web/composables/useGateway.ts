@@ -34,6 +34,9 @@ export interface ScanResponse {
   slug: string | null; confidence: number; margin: number; path: string; latency_ms: number;
   top5: TopKItem[]; not_found: boolean; confident: boolean; degraded: boolean;
   card: Card | null; trace?: Trace;
+  // C-065/C-067: расширенная выдача, неоднозначность и аналоги из других виноделен (аддитивно)
+  top10?: TopKItem[]; ambiguous?: boolean; alternatives?: TopKItem[];
+  recognized_fields?: Record<string, string | number | null>; reason?: string;
 }
 
 export interface SimilarItem {

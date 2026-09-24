@@ -1,6 +1,6 @@
 # START_MODULE_CONTRACT
 # PURPOSE: Устойчивость эндпоинтов к плохим входам и понятный отказ
-# SCOPE: test_scan_response_has_new_fields_with_defaults, test_eval_predict_flat_contract_unchanged, test_empty_file_scan_400, test_empty_file_predict_400, test_non_image_scan_400, test_non_image_predict_400, test_oversized_file_rejected, test_scan_internal_error_is_degraded_not_500, test_scan_retrieval_unavailable_503, test_predict_internal_error_never_500, test_predict_retrieval_unavailable_503, test_no_label_gray_photo_returns_not_found_with_reason, test_empty_retrieval_returns_no_candidates_reason, test_multiple_bottles_low_scores_stay_uncertain, test_blurred_and_glared_photo_do_not_crash, test_ocr_unavailable_sets_reason_and_does_not_fail, test_recognized_fields_filled_from_ocr_and_empty_without, test_collect_recognized_fields_merges_and_normalizes, test_resolve_scan_reason_matrix
+# SCOPE: test_scan_response_has_new_fields_with_defaults, test_eval_predict_flat_contract_unchanged, test_empty_file_scan_400, test_empty_file_predict_null_200, test_non_image_scan_400, test_non_image_predict_null_200, test_oversized_file_scan_400_predict_null_200, test_scan_internal_error_is_degraded_not_500, test_scan_retrieval_unavailable_503, test_predict_internal_error_never_500, test_predict_retrieval_unavailable_503, test_no_label_gray_photo_returns_not_found_with_reason, test_empty_retrieval_returns_no_candidates_reason, test_multiple_bottles_low_scores_stay_uncertain, test_blurred_and_glared_photo_do_not_crash, test_ocr_unavailable_sets_reason_and_does_not_fail, test_recognized_fields_filled_from_ocr_and_empty_without, test_collect_recognized_fields_merges_and_normalizes, test_resolve_scan_reason_matrix
 # DEPENDS: packages.contracts.schemas (ScanResponse), services.gateway.app (main), services.gateway.app.pipeline (_collect_recognized_fields, _resolve_scan_reason, run_scan)
 # LINKS: M-GATEWAY, M-CONTRACTS
 # ROLE: TEST
@@ -11,10 +11,10 @@
 # test_scan_response_has_new_fields_with_defaults - проверяет: scan response has new fields with defaults
 # test_eval_predict_flat_contract_unchanged - Плоский контракт проверяем на подставном пайплайне: тест не должен зависеть от сети
 # test_empty_file_scan_400 - проверяет: empty file scan 400
-# test_empty_file_predict_400 - проверяет: empty file predict 400
+# test_empty_file_predict_null_200 - C-067: пустой файл в контракте организатора даёт плоский null
 # test_non_image_scan_400 - проверяет: non image scan 400
-# test_non_image_predict_400 - проверяет: non image predict 400
-# test_oversized_file_rejected - проверяет: oversized file rejected
+# test_non_image_predict_null_200 - C-067: не-изображение в контракте организатора даёт плоский null
+# test_oversized_file_scan_400_predict_null_200 - проверяет: scan отклоняет большой файл, predict отдаёт null
 # test_scan_internal_error_is_degraded_not_500 - проверяет: scan internal error is degraded not 500
 # test_scan_retrieval_unavailable_503 - проверяет: scan retrieval unavailable 503
 # test_predict_internal_error_never_500 - проверяет: predict internal error never 500
@@ -69,10 +69,10 @@ __all__ = [
     "test_scan_response_has_new_fields_with_defaults",
     "test_eval_predict_flat_contract_unchanged",
     "test_empty_file_scan_400",
-    "test_empty_file_predict_400",
+    "test_empty_file_predict_null_200",
     "test_non_image_scan_400",
-    "test_non_image_predict_400",
-    "test_oversized_file_rejected",
+    "test_non_image_predict_null_200",
+    "test_oversized_file_scan_400_predict_null_200",
     "test_scan_internal_error_is_degraded_not_500",
     "test_scan_retrieval_unavailable_503",
     "test_predict_internal_error_never_500",
@@ -179,9 +179,11 @@ def test_empty_file_scan_400() -> None:
     assert "empty" in response.json()["detail"].lower()
 
 
-def test_empty_file_predict_400() -> None:
+def test_empty_file_predict_null_200() -> None:
+    """C-067: пустой файл в контракте организатора даёт плоский null, а не 4xx/5xx."""
     response = client.post("/v1/eval/predict", files={"image": ("empty.jpg", b"", "image/jpeg")})
-    assert response.status_code == 400
+    assert response.status_code == 200
+    assert response.json() == {"slug": None}
 
 
 def test_non_image_scan_400() -> None:
@@ -190,16 +192,21 @@ def test_non_image_scan_400() -> None:
     assert "image" in response.json()["detail"].lower()
 
 
-def test_non_image_predict_400() -> None:
+def test_non_image_predict_null_200() -> None:
+    """C-067: не-изображение в контракте организатора даёт плоский null, а не 400."""
     response = client.post("/v1/eval/predict", files={"image": ("fake.png", b"plain text", "image/png")})
-    assert response.status_code == 400
+    assert response.status_code == 200
+    assert response.json() == {"slug": None}
 
 
-def test_oversized_file_rejected(monkeypatch) -> None:
+def test_oversized_file_scan_400_predict_null_200(monkeypatch) -> None:
+    """C-067: богатый контракт сканера отклоняет большой файл, контракт организатора отдаёт null."""
     monkeypatch.setattr(gw, "_MAX_IMAGE_BYTES", 1024)
     payload = b"\xff\xd8\xff" + b"0" * 4096
     assert client.post("/v1/scan", files={"image": ("big.jpg", payload, "image/jpeg")}).status_code == 400
-    assert client.post("/v1/eval/predict", files={"image": ("big.jpg", payload, "image/jpeg")}).status_code == 400
+    response = client.post("/v1/eval/predict", files={"image": ("big.jpg", payload, "image/jpeg")})
+    assert response.status_code == 200
+    assert response.json() == {"slug": None}
 
 
 # --- деградация ---------------------------------------------------------------

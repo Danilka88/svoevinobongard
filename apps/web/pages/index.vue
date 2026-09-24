@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ScanResponse, SimilarItem } from '~/composables/useGateway';
+import type { ScanResponse, SimilarItem, TopKItem } from '~/composables/useGateway';
 
 const { scan, similar } = useGateway();
 const telemetry = useTelemetry();
@@ -12,6 +12,14 @@ let lastFile: File | null = null;
 const current = ref<ScanResponse | null>(null);
 const similarItems = ref<SimilarItem[]>([]);
 const similarLoading = ref(false);
+
+// C-067: при неуверенности показываем расширенную выдачу (до десяти кандидатов), а если её нет —
+// прежнюю пятёрку: layout и существующие данные не ломаются.
+const candidates = computed<TopKItem[]>(() => {
+  const result = current.value;
+  if (!result) return [];
+  return (result.top10?.length ? result.top10 : result.top5) || [];
+});
 
 async function onFile(file: File) {
   busy.value = true;
@@ -92,7 +100,17 @@ async function pick(slug: string) {
 
       <template v-if="current">
         <WineCard v-if="current.card && !current.not_found" :card="current.card" :slug="current.slug || ''" />
-        <NotFoundBlock v-else :candidates="current.top5" @pick="pick" />
+        <NotFoundBlock
+          v-else
+          :candidates="candidates"
+          :alternatives="current.alternatives || []"
+          :recognized-fields="current.recognized_fields || {}"
+          :reason="current.reason || ''"
+          :degraded="current.degraded"
+          :not-found="current.not_found"
+          :ambiguous="current.ambiguous || false"
+          @pick="pick"
+        />
 
         <SommelierPanel v-if="current.slug && !current.not_found" :slug="current.slug" />
         <SimilarWines :items="similarItems" :loading="similarLoading" @pick="pick" />

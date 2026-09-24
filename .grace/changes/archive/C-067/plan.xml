@@ -1,0 +1,90 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-067>
+    <IntentSummary>Прогнать настоящий скрипт организатора против gateway на 100 реальных фото и
+      зафиксировать числа, закалить плоский контракт eval-predict против любого входа, показать в
+      интерфейсе десять кандидатов и аналоги при отказе.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>services/gateway/app/main.py</Value></MustExist>
+      <MustExist><Value>packages/contracts/schemas.py</Value></MustExist>
+      <MustExist><Value>apps/web/pages/index.vue</Value></MustExist>
+      <MustExist><Value>data/samples/real100</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustExist><Value>scripts/eval/participant_run.py</Value></MustExist>
+      <MustExist><Value>reports/participant_predictions.jsonl</Value></MustExist>
+      <MustExist><Value>reports/participant_run.json</Value></MustExist>
+      <MustExist><Value>reports/participant_run.md</Value></MustExist>
+      <MustExist><Value>tests/test_c067_organizer_contract.py</Value></MustExist>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun run build</Command></MustPassCommand>
+      <MustPassCommand><Command>make gate</Command></MustPassCommand>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/><M-EVAL/><M-WEB/><M-CONTRACTS/>
+      <V-M-GATEWAY/><V-M-EVAL/><V-M-WEB/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>services/gateway/app/</Path>
+      <Path>scripts/eval/</Path>
+      <Path>apps/web/</Path>
+      <Path>reports/</Path>
+      <Path>tests/</Path>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Прогон настоящего скрипта организатора</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Манифест формируется из реальных фото с уникальными query_id и путями.</Criterion>
+          <Criterion>Настоящий participant_test.sh запускается против gateway и пишет файл предсказаний.</Criterion>
+          <Criterion>Отчёт содержит долю непустых slug, p50/p95/max, долю в лимите и число ошибок.</Criterion>
+          <Criterion>Прогон воспроизводим и не зависит от интерактивного ввода.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/participant_run.py --images data/samples/real100 --out reports/participant_run.json</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Жёсткий плоский контракт eval-predict</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Ответ остаётся плоским объектом ровно с ключом slug.</Criterion>
+          <Criterion>Пустой, битый и не-изображение вход дают null и не дают ошибки сервера.</Criterion>
+          <Criterion>Контракт проверяется отдельным стражем и не зависит от живой сети.</Criterion>
+          <Criterion>Существующие тесты адаптированы под осознанно изменённое поведение без потери покрытия.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python -m pytest tests/test_c067_organizer_contract.py -q</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Десять кандидатов и аналоги в интерфейсе</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>При неуверенности показываются до десяти кандидатов, layout не ломается.</Criterion>
+          <Criterion>При отсутствии вина в каталоге показываются аналоги из других виноделен.</Criterion>
+          <Criterion>Стили остаются на токенах C-051, контраст не регрессирует.</Criterion>
+          <Criterion>Сборка интерфейса проходит, новые поля реально попадают в бандл.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-067>
+</GraceChangePlan>

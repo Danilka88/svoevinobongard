@@ -227,7 +227,8 @@
       <Status>built</Status>
       <Purpose>Mobile-first карточка вина в стилистике портала + retention-фичи.</Purpose>
       <Scope>Загрузка фото (камера/галерея) → POST /v1/scan; карточка вина; цифровой сомелье;
-        аналоги из других виноделен; энотуризм; блок «вино не найдено» с ближайшими кандидатами.
+        аналоги из других виноделен; энотуризм; блок «вино не найдено» с ближайшими кандидатами
+        (до десяти) и аналогами из других виноделен при отсутствии вина в каталоге (C-067).
         Единственный HTTP-клиент — composables/useGateway.ts с базой NUXT_PUBLIC_API_BASE.</Scope>
       <Source>apps/web/</Source>
       <Depends>
@@ -280,13 +281,15 @@
       <Status>built</Status>
       <Purpose>Измерение качества: повторяет контракт организатора и снимает latency/top5/F1.</Purpose>
       <Scope>multipart-POST по одному изображению; парсинг slug и top5; latency p50/p95;
-        accuracy@1/@5 и macro-F1 при наличии ground truth.</Scope>
+        accuracy@1/@5 и macro-F1 при наличии ground truth; прогон настоящего скрипта организатора
+        и отчёт совместимости (scripts/eval/participant_run.py, C-067).</Scope>
       <Source>scripts/eval/</Source>
             <Test>tests/test_eval_harness.py</Test>
       <Exports>post_image, extract_slug, extract_top5, load_ground_truth, compute_metrics, percentile,
         field_augment, random_background, synthetic pairs CLI (scripts/train/synthetic_pairs.py),
         head training CLI (scripts/train/train_head.py, модуль головы живёт в M-RETRIEVAL),
-        cyrillic OCR benchmark CLI (scripts/eval/ocr_cyrillic_bench.py, C-066)</Exports>
+        cyrillic OCR benchmark CLI (scripts/eval/ocr_cyrillic_bench.py, C-066),
+        organizer run report (scripts/eval/participant_run.py, C-067)</Exports>
       <Verification>V-M-EVAL</Verification>
     </M-EVAL>
 

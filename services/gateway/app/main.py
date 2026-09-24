@@ -475,6 +475,22 @@ def _looks_like_image(data: bytes) -> bool:
         return False
 
 
+def _decodable_image(data: bytes) -> bool:
+    """Проверяет, что изображение реально декодируется, а не только похоже на картинку.
+
+    C-067: файл с валидной подписью, но обрезанным телом (частый случай битой загрузки)
+    проходил сигнатурную проверку, доходил до retrieval, тот отвечал 400 «image could not
+    be decoded», а контракт организатора получал 503. Здесь такой вход отсекается до
+    обращения к сервисам и превращается в плоский null.
+    """
+    try:
+        with Image.open(io.BytesIO(data)) as probe:
+            probe.load()
+        return True
+    except Exception:  # noqa: BLE001 - нечитаемый файл считаем не изображением
+        return False
+
+
 async def _read_image_upload(upload: UploadFile) -> bytes:
     """Читает файл и отклоняет пустой, слишком большой и не-изображение (C-043)."""
     data = await upload.read()
@@ -762,13 +778,18 @@ async def eval_predict(image: UploadFile = File(...),
                        x_session_id: str = Header(default="", alias="X-Session-Id")) -> EvalPredictResponse:
     """Контракт организатора: image → плоский slug.
 
-    C-043: обещание держим жёстко — на плохой файл скрипт организатора не должен получать 5xx.
-    Пустой файл, слишком большой или не-изображение отклоняются кодом 400 с понятной деталью,
-    а внутренние сбои дают плоский ответ со значением null вместо ошибки.
+    C-043/C-067: обещание держим жёстко — скрипт организатора никогда не должен получать
+    5xx из-за плохого входа. Пустой, слишком большой, не-изображение или битый файл дают
+    плоский ответ со значением null; недоступность retrieval по-прежнему 503 с контрактом
+    ошибки, а внутренние сбои — плоский null вместо ошибки.
     """
-    data = await _read_image_upload(image)
-    if _image_too_small(data):
-        log_marker("M-GATEWAY", "eval_predict", "IMAGE_TOO_SMALL")
+    try:
+        data = await _read_image_upload(image)
+    except HTTPException as error:
+        log_marker("M-GATEWAY", "eval_predict", "INVALID_IMAGE", detail=str(error.detail))
+        return EvalPredictResponse(slug=None)
+    if not _decodable_image(data) or _image_too_small(data):
+        log_marker("M-GATEWAY", "eval_predict", "UNREADABLE_IMAGE")
         return EvalPredictResponse(slug=None)
     try:
         result = await run_scan(data, get_store(), filename=image.filename or "query.jpg",

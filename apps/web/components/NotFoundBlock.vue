@@ -6,16 +6,20 @@ import type { TopKItem } from '~/composables/useGateway';
 // распознанный с этикетки текст, ближайших кандидатов и путь к ручному поиску на портале.
 const props = defineProps<{
   candidates: TopKItem[];
+  alternatives?: TopKItem[];
   recognizedFields?: Record<string, string | number | null> | null;
   reason?: string;
   degraded?: boolean;
   notFound?: boolean;
+  ambiguous?: boolean;
 }>();
 const emit = defineEmits<{ (event: 'pick', slug: string): void }>();
 
 const PORTAL_SEARCH = 'https://vino-svoe.ru/wines';
 
-const top = computed(() => (props.candidates || []).slice(0, 5));
+// C-067: при неуверенности показываем до десяти кандидатов (расширенная выдача top10).
+const top = computed(() => (props.candidates || []).slice(0, 10));
+const alternatives = computed(() => (props.alternatives || []).slice(0, 6));
 const maxScore = computed(() => Math.max(...top.value.map(item => Number(item.score) || 0), 0.0001));
 
 // Состояние отказа: сначала недоступность сервиса, затем «нет в каталоге», иначе неуверенность.
@@ -40,6 +44,7 @@ const REASONS: Record<string, string> = {
 const headline = computed(() => {
   if (state.value === 'degraded') return 'Сервис сейчас недоступен';
   if (state.value === 'not_found') return 'Такого вина нет на «Своё Вино»';
+  if (props.ambiguous) return 'Похоже на несколько вин из одной серии';
   return 'Не уверены — возможно, дело в фото';
 });
 
@@ -49,6 +54,9 @@ const lead = computed(() => {
   }
   if (state.value === 'not_found') {
     return 'Скорее всего, вино не представлено на портале «Своё Вино»: например, оно не российское или выпущено малым тиражом. Ниже — что удалось прочитать и похожие вина из каталога.';
+  }
+  if (props.ambiguous) {
+    return 'Этикетки внутри одной серии почти не отличаются на фото. Ниже — все близкие варианты: выберите своё вино или уточните год и сладость.';
   }
   return 'Этикетка прочитана, но уверенности для точного ответа не хватило: снимок под неудобным углом, блики или несколько бутылок. Если среди вариантов ниже есть ваше вино — выберите его.';
 });
@@ -128,6 +136,22 @@ function width(score: number) {
       <p v-else class="muted small">Кандидатов нет — это нормально, если вина нет в каталоге.</p>
     </section>
 
+    <section v-if="state === 'not_found' && alternatives.length" class="alt" aria-labelledby="nf-alt">
+      <h3 id="nf-alt" class="recognized-title">Похожие вина других виноделен</h3>
+      <p class="muted small">Этого вина нет на портале — вот близкие аналоги из каталога.</p>
+      <ul class="candidates alt-grid">
+        <li v-for="item in alternatives" :key="item.slug" class="candidate">
+          <div class="candidate-head">
+            <div style="min-width: 0">
+              <p class="candidate-name">{{ item.name || item.slug }}</p>
+              <p class="candidate-winery muted small">{{ item.winery || 'винодельня не определена' }}</p>
+            </div>
+          </div>
+          <button class="secondary" type="button" @click="emit('pick', item.slug)">Открыть карточку</button>
+        </li>
+      </ul>
+    </section>
+
     <p class="actions">
       <a class="primary" :href="portalUrl" target="_blank" rel="noopener noreferrer">Найти вручную на «Своё Вино»</a>
     </p>
@@ -176,6 +200,10 @@ function width(score: number) {
 .candidate-winery { margin: 2px 0 0; }
 .score-bar { height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; }
 .score-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--gold)); }
+/* C-067: аналоги из других виноделен — две колонки на широком экране, одна на мобиле. */
+.alt { margin-top: var(--space-4); }
+.alt-grid { grid-template-columns: 1fr; }
+@media (min-width: 720px) { .alt-grid { grid-template-columns: 1fr 1fr; } }
 .actions { margin: var(--space-4) 0 0; }
 .actions .primary { display: inline-block; text-decoration: none; }
 .tips { margin-top: var(--space-4); }

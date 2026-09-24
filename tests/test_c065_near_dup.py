@@ -164,6 +164,11 @@ def test_eval_predict_stays_flat(monkeypatch) -> None:
         return ScanResponse(slug="series-suhoe-2023", confidence=0.4, top10=[], alternatives=[])
 
     monkeypatch.setattr(gw, "run_scan", fake_scan)
+    # C-067: контракт проверяется на реально декодируемом изображении — битый вход отсекается раньше.
+    import io
+    from PIL import Image
+    buffer = io.BytesIO()
+    Image.fromarray(np.full((32, 32, 3), 180, dtype=np.uint8)).save(buffer, format="PNG")
     body = client.post("/v1/eval/predict",
-                       files={"image": ("q.png", b"\xff\xd8\xff" + b"0" * 64, "image/jpeg")}).json()
+                       files={"image": ("q.png", buffer.getvalue(), "image/png")}).json()
     assert set(body.keys()) == {"slug"} and body["slug"] == "series-suhoe-2023"
