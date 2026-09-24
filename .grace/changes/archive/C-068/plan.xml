@@ -1,0 +1,87 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-068>
+    <IntentSummary>Убрать из графового контракта модулей дефекты артефактов: дубль Test у M-MATCHER и
+      пути-каталоги tests/ у M-DEPLOY и M-DATA, заменив их фактическим состоянием тестового покрытия,
+      не меняя ни одной строки кода или теста.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/graph/modules.xml</Value></MustExist>
+      <MustExist><Value>tests/test_text_ce.py</Value></MustExist>
+      <MustExist><Value>tests/test_governance_markup.py</Value></MustExist>
+      <MustExist><Value>tests/test_c053_annotation.py</Value></MustExist>
+      <MustExist><Value>tests/test_c060_baseline.py</Value></MustExist>
+      <MustVerify><Module>M-MATCHER</Module></MustVerify>
+      <MustVerify><Module>M-DEPLOY</Module></MustVerify>
+      <MustVerify><Module>M-DATA</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>test "$(grep -c '&lt;Test&gt;tests/test_text_ce.py&lt;/Test&gt;' .grace/graph/modules.xml)" = "1"</Command></MustPassCommand>
+      <MustPassCommand><Command>! grep -q '&lt;Test&gt;tests/&lt;/Test&gt;' .grace/graph/modules.xml</Command></MustPassCommand>
+      <MustPassCommand><Command>.venv/bin/python -c "import re,pathlib,sys; t=pathlib.Path('.grace/graph/modules.xml').read_text(encoding='utf-8'); paths=re.findall(r'&lt;Test&gt;(.*?)&lt;/Test&gt;', t); missing=[p for p in paths if not pathlib.Path(p).is_file()]; sys.exit(('missing: '+', '.join(missing)) if missing else 0)"</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustPassCommand><Command>.venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-MATCHER</Module></MustVerify>
+      <MustVerify><Module>M-DEPLOY</Module></MustVerify>
+      <MustVerify><Module>M-DATA</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-MATCHER</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-DEPLOY</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-DATA</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-MATCHER/>
+      <M-DEPLOY/>
+      <M-DATA/>
+      <V-M-MATCHER/>
+      <V-M-DEPLOY/>
+      <V-M-DATA/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>.grace/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Дубль Test в контракте M-MATCHER</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Повторяющийся тег Test tests/test_text_ce.py удалён, остаётся ровно одна запись.</Criterion>
+          <Criterion>Остальные Test модуля (vlm_matcher, text_fusion, text_norm, text_first) не затронуты.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -c '&lt;Test&gt;tests/test_text_ce.py&lt;/Test&gt;' .grace/graph/modules.xml</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Каталог-заглушка tests/ у M-DEPLOY и M-DATA</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>У M-DEPLOY путь-каталог tests/ удалён: модуль не покрыт отдельным pytest-файлом, что фиксируется пояснением со ссылкой на командную проверку V-M-DEPLOY.</Criterion>
+          <Criterion>У M-DATA путь-каталог tests/ заменён на файлы, чьи контракты объявляют LINKS: M-DATA (governance-стража, политика раскладки датасета, честный baseline).</Criterion>
+          <Criterion>Никакие Test-теги не указывают на каталог; все указывают на существующие файлы.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>.venv/bin/python -c "import re,pathlib,sys; t=pathlib.Path('.grace/graph/modules.xml').read_text(encoding='utf-8'); paths=re.findall(r'&lt;Test&gt;(.*?)&lt;/Test&gt;', t); missing=[p for p in paths if not pathlib.Path(p).is_file()]; sys.exit(('missing: '+', '.join(missing)) if missing else 0)"</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Проверка: lint, status, pytest и резолв Test-путей</Title>
+        <DependsOn>T-001, T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>grace lint даёт 0 errors и 0 warnings.</Criterion>
+          <Criterion>grace status показывает Integrity 0 errors / 0 warnings и 16 модулей без drift.</Criterion>
+          <Criterion>Каждый Test-путь резолвится на существующий файл; каталогов среди значений Test нет.</Criterion>
+          <Criterion>pytest остаётся зелёным: код и тесты не изменялись.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>.venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-068>
+</GraceChangePlan>

@@ -1,0 +1,33 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-068>
+    <Summary>Гигиена graph-артефактов: устранён дубль Test в контракте M-MATCHER и каталог-заглушка
+      tests/ в M-DEPLOY и M-DATA заменён фактическим состоянием тестового покрытия.</Summary>
+    <Goals>Привести графовый контракт модулей в соответствие с реальным содержимым tests/: убрать
+      повторяющийся узел Test у M-MATCHER, не оставлять в графе путь-каталог tests/ там, где маршрутизация
+      должна указывать на конкретный файл, и не выдумывать тесты для модуля, который pytest-файлом
+      не покрыт.</Goals>
+    <Constraints>Меняются только артефакты .grace/ (graph/modules.xml и бандл этого change). Код в
+      packages/, services/, scripts/, apps/ и тесты в tests/ не изменяются, поэтому pytest и метрики
+      обязаны остаться прежними. Каждая ссылка Test сверяется с фактическим содержимым tests/ — несуществующие
+      файлы не добавляются, каталоги вместо файлов не остаются. old/, my/ и материалы конкурса не трогаются.
+      Коммит не создаётся.</Constraints>
+    <NonGoals>Изменение кода и логики. Новые или правка существующих тестов. Повторные замеры. Изменение
+      состава модулей и их Source. Правка архивных бандлов и verification-записей.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>Дубль тега Test у M-MATCHER отсутствует: путь tests/test_text_ce.py встречается ровно один раз.</Criterion>
+      <Criterion>В modules.xml не остаётся ни одного Test со значением-каталогом (в частности tests/).</Criterion>
+      <Criterion>Все значения тегов Test резолвятся на существующие файлы в репозитории.</Criterion>
+      <Criterion>M-DEPLOY не ссылается на несуществующий тест-файл: модуль, не покрытый pytest-файлом, получает пояснение вместо каталога-заглушки.</Criterion>
+      <Criterion>Каждый Test у M-DATA ссылается на файл, контракт которого объявляет LINKS: M-DATA.</Criterion>
+      <Criterion>grace lint --path . даёт 0 errors / 0 warnings, grace status показывает Integrity 0/0, pytest остаётся зелёным.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-MATCHER/>
+      <M-DEPLOY/>
+      <M-DATA/>
+    </AffectedAreas>
+    <VerificationIntent>Гигиена подтверждается грамматикой CLI (lint 0/0), отсутствием каталогов-заглушек
+      в Test и резолвом каждого Test-пути на существующий файл; покрытие модулей verification-записями
+      (V-M-MATCHER, V-M-DEPLOY, V-M-DATA) не меняется.</VerificationIntent>
+  </C-068>
+</GraceChangeSpec>

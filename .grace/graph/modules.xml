@@ -114,7 +114,6 @@
       <Test>tests/test_text_norm.py</Test>
       <Test>tests/test_text_first.py</Test>
       <Test>tests/test_text_ce.py</Test>
-      <Test>tests/test_text_ce.py</Test>
       <Interface>POST /rerank (candidates + fields) → переранжированные кандидаты с объяснением</Interface>
       <Depends>
         <M-COMMON/>
@@ -305,8 +304,10 @@
         Containers, Workflow переобучения, заметки по Object Storage/Managed PostgreSQL/Lockbox);
         README.md, ARCHITECTURE.md, docs/DEMO.md, docs/LIMITATIONS.md.</Scope>
       <Source>deploy/</Source>
-      <Test>tests/</Test>
       <Verification>V-M-DEPLOY</Verification>
+      <Note>C-068: отдельного pytest-файла у модуля нет — упаковка проверяется командами V-M-DEPLOY
+        (docker compose config, make -n, make gate), поэтому путь-каталог tests/ убран; Source и Test
+        сверены с фактическим содержимым репозитория (сценарий S-DEPLOY-9).</Note>
     </M-DEPLOY>
 
     <M-DATA>
@@ -319,10 +320,15 @@
         отчёты, логи flywheel); воспроизводимая оценка: синтетический baseline в make eval и опциональная
         демонстрация на официальных data/samples/eval_queries.</Scope>
       <Source>docs/DATA.md</Source>
-      <Test>tests/</Test>
+      <Test>tests/test_governance_markup.py</Test>
+      <Test>tests/test_c053_annotation.py</Test>
+      <Test>tests/test_c060_baseline.py</Test>
       <Verification>V-M-DATA</Verification>
       <Note>C-011: правило закреплено в AGENTS.md, constraints.xml (D-3) и requirements.xml (AN-3);
         архивные бандлы C-001/C-002/C-004/C-010 не редактировались (история).</Note>
+      <Note>C-068: путь-каталог tests/ заменён на файлы, чьи контракты объявляют LINKS: M-DATA и покрывают
+        правила гигиены данных — governance-стража разметки, политика раскладки датасета и честный
+        воспроизводимый baseline.</Note>
     </M-DATA>
     <M-ENOTOURISM>
       <Name>Enotourism and Stories</Name>
