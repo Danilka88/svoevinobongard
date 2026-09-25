@@ -1,0 +1,121 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-075>
+    <IntentSummary>Устранить узкое место C-074 «верное вино не дошло до пула»: дать LLM-матчеру визуальный
+      кандидат-пул в обоих контурах. В offline-стенде llm_match_eval кандидаты = текстовые находки наблюдения
+      + визуальный top-K retrieval; в онлайн-pipeline пул матчера дополняется визуальным top-N. Повторный
+      замер на 21 и 100 фото, честное сравнение с C-074; если визуальный пул на шумном эталоне не помогает —
+      зафиксировать и обосновать C-077. Онлайн-контракт, пороги и метрики гейта не меняются; коммит не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-075/spec.xml</Value></MustExist>
+      <MustExist><Value>scripts/eval/llm_match_eval.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/field21_abc.py</Value></MustExist>
+      <MustExist><Value>packages/common/llm/matcher.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/pipeline.py</Value></MustExist>
+      <MustExist><Value>reports/llm_match.json</Value></MustExist>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>test -f tests/test_c075_visual_pool.py</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c075_visual_pool.py -q</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-COMMON</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-EVAL/>
+      <M-GATEWAY/>
+      <M-COMMON/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>scripts/eval/llm_match_eval.py</Path>
+      <Path>services/gateway/app/pipeline.py</Path>
+      <Path>packages/common/llm/matcher.py</Path>
+      <Path>tests/test_c075_visual_pool.py</Path>
+      <Path>reports/llm_match.json</Path>
+      <Path>reports/llm_match.md</Path>
+      <Path>.grace/graph/modules.xml</Path>
+      <Path>.grace/verification/VD-M0-CODE.xml</Path>
+      <Path>.grace/verification/VD-M3-VLM.xml</Path>
+      <Path>docs/LIMITATIONS.md</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Визуальный кандидат-пул в offline-стенде LLM-пути (M-EVAL, M-COMMON)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>llm_match_eval.decide принимает визуальных кандидатов (список slug из retrieval top-K)
+            и объединяет их с текстовыми находками наблюдения: сначала текстовые, затем визуальные, без
+            дублей, с сохранением лимита пула.</Criterion>
+          <Criterion>Добавлена чистая функция build_candidate_pool(text_hits, visual_slugs, limit) с
+            тестом; добавлены флаги --visual-k (по умолчанию 10) и --no-visual.</Criterion>
+          <Criterion>run_quality получает визуальных кандидатов через normalize+retrieval (field21_abc),
+            при недоступном retrieval визуальный пул пуст и путь деградирует к текстовому.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c075_visual_pool.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Визуальный top-N в онлайн-пуле матчера (M-GATEWAY)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>pipeline.run_scan формирует пул матчера как наблюдение-находки + визуальный top-N
+            (slug из уже полученного top10): используются все визуальные кандидаты, а не только те, что
+            совпали с текстовыми находками.</Criterion>
+          <Criterion>При выключенном LLM_MATCHER_ENABLED поведение не меняется; при недоступном матчере
+            используется прежний retrieval-путь.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q -k "scan or matcher or observer"</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Повторный замер LLM-пути с визуальным пулом (M-EVAL)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Прогон на 21 проверенном и подвыборке 100 реальных фото с визуальным пулом; отчёты
+            reports/llm_match.{json,md} обновлены со сравнением против C-074 (только текстовый пул) и
+            baseline C-072.</Criterion>
+          <Criterion>Выводы не подгоняются: прирост/отсутствие прироста и остаточные промахи фиксируются
+            явно (какой slug верен, почему не выбран).</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/llm_match_eval.py --out reports/llm_match.json --md reports/llm_match.md</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Тесты, граф, verification, финальные гейты и архив (M-EVAL, M-GATEWAY, M-COMMON)</Title>
+        <DependsOn>T-001, T-002, T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>tests/test_c075_visual_pool.py: объединение текстовых и визуальных кандидатов, порядок,
+            отсутствие дублей, лимит, поведение при пустом визуальном пуле; матчер получает объединённый пул.</Criterion>
+          <Criterion>graph/modules.xml и verification получают заметки/сценарии C-075 с числами; AGENTS.md
+            roadmap дополняется строкой C-075.</Criterion>
+          <Criterion>grace lint 0/0, полный pytest зелёный, make gate без изменений, бандл в archive/C-075
+            со статусом applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-075>
+</GraceChangePlan>

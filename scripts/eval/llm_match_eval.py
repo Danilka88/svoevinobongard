@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # START_MODULE_CONTRACT
 # PURPOSE: Офлайн-замер LLM-пути C-074: наблюдение этикетки сильной моделью + LLM-матчер с каталогом
-# SCOPE: BASE, POOL_LIMIT, DEFAULT_FIELD_DIR, DEFAULT_TIMING_DIR, DEFAULT_TIMING_LIMIT, DEFAULT_CATALOG,
+# SCOPE: BASE, POOL_LIMIT, DEFAULT_VISUAL_K, DEFAULT_FIELD_DIR, DEFAULT_TIMING_DIR, DEFAULT_TIMING_LIMIT, DEFAULT_CATALOG,
 #        DEFAULT_GOLD, DEFAULT_OUT, DEFAULT_MD, DEFAULT_MODEL, DEFAULT_MATCHER_MODEL,
 #        DEFAULT_READER_TOKENS,
-#        DEFAULT_READER_TIMEOUT_S, DEFAULT_MATCHER_TIMEOUT_S, observe_reading, decide, run_quality,
+#        DEFAULT_READER_TIMEOUT_S, DEFAULT_MATCHER_TIMEOUT_S, observe_reading, build_candidate_pool,
+#        visual_candidates, decide, run_quality,
 #        run_timing, build_markdown, save_reports, render_console, main
 # DEPENDS: argparse, json, sys, time, pathlib, packages.common.catalog, packages.common.llm.matcher,
 #          packages.common.llm.router, packages.common.observer, packages.common.text_rank,
@@ -16,6 +17,7 @@
 # START_MODULE_MAP
 # BASE - корень репозитория для путей по умолчанию
 # POOL_LIMIT - сколько кандидатов давать матчеру и держать в top-5
+# DEFAULT_VISUAL_K - сколько визуальных кандидатов retrieval добавлять в пул (C-075)
 # DEFAULT_FIELD_DIR - 21 проверенное полевое фото владельца
 # DEFAULT_TIMING_DIR - подвыборка 100 реальных фото для замера времени
 # DEFAULT_TIMING_LIMIT - сколько фото времени брать по умолчанию
@@ -29,6 +31,8 @@
 # DEFAULT_READER_TIMEOUT_S - щедрый таймаут читателя
 # DEFAULT_MATCHER_TIMEOUT_S - таймаут LLM-матчера
 # observe_reading - чтение этикетки моделью без бюджетного ограничения
+# build_candidate_pool - объединение текстовых находок и визуальных кандидатов без дублей
+# visual_candidates - визуальный top-K retrieval для фото (C-075)
 # decide - наблюдение → пул кандидатов → LLM-матчер → slug/отказ
 # run_quality - прогон LLM-пути на эталонных фото: чтение, acc@1/@5, not_found, latency
 # run_timing - замер времени чтения+матчера на подвыборке
@@ -37,11 +41,12 @@
 # render_console - сводка в консоль
 # main - CLI скрипта
 # END_MODULE_MAP
-"""Замер LLM-пути C-074 (наблюдение + LLM-матчер).
+"""Замер LLM-пути C-074/C-075 (наблюдение + LLM-матчер + визуальный пул кандидатов).
 
 Проверяет гипотезу владельца: качество решает сильная LLM. Читатель описывает этикетку, матчер
-сверяет описание с каталогом и либо выбирает slug, либо честно отказывается. Классический
-retrieval в этом замере не участвует — это чистый LLM-путь.
+сверяет описание с каталогом и либо выбирает slug, либо честно отказывается. C-075 добавляет к
+текстовым находкам наблюдения визуальный top-K retrieval: верное вино часто есть в визуальном
+топе, но не доходит до текстового поиска.
 """
 from __future__ import annotations
 
@@ -55,7 +60,7 @@ from packages.common.catalog import load_catalog
 from packages.common.llm.matcher import match_candidates
 from packages.common.observer import is_informative, observation_fields, parse_observation
 from packages.common.text_rank import text_index, text_search
-from scripts.eval.field21_abc import build_result, compute_metrics
+from scripts.eval.field21_abc import build_result, compute_metrics, normalize_image, retrieval_top
 from scripts.eval.field21_gold import load_gold
 from scripts.eval.vision_bench import IMAGE_SUFFIXES, observe_image, percentile, reading_quality
 
@@ -73,12 +78,14 @@ DEFAULT_READER_TOKENS = 256
 DEFAULT_READER_TIMEOUT_S = 180.0
 DEFAULT_MATCHER_TIMEOUT_S = 60.0
 POOL_LIMIT = 20
+DEFAULT_VISUAL_K = 10
 
 __all__ = ["DEFAULT_CATALOG", "DEFAULT_FIELD_DIR", "DEFAULT_GOLD", "DEFAULT_MATCHER_MODEL",
            "DEFAULT_MATCHER_TIMEOUT_S", "DEFAULT_MD", "DEFAULT_MODEL", "DEFAULT_OUT",
            "DEFAULT_READER_TIMEOUT_S", "DEFAULT_READER_TOKENS", "DEFAULT_TIMING_DIR",
-           "DEFAULT_TIMING_LIMIT", "build_markdown", "decide", "main", "observe_reading",
-           "render_console", "run_quality", "run_timing", "save_reports"]
+           "DEFAULT_TIMING_LIMIT", "DEFAULT_VISUAL_K", "build_candidate_pool", "build_markdown",
+           "decide", "main", "observe_reading", "render_console", "run_quality", "run_timing",
+           "save_reports", "visual_candidates"]
 
 
 def observe_reading(path: str | Path, model: str, *, tokens: int = DEFAULT_READER_TOKENS,
@@ -92,20 +99,50 @@ def observe_reading(path: str | Path, model: str, *, tokens: int = DEFAULT_READE
             "reason": str(result.get("reason") or "")}
 
 
+def build_candidate_pool(text_hits: list[tuple[str, float]] | list[str],
+                         visual_slugs: list[str] | None, *, limit: int = POOL_LIMIT,
+                         text_quota: int | None = None) -> list[str]:
+    """Объединяет текстовые находки наблюдения и визуальные кандидаты в единый пул без дублей.
+
+    C-075: верное вино часто есть в визуальном top-K, но не доходит до текстового поиска (узкое место
+    C-074). Поэтому текстовым находкам отводится квота (по умолчанию половина пула), а остальное —
+    визуальным кандидатам; иначе длинный текстовый список вытесняет визуального кандидата, который и
+    есть верное вино (пример: shato-taman-polusladkoe при чтении «Château Tamagne / полусладкое»).
+    Порядок внутри частей сохраняется, дубликаты убираются.
+    """
+    visual = [str(slug) for slug in (visual_slugs or []) if slug]
+    quota = limit if text_quota is None else max(0, min(text_quota, limit))
+    # Если визуальных кандидатов нет — текстовые занимают весь пул.
+    if not visual:
+        quota = limit
+    pool: list[str] = []
+    for item in text_hits:
+        slug = item[0] if isinstance(item, tuple) else item
+        if slug and str(slug) not in pool and len(pool) < quota:
+            pool.append(str(slug))
+    for slug in visual:
+        if slug and slug not in pool and len(pool) < limit:
+            pool.append(slug)
+    # Добираем оставшиеся текстовые находки, если визуальные не заполнили пул.
+    for item in text_hits:
+        slug = item[0] if isinstance(item, tuple) else item
+        if slug and str(slug) not in pool and len(pool) < limit:
+            pool.append(str(slug))
+    return pool[:limit]
+
+
 def decide(reading_text: str, catalog: dict, index: dict, records: dict, *, router=None,
            matcher_model: str | None = None, matcher_timeout_s: float = DEFAULT_MATCHER_TIMEOUT_S,
-           pool_limit: int = POOL_LIMIT) -> dict:
-    """Наблюдение → пул кандидатов по всему каталогу → LLM-матчер → slug или честный отказ."""
+           pool_limit: int = POOL_LIMIT, visual_slugs: list[str] | None = None) -> dict:
+    """Наблюдение + (текстовый и визуальный) пул кандидатов → LLM-матчер → slug или честный отказ."""
     observation = parse_observation(reading_text)
     fields = observation_fields(observation)
     hits: list[tuple[str, float]] = []
     if is_informative(observation) and fields:
         hits = [(slug, float(score)) for slug, score in
                 text_search(fields, catalog, limit=pool_limit, index=index)]
-    pool: list[str] = []
-    for slug, _score in hits:
-        if slug not in pool:
-            pool.append(slug)
+    pool = build_candidate_pool(hits, visual_slugs, limit=pool_limit,
+                                text_quota=pool_limit // 2)
     candidates = [
         {"slug": slug, "name": (records.get(slug) or {}).get("name"),
          "winery": (records.get(slug) or {}).get("winery"),
@@ -122,12 +159,32 @@ def decide(reading_text: str, catalog: dict, index: dict, records: dict, *, rout
     top5 = ([winner] if winner else []) + [slug for slug in pool if slug != winner]
     return {"observation": observation, "fields": fields, "candidates": pool, "match": matched,
             "top1": winner or None, "top5": top5[:5], "not_found": winner is None,
-            "source": matched.get("source")}
+            "source": matched.get("source"),
+            "text_candidates": [slug for slug, _ in hits],
+            "visual_candidates": list(visual_slugs or [])}
+
+
+def visual_candidates(path: str | Path, *, k: int = DEFAULT_VISUAL_K) -> list[str]:
+    """Визуальный top-K retrieval для фото (нормализация → retrieval). C-075.
+
+    Возвращает slug-и визуального топа или пустой список, если retrieval недоступен. Нужен, чтобы
+    верное вино попало в пул матчера даже когда текстовый поиск по наблюдению его не нашёл.
+    """
+    if k <= 0:
+        return []
+    try:
+        normalized, _method = normalize_image(Path(path))
+        payload = normalized if normalized is not None else Path(path).read_bytes()
+        items, _ms = retrieval_top(payload, Path(path).name)
+    except Exception:  # noqa: BLE001 - визуальный пул не обязателен, путь деградирует к тексту
+        return []
+    return [str(item.get("slug")) for item in items[:k] if item.get("slug")]
 
 
 def run_quality(gold: dict, catalog: dict, field_dir: Path, *, model: str, tokens: int,
                 timeout_s: float, matcher_model: str | None, matcher_timeout_s: float,
-                router=None, limit: int | None = None, on_photo=None) -> dict:
+                router=None, limit: int | None = None, visual_k: int = DEFAULT_VISUAL_K,
+                on_photo=None) -> dict:
     """Прогоняет LLM-путь на эталонных фото: чтение, acc@1/@5, not_found и latency."""
     records = catalog
     index = text_index(catalog)
@@ -140,13 +197,17 @@ def run_quality(gold: dict, catalog: dict, field_dir: Path, *, model: str, token
     for name in names:
         started = time.perf_counter()
         reading = observe_reading(field_dir / name, model, tokens=tokens, timeout_s=timeout_s)
+        visuals = visual_candidates(field_dir / name, k=visual_k)
         decision = decide(reading["raw_text"], catalog, index, records, router=router,
-                          matcher_model=matcher_model, matcher_timeout_s=matcher_timeout_s)
+                          matcher_model=matcher_model, matcher_timeout_s=matcher_timeout_s,
+                          visual_slugs=visuals)
         latency_ms = (time.perf_counter() - started) * 1000.0
         result = build_result(name, decision["top1"], decision["top5"],
                               not_found=decision["not_found"], latency_ms=latency_ms,
                               path=f"llm_{decision['source']}", observation=reading["raw_text"],
                               fields=decision["fields"], reader_ms=reading["wall_ms"])
+        result["visual_candidates"] = decision["visual_candidates"]
+        result["text_candidates"] = decision["text_candidates"]
         readings[name] = {"file": name, "raw_text": reading["raw_text"], "ok": reading["ok"],
                           "latency_ms": reading["latency_ms"], "wall_ms": reading["wall_ms"],
                           "reason": reading["reason"]}
@@ -254,6 +315,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--gold", default=str(DEFAULT_GOLD))
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--matcher-model", default=DEFAULT_MATCHER_MODEL)
+    parser.add_argument("--visual-k", type=int, default=DEFAULT_VISUAL_K,
+                        help="сколько визуальных кандидатов retrieval добавлять в пул")
+    parser.add_argument("--no-visual", action="store_true", help="не добавлять визуальный пул")
     parser.add_argument("--reader-tokens", type=int, default=DEFAULT_READER_TOKENS)
     parser.add_argument("--reader-timeout", type=float, default=DEFAULT_READER_TIMEOUT_S)
     parser.add_argument("--matcher-timeout", type=float, default=DEFAULT_MATCHER_TIMEOUT_S)
@@ -272,7 +336,7 @@ def main(argv: list[str] | None = None) -> int:
     quality = run_quality(gold, catalog, Path(args.dir), model=args.model,
                           tokens=args.reader_tokens, timeout_s=args.reader_timeout,
                           matcher_model=args.matcher_model, matcher_timeout_s=args.matcher_timeout,
-                          limit=args.limit or None)
+                          limit=args.limit or None, visual_k=(0 if args.no_visual else args.visual_k))
     timing = {} if args.skip_timing else run_timing(
         Path(args.timing_dir), model=args.model, tokens=args.reader_tokens,
         timeout_s=args.reader_timeout, matcher_model=args.matcher_model,

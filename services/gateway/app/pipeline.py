@@ -512,12 +512,18 @@ async def run_scan(
         else:
             diagnostics.notes.append("observer unavailable; Tier-1 kept")
 
-    # C-074: LLM-матчер. Пул кандидатов — находки наблюдения по всему каталогу плюс визуальный топ;
-    # LLM выбирает из них лучшее совпадение или честно отказывается. Slug вне списка не принимается.
+    # C-074/C-075: LLM-матчер. Пул кандидатов — находки наблюдения по всему каталогу ПЛЮС визуальный
+    # top-N (C-075: верное вино часто есть в визуальном топе, но не доходит до текстового поиска).
+    # LLM выбирает из пула лучшее совпадение или честно отказывается; slug вне списка не принимается.
     if settings.llm_matcher_enabled and observation:
         records = store.slug_to_record()
         pool: list[str] = []
         for slug, _score in observer_hits:
+            if slug not in pool:
+                pool.append(slug)
+        visual_pool = [str(item.get("slug")) for item in items[:max(20, int(settings.scan_top_k))]
+                       if item.get("slug")]
+        for slug in visual_pool:
             if slug not in pool:
                 pool.append(slug)
         for item in top10:
@@ -531,6 +537,8 @@ async def run_scan(
              "sweetness": (records.get(slug) or {}).get("sweetness")}
             for slug in pool[:20]
         ]
+        diagnostics.notes.append(f"llm matcher pool: {len(candidates)} "
+                                 f"(text {len(observer_hits)}, visual {len(visual_pool)})")
         matched = await active_clients.match(observation, candidates)
         if matched and matched.get("slug"):
             winner = str(matched["slug"])
