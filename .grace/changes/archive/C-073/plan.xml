@@ -1,0 +1,180 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-073>
+    <IntentSummary>Построить офлайн-бенч читателей этикеток без бюджетного ограничения и по его результатам
+      улучшить режим наблюдателя. Бенч на 21 проверенном фото (эталон reports/field21_gold.json) сравнивает
+      gemma4:e4b/12b/26b, deepseek-ocr, PaddleOCR-VL и OCR-слияние/кириллицу по двум слоям — качество чтения
+      (похожесть на эталонное название, отдельно прочтение бренда/винодельни) и сквозной результат
+      «наблюдение → нормализация → поиск → slug» (accuracy@1/@5, честный not_found), плюс снимает время на
+      подвыборке 100 (real100). Отчёт reports/vision_bench.{json,md}. Улучшения observer: структурное
+      наблюдение через structured.py с терпимым откатом «ключ: значение», промпт под графичные кириллические
+      шрифты, нормализация омоглифов/транслита, инвариант «пустое наблюдение → не выдаём случайное вино».
+      Онлайн-дефолты, зачётный контракт и метрики make gate не меняются; коммит не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-073/spec.xml</Value></MustExist>
+      <MustExist><Value>data/samples/real_field/manifest.tsv</Value></MustExist>
+      <MustExist><Value>data/samples/real100/manifest.tsv</Value></MustExist>
+      <MustExist><Value>reports/field21_gold.json</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog.jsonl</Value></MustExist>
+      <MustExist><Value>packages/common/observer.py</Value></MustExist>
+      <MustExist><Value>packages/common/text_norm.py</Value></MustExist>
+      <MustExist><Value>packages/common/llm/structured.py</Value></MustExist>
+      <MustExist><Value>packages/common/ocr.py</Value></MustExist>
+      <MustExist><Value>packages/common/ocr_vl.py</Value></MustExist>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-OCR</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>test -f scripts/eval/vision_bench.py &amp;&amp; test -f tests/test_c073_vision_bench.py &amp;&amp; test -f tests/test_c073_observer.py</Command></MustPassCommand>
+      <MustPassCommand><Command>test -f reports/vision_bench.json &amp;&amp; test -f reports/vision_bench.md</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c073_vision_bench.py tests/test_c073_observer.py -q</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-OCR</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-VLM</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-COMMON</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-OCR</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-EVAL/>
+      <M-VLM/>
+      <M-COMMON/>
+      <M-OCR/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>scripts/eval/vision_bench.py</Path>
+      <Path>tests/test_c073_vision_bench.py</Path>
+      <Path>tests/test_c073_observer.py</Path>
+      <Path>packages/common/observer.py</Path>
+      <Path>packages/common/text_norm.py</Path>
+      <Path>packages/common/llm/structured.py</Path>
+      <Path>services/vlm/app/extract.py</Path>
+      <Path>reports/vision_bench.json</Path>
+      <Path>reports/vision_bench.md</Path>
+      <Path>.grace/graph/modules.xml</Path>
+      <Path>.grace/verification/VD-M0-CODE.xml</Path>
+      <Path>.grace/verification/VD-M3-VLM.xml</Path>
+      <Path>.grace/verification/VD-SHARED.xml</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Бенч читателей vision_bench.py на 21 фото и подвыборке 100 (M-EVAL, M-OCR)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>scripts/eval/vision_bench.py содержит реестр читателей: gemma4:e4b-mlx, gemma4:12b-mlx,
+            gemma4:26b-mlx (через observe_label без бюджетного ограничения), deepseek-ocr:latest (нативный
+            вызов Ollama с OCR-промптом), PaddleOCR-VL (ocr_vl.run_vl) и OCR fusion/cyrillic
+            (ocr.run_ocr, движок cyrillic); список задаётся --readers.</Criterion>
+          <Criterion>Качество чтения: для каждого фото считается похожесть прочитанного текста на эталонное
+            human_label (text_norm.similarity, среднее) и доля фото, где прочитан бренд/винодельня каталога
+            (для matched/ambiguous — винодельня ожидаемого кандидата). Слой считается по всем 21 фото.</Criterion>
+          <Criterion>Сквозной результат: наблюдение → observation_fields → текстовый поиск по всему каталогу
+            → top1/top5; accuracy@1/@5 на вычислимом наборе (matched+ambiguous), честный not_found
+            (доля фото вне каталога, где выдан непустой ответ), распределение путей.</Criterion>
+          <Criterion>Время: latency p50/p95 по 21 фото без бюджетного ограничения и замер на подвыборке
+            100 (data/samples/real100, --timing-limit); отчёты reports/vision_bench.json и .md содержат
+            таблицу «читатель → качество чтения, acc@1/@5, not_found, p50/p95», примеры лучшего и худшего
+            читателя «фото → чтение → slug» и вывод по бюджетам (лучший онлайн ≤10 с, лучший офлайн).</Criterion>
+          <Criterion>Файл имеет MODULE_CONTRACT/MODULE_MAP (ROLE SCRIPT, MAP_MODE LOCALS); бенч не пишет в
+            flywheel и не меняет онлайн-дефолты.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>test -f scripts/eval/vision_bench.py</Command>
+          <Command>grep -q "START_MODULE_CONTRACT" scripts/eval/vision_bench.py</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Реальный прогон бенча и отчёты (M-EVAL)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Бенч реально прогнан на 21 фото для всех читателей против Ollama и локальных OCR; время
+            снято на подвыборке 100 для всех читателей (при недоступности модели — честная пометка, а не
+            подстановка).</Criterion>
+          <Criterion>reports/vision_bench.json и .md содержат фактическую таблицу читателей и честный вывод:
+            лучший онлайн (укладывается в 10 с) и лучший офлайн (учитель/медленный режим); если сильная
+            офлайн-модель существенно точнее — это зафиксировано как офлайн-учитель для C-076.</Criterion>
+          <Criterion>Выводы не подгоняются под желаемое; мусор, омоглифы и галлюцинации читателей
+            фиксируются явно.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/vision_bench.py --readers gemma4:e4b-mlx,gemma4:12b-mlx,gemma4:26b-mlx,deepseek-ocr:latest,paddleocr-vl,ocr-cyrillic --out reports/vision_bench.json --md reports/vision_bench.md</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Улучшение observer: структура, промпт, омоглифы, инвариант пустого наблюдения (M-COMMON, M-VLM)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>packages/common/llm/structured.py получает схему observer (winery, wine_name, vintage,
+            grape, sweetness, color, wine_type, region, volume, raw_text) и алиасы; observer.parse_observation
+            сначала пробует структурированный разбор, затем откатывается на терпимый «ключ: значение» без
+            изменения прежнего результата для не-JSON ответов.</Criterion>
+          <Criterion>OBSERVER_INSTRUCTION усилен под кириллические/графичные шрифты: писать только видимое,
+            не выдумывать, отдельно винодельня и название; сохраняются подстроки «Пример ответа», «winery:»,
+            «raw_text:», «только то, что видно» (совместимость с tests/test_c063_observer_llm.py).</Criterion>
+          <Criterion>Нормализация перед поиском усиливается: омоглифы кириллицы (греческие и латинские
+            двойники) приводятся к кириллице в смешанных токенах; чистые латинские бренды и чистые
+            кириллические слова не портятся; транслит/формы сохраняются.</Criterion>
+          <Criterion>Инвариант: значения-заглушки («неразборчиво», «не указано», «(нет)», «unknown» и т.п.)
+            не считаются наблюдением; пустое/неинформативное наблюдение даёт пустой список кандидатов —
+            случайное вино не выдаётся; свободный текст (raw_text) по-прежнему используется, если он
+            информативен.</Criterion>
+          <Criterion>services/vlm/app/extract.py поддерживает явный prompt для читателя (deepseek-ocr/OCR),
+            не меняя поведение по умолчанию (prompt=None → OBSERVER_INSTRUCTION).</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c062_observer.py tests/test_c063_observer_llm.py tests/test_c064_budget.py -q</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Тесты бенча и улучшений observer (M-EVAL, M-COMMON, M-VLM)</Title>
+        <DependsOn>T-001, T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>tests/test_c073_vision_bench.py (ROLE TEST, MAP_MODE LOCALS) проверяет чистые функции
+            бенча без вызова моделей: качество чтения (похожесть и прочтение бренда), сквозные метрики
+            acc@1/@5/not_found, разбор отчёта лучшего/худшего читателя.</Criterion>
+          <Criterion>tests/test_c073_observer.py (ROLE TEST) проверяет: нормализацию омоглифов (кириллица↔
+            греческий, латиница не ломается), инвариант «пустое наблюдение → нет случайного slug»,
+            парсер структурированного наблюдения (JSON по схеме + откат на «ключ: значение»).</Criterion>
+          <Criterion>Тесты не обращаются к сети/Ollama и не пишут в защищённые данные.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c073_vision_bench.py tests/test_c073_observer.py -q</Command>
+        </Verification>
+      </T-004>
+
+      <T-005>
+        <Title>Синхронизация графа, verification, roadmap; финальные гейты и архив (M-EVAL, M-VLM, M-COMMON, M-OCR)</Title>
+        <DependsOn>T-001, T-002, T-003, T-004</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>graph/modules.xml: M-EVAL получает новый скрипт/тест, M-VLM и M-COMMON — заметки об
+            улучшениях observer, M-OCR — читателей бенча; anchors аддитивны, существующие не ломаются.</Criterion>
+          <Criterion>verification VD-M0-CODE (V-M-EVAL), VD-M3-VLM (V-M-VLM) и VD-SHARED (V-M-COMMON)
+            получают сценарий C-073 с фактическими командами и числами.</Criterion>
+          <Criterion>AGENTS.md roadmap дополняется строкой C-073; бандл переносится в
+            .grace/changes/archive/C-073/ со статусом applied.</Criterion>
+          <Criterion>grace lint --path . — 0 errors / 0 warnings; полный pytest зелёный; синтетические
+            метрики make gate не изменились; после гейтов код не меняется; коммит не создаётся.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-005>
+    </ImplementationPlan>
+  </C-073>
+</GraceChangePlan>

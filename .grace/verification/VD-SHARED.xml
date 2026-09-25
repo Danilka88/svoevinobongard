@@ -11,9 +11,12 @@
         через providers.yaml и env. Живой smoke против Ollama подтвержден.</Description>
       <TestFiles>
         <File>tests/test_llm_router.py</File>
+        <File>tests/test_c073_observer.py</File>
         <File>packages/common/llm/router.py</File>
         <File>packages/common/llm/adapters.py</File>
         <File>packages/common/llm/circuit.py</File>
+        <File>packages/common/llm/structured.py</File>
+        <File>packages/common/text_norm.py</File>
         <File>config/providers.yaml</File>
       </TestFiles>
       <Command>.venv/bin/python -m pytest tests/test_llm_router.py -v</Command>
@@ -59,6 +62,15 @@
         [M-GATEWAY][sommelier][DETERMINISTIC_FALLBACK] items=5 source=deterministic reason=llm timeout.
         Три последовательных вызова — 4.03–4.04 с, каждый HTTP 200 и непустые данные. Бюджет накрывает всю
         цепочку роли text_model (две ступени Ollama + облачные без ключей), а не одну ступень.</Evidence>
+      <Scenario id="S-COMMON-8">C-073: общая схема observer в packages/common/llm/structured.py и усиленная
+        нормализация омоглифов в packages/common/text_norm.py (homoglyphs_to_cyrillic) обслуживают observer:
+        латинские/греческие двойники кириллицы в смешанных токенах приводятся к кириллице, чистые латинские
+        бренды и чистая кириллица не меняются.</Scenario>
+      <Evidence note="C073-structured-homoglyphs">C-073: structured.py получил схему observer (winery, wine_name,
+        vintage, grape, sweetness, color, wine_type, region, volume, raw_text) и алиасы ключей; observer.py использует
+        parse_structured с откатом на «ключ: значение», фильтр заглушек (PLACEHOLDER_VALUES) и инвариант
+        is_informative. tests/test_c073_observer.py (10 тестов) зелёный; полный pytest 517 passed; grace lint 0/0.
+        Пример: «СKАЛИСТЫЙ» → «СКАЛИСТЫЙ» (латинские двойники в смешанном токене), а «FANAGORIA» не портится.</Evidence>
     </V-M-COMMON>
   </VD-SHARED>
 </GraceVerificationDocument>

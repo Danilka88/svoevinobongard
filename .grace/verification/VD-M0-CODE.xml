@@ -215,6 +215,20 @@
         (Fanagoria 5 Elements, «CHATEAU TAMAGNE SEMI-SWEET», Abrau Reserve), но текстовый поиск по разговорному
         чтению и зарубежные этикетки (Bosca, DaschBosch, Toskana) остаются главным источником ошибок.
         Отчёты: reports/field21_abc.json и reports/field21_abc.md.</Evidence>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/vision_bench.py --readers gemma4:e4b-mlx,gemma4:12b-mlx,gemma4:26b-mlx,deepseek-ocr:latest,paddleocr-vl,ocr-cyrillic --out reports/vision_bench.json --md reports/vision_bench.md</Command>
+      <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c073_vision_bench.py tests/test_c073_observer.py -q</Command>
+      <Scenario id="S-EVAL-16">C-073: бенч читателей этикеток на 21 проверенном фото мерит два слоя — качество
+        чтения (похожесть на эталонное название, прочтение бренда) и сквозной результат «наблюдение → поиск по
+        каталогу → slug» (accuracy@1/@5, честный not_found), плюс время; список читателей задаётся --readers,
+        фактически не измеренный читатель помечается «не измерен», а не None.</Scenario>
+      <Evidence note="C073-vision-bench">C-073: на 21 фото (вычислимых 11) лучшее чтение — LLM-зрение gemma4:26b:
+        title_sim 0.8158, бренд 0.5 (20 фото), acc@1 0.1818, acc@5 0.5455, p50/p95 5919.5/12839.3 мс (21),
+        9003.4/16795.9 мс (100). Для сравнения: OCR слияние title_sim 0.5657 acc@1 0.4545, OCR кириллица 0.4653
+        acc@1 0.3636, deepseek-ocr 0.7383 acc@5 0.5455 p95 8.36 с, gemma4:e4b 0.7513 acc@1 0.0909.
+        PaddleOCR-VL не измерен (≈226 с/фото на MPS, 21 фото ≈80 мин) — строка отчёта честно помечена «не измерен».
+        Вывод: на реальных полевых этикетках LLM-зрение читает лучше OCR; сильная модель (26b) — лучший читатель,
+        а узкое место переносится на сопоставление с каталогом и отказ (вводные C-074).
+        Отчёты: reports/vision_bench.json и reports/vision_bench.md.</Evidence>
     </V-M-EVAL>
 
     <V-M-GATEWAY>

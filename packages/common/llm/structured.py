@@ -103,6 +103,25 @@ SCHEMAS: dict[str, dict] = {
         },
         "required": ["verdict"],
     },
+    # (г) наблюдение этикетки (C-073): явная схема для моделей, способных удержать JSON.
+    # Отличие от label_fields — свободный текст этикетки, объём и регион как отдельные поля.
+    "observer": {
+        "type": "object",
+        "properties": {
+            "winery": {"type": "string", "maxLength": 120},
+            "wine_name": {"type": "string", "maxLength": 160},
+            "vintage": {"type": ["integer", "string", "null"]},
+            "grape": {"type": "string", "maxLength": 120},
+            "sweetness": {"type": ["string", "null"], "enum": list(SWEETNESS) + [None]},
+            "color": {"type": ["string", "null"], "enum": list(COLORS) + [None]},
+            "wine_type": {"type": ["string", "null"], "enum": list(TYPES) + [None]},
+            "region": {"type": "string", "maxLength": 120},
+            "volume": {"type": "string", "maxLength": 40},
+            "raw_text": {"type": "string", "maxLength": 600},
+        },
+        "required": [],
+        "additionalProperties": True,
+    },
 }
 
 KEY_ALIASES: dict[str, tuple[str, ...]] = {
@@ -114,6 +133,8 @@ KEY_ALIASES: dict[str, tuple[str, ...]] = {
     "color": ("color", "colour", "цвет"),
     "wine_type": ("wine_type", "type", "kind", "style", "тип", "вид"),
     "region": ("region", "appellation", "регион", "местность"),
+    "volume": ("volume", "capacity", "объём", "объем", "ёмкость", "емкость"),
+    "raw_text": ("raw_text", "text", "label_text", "текст", "текст этикетки", "свободный текст"),
     "recommendations": ("recommendations", "items", "wines", "рекомендации"),
     "pairing": ("pairing", "pairings", "dishes", "сочетания", "блюда"),
     "verdict": ("verdict", "result", "вердикт", "итог"),

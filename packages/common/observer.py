@@ -1,19 +1,24 @@
 # START_MODULE_CONTRACT
 # PURPOSE: Режим наблюдателя: описание этикетки моделью и поиск по всему каталогу с гибридом к визуальному топ-5
-# SCOPE: OBSERVER_INSTRUCTION, OBSERVATION_KEYS, ENUM_SYNONYMS, escalation_trigger, parse_observation,
-#        observation_fields, observer_candidates, merge_candidates
-# DEPENDS: json, packages.common.text_norm, packages.common.text_rank
+# SCOPE: OBSERVER_INSTRUCTION, OBSERVER_STRUCTURED_INSTRUCTION, OBSERVATION_KEYS, ENUM_SYNONYMS,
+#        PLACEHOLDER_VALUES, escalation_trigger, parse_observation, parse_observation_structured,
+#        is_informative, observation_fields, observer_candidates, merge_candidates
+# DEPENDS: json, packages.common.text_norm, packages.common.text_rank, packages.common.llm.structured
 # LINKS: M-EVAL, M-GATEWAY, M-VLM
 # ROLE: RUNTIME
 # MAP_MODE: EXPORTS
 # END_MODULE_CONTRACT
 # START_MODULE_MAP
 # OBSERVER_INSTRUCTION - инструкция наблюдателя: описывать видимое и не искать товар
+# OBSERVER_STRUCTURED_INSTRUCTION - строгая JSON-схема наблюдения для моделей, способных её удержать
 # OBSERVATION_KEYS - ключи наблюдения, которые переносятся в поля поиска
 # KEY_ALIASES - варианты написания ключей наблюдения
 # ENUM_SYNONYMS - синонимы значений перечислений на русском и английском
+# PLACEHOLDER_VALUES - заглушки модели («неразборчиво», «не указано»), не являющиеся наблюдением
 # escalation_trigger - нужен ли режим наблюдателя
 # parse_observation - разбор наблюдения: строки «ключ: значение», JSON или свободный текст
+# parse_observation_structured - разбор по JSON-схеме с откатом на терпимый «ключ: значение»
+# is_informative - есть ли в наблюдении осмысленное значение (а не только заглушки)
 # observation_fields - поля для поиска, нормализованные по синонимам и написанию
 # observer_candidates - поиск по всему каталогу по наблюдению
 # merge_candidates - гибрид наблюдателя и визуального топа с бустом за совпадение
@@ -31,11 +36,15 @@ from __future__ import annotations
 
 import json
 
-from packages.common.text_norm import fold, greek_to_cyrillic, similarity
+from packages.common.llm.structured import parse_structured, repair_json
+from packages.common.text_norm import fold, homoglyphs_to_cyrillic, similarity
 from packages.common.text_rank import text_search
 
 OBSERVER_INSTRUCTION = (
     "Опиши этикетку на фото. Пиши только то, что видно, и не придумывай текст. "
+    "Шрифт бывает графичным, рукописным и стилизованным: читай буквы как они нарисованы, "
+    "не додумывай знакомые слова, не подставляй известные бренды и не выдумывай год. "
+    "Винодельня (бренд) и название вина — разные строки, не смешивай их. "
     "Не ищи товар в каталоге и не называй артикулы.\n"
     "Ответ строго в таком виде (по одной строке на поле, пустые поля пропускай):\n"
     "winery: <винодельня или бренд>\n"
@@ -45,6 +54,7 @@ OBSERVER_INSTRUCTION = (
     "sweetness: <сухое|полусухое|полусладкое|сладкое|брют>\n"
     "color: <красное|белое|розовое|игристое>\n"
     "wine_type: <тихое|игристое|креплёное>\n"
+    "volume: <объём, например 0.75 L>\n"
     "raw_text: <остальной читаемый текст этикетки>\n"
     "Пример ответа:\n"
     "winery: Скалистый берег\n"
@@ -53,7 +63,18 @@ OBSERVER_INSTRUCTION = (
     "grape: Рислинг\n"
     "sweetness: брют\n"
     "raw_text: SHOPOT CVETOV | 0.75 L\n"
-    "Если текст не читается, напиши raw_text: неразборчиво. Не пересказывай эту инструкцию."
+    "Если текст не читается, оставь поля пустыми и напиши raw_text: неразборчиво. "
+    "Не пересказывай эту инструкцию."
+)
+
+# C-073: строгая схема для моделей, способных удержать JSON. Онлайн-путь по умолчанию остаётся
+# терпимым («ключ: значение»), а этот вариант используется там, где модель отвечает структурно.
+OBSERVER_STRUCTURED_INSTRUCTION = (
+    "Опиши этикетку на фото. Пиши только то, что видно, и не придумывай текст. "
+    "Винодельня (бренд) и название вина — разные поля. Ответ строго одним JSON-объектом:\n"
+    '{"winery": "", "wine_name": "", "vintage": "", "grape": "", "sweetness": "", '
+    '"color": "", "wine_type": "", "volume": "", "raw_text": ""}\n'
+    "Пустые и нечитаемые поля оставляй пустыми строками, без пояснений вокруг JSON."
 )
 
 OBSERVATION_KEYS = ("winery", "wine_name", "vintage", "grape", "sweetness", "color", "wine_type",
@@ -96,9 +117,36 @@ ENUM_SYNONYMS = {
                   "dessert": "десертное", "крепленое": "креплёное"},
 }
 
-__all__ = ["OBSERVER_INSTRUCTION", "OBSERVATION_KEYS", "KEY_ALIASES", "ENUM_SYNONYMS",
-           "escalation_trigger", "parse_observation", "observation_fields", "observer_candidates",
+# C-073: заглушки, которыми модель честно сообщает «не прочитал». Это не наблюдение: если их
+# принять за значения, поиск по каталогу вернёт случайное вино по слову «неразборчиво».
+PLACEHOLDER_VALUES = frozenset({
+    "неразборчиво", "неразборчив", "неразборчивый", "не читается", "нечитаемо", "не прочитано",
+    "не указано", "не указан", "не указана", "не найдено", "не найдено на этикетке", "нет",
+    "нет данных", "нет информации", "отсутствует", "неизвестно", "неизв", "не видно",
+    "unknown", "none", "null", "n/a", "na", "n a", "not found", "n а", "н/д", "нд", "-", "--", "—", "–",
+    "没有", "无法辨认",
+})
+_PLACEHOLDER_FOLDED = frozenset(fold(value) for value in PLACEHOLDER_VALUES) | {""}
+
+__all__ = ["OBSERVER_INSTRUCTION", "OBSERVER_STRUCTURED_INSTRUCTION", "OBSERVATION_KEYS", "KEY_ALIASES",
+           "ENUM_SYNONYMS", "PLACEHOLDER_VALUES", "escalation_trigger", "parse_observation",
+           "parse_observation_structured", "is_informative", "observation_fields", "observer_candidates",
            "merge_candidates"]
+
+
+def _is_placeholder(value: object) -> bool:
+    """Является ли значение заглушкой модели, а не прочитанным текстом."""
+    text = str(value or "").strip()
+    if not text:
+        return True
+    folded = fold(text)
+    if folded:
+        # «(нет)», «[неразборчиво]» и подобные скобочные формы сводятся к тому же множеству.
+        stripped = folded.strip("()[]{}<>«»\"'").strip()
+        return stripped in _PLACEHOLDER_FOLDED
+    # fold выбрасывает не-латиницу/кириллицу (например, греческие буквы): если в исходной строке
+    # есть буквы, это прочитанный текст, а не заглушка.
+    return not any(char.isalpha() for char in text)
 
 
 def escalation_trigger(p_correct: float | None, confident: bool, threshold: float = 0.95) -> bool:
@@ -132,12 +180,15 @@ def parse_observation(text: str | None) -> dict:
         candidate = candidate.strip("`")
         candidate = candidate.split("\n", 1)[-1] if "\n" in candidate else candidate
     if candidate.strip().startswith("{"):
+        loaded = None
         try:
             loaded = json.loads(candidate)
-            if isinstance(loaded, dict):
-                payload = {str(key): value for key, value in loaded.items()}
         except (ValueError, TypeError):
-            payload = {}
+            # C-073: «грязный» JSON (фенсы, хвостовые запятые, обрыв) восстанавливается общим
+            # ремонтом из structured.py, а не отбрасывается целиком.
+            loaded = repair_json(candidate)
+        if isinstance(loaded, dict):
+            payload = {str(key): value for key, value in loaded.items()}
     if not payload:
         leftovers: list[str] = []
         for line in raw.replace("“", '"').replace("”", '"').splitlines():
@@ -154,10 +205,7 @@ def parse_observation(text: str | None) -> dict:
                     # Известный ключ забираем даже с пустым значением: это скелет шаблона, который
                     # модель напечатала целиком, и он не должен засорять свободный текст.
                     value_text = _clean(value)
-                    if name == "raw_text":
-                        if value_text:
-                            payload["raw_text"] = value_text
-                    elif value_text:
+                    if value_text:
                         payload[name] = value_text
                     continue
             leftovers.append(stripped)
@@ -169,16 +217,54 @@ def parse_observation(text: str | None) -> dict:
         if str(key).strip().lower() in {"raw_text", "текст", "text"}:
             raw_value = _clean(value if not isinstance(value, (list, dict)) else
                                json.dumps(value, ensure_ascii=False))
-            if raw_value:
+            # C-073: «raw_text: неразборчиво» — это честный отказ, а не текст для поиска.
+            if raw_value and not _is_placeholder(raw_value):
                 result["raw_text"] = raw_value[:600]
             continue
         name = KEY_ALIASES.get(fold(str(key)), str(key))
         if name not in OBSERVATION_KEYS:
             continue
         text_value = _clean(value if not isinstance(value, (list, dict)) else json.dumps(value, ensure_ascii=False))
-        if text_value:
+        # C-073: заглушки («не указано», «(нет)», «unknown») не становятся полями поиска.
+        if text_value and not _is_placeholder(text_value):
             result[name] = text_value[:200]
     return result
+
+
+def parse_observation_structured(text: str | None) -> dict:
+    """Разбирает наблюдение по JSON-схеме, откатываясь на терпимый «ключ: значение».
+
+    Схема ``observer`` из ``structured.py`` гарантирует, что модель отдала ровно ожидаемые поля
+    (ремонт фенсов, «умных» кавычек, обрывов). Если ответ не является JSON-объектом по схеме —
+    используется обычный :func:`parse_observation`, поэтому поведение на прежних форматах не меняется.
+    """
+    if not str(text or "").strip():
+        return {"raw_text": ""}
+    parsed = parse_structured(str(text), "observer")
+    if parsed.get("valid") and parsed.get("data"):
+        return parse_observation(json.dumps(parsed["data"], ensure_ascii=False))
+    return parse_observation(text)
+
+
+def is_informative(observation: dict | None) -> bool:
+    """Есть ли в наблюдении осмысленный текст, а не только заглушки.
+
+    Инвариант против случайной выдачи: если модель вернула только «неразборчиво»/«не указано»
+    или один год без названия, наблюдение не должно порождать кандидатов каталога. Считаются
+    только текстовые поля (винодельня, название, сорт, регион, свободный текст) с двумя и более
+    буквами: год, сладость и цвет сами по себе вино не идентифицируют.
+    """
+    data = observation or {}
+    for key in ("winery", "wine_name", "grape", "region", "raw_text", "brand_text"):
+        value = data.get(key)
+        if isinstance(value, (list, dict)):
+            value = json.dumps(value, ensure_ascii=False)
+        text = str(value or "").strip()
+        if _is_placeholder(text):
+            continue
+        if sum(1 for char in text if char.isalpha()) >= 2:
+            return True
+    return False
 
 
 def observation_fields(observation: dict, *, normalize: bool = True) -> dict:
@@ -192,9 +278,10 @@ def observation_fields(observation: dict, *, normalize: bool = True) -> dict:
         if key in ("raw_text", "brand_text"):
             continue
         # Омоглифы приводим к кириллице до сравнения с каталогом: модель читает кириллицу
-        # греческими буквами, и без этого поиск промахивается.
-        text = greek_to_cyrillic(_clean(str(value))) if normalize else _clean(str(value))
-        if not text:
+        # греческими буквами, а внутри смешанных токенов — ещё и латинскими двойниками;
+        # чистые латинские бренды при этом не портятся (C-073).
+        text = homoglyphs_to_cyrillic(_clean(str(value))) if normalize else _clean(str(value))
+        if not text or _is_placeholder(text):
             continue
         if key in ENUM_SYNONYMS:
             folded = fold(text)
@@ -212,14 +299,27 @@ def observation_fields(observation: dict, *, normalize: bool = True) -> dict:
         # Модель часто кладёт всё в свободный текст (пустые поля шаблона). Тогда ищем по тексту:
         # это тот же сигнал, просто без разметки по полям.
         raw = _clean(str((observation or {}).get("raw_text") or ""))
-        if raw:
-            fields["wine_name"] = greek_to_cyrillic(raw) if normalize else raw
+        if raw and not _is_placeholder(raw):
+            fields["wine_name"] = homoglyphs_to_cyrillic(raw) if normalize else raw
+    elif "wine_name" not in fields:
+        # C-073: модель разметила только часть полей, но свободный текст этикетки информативен.
+        # Раньше он терялся (использовался лишь при полностью пустых полях), и поиск шёл по одному
+        # году. Подключаем свободный текст как название, когда названия среди полей нет.
+        raw = _clean(str((observation or {}).get("raw_text") or ""))
+        if raw and not _is_placeholder(raw):
+            fields["wine_name"] = homoglyphs_to_cyrillic(raw) if normalize else raw
     return fields
 
 
 def observer_candidates(observation: dict, catalog: dict, *, limit: int = 10,
                         normalize: bool = True) -> list[tuple[str, float]]:
-    """Ищет по всему каталогу по наблюдению (текстовый поиск, без ограничения визуального топа)."""
+    """Ищет по всему каталогу по наблюдению (текстовый поиск, без ограничения визуального топа).
+
+    Инвариант C-073: неинформативное наблюдение (одни заглушки или пустота) кандидатов не даёт —
+    иначе на честный отказ модели выдавалось бы случайное вино.
+    """
+    if not is_informative(observation):
+        return []
     fields = observation_fields(observation, normalize=normalize)
     if not fields:
         return []

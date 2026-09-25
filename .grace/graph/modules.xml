@@ -115,6 +115,7 @@
       <Test>tests/test_c062_observer.py</Test>
       <Test>tests/test_c063_observer_llm.py</Test>
       <Test>tests/test_c064_budget.py</Test>
+      <Test>tests/test_c073_observer.py</Test>
       <Interface>POST /extract (image) → поля этикетки; вызов только через router.chat(role=vision_model)</Interface>
       <Depends>
         <M-COMMON/>
@@ -122,6 +123,10 @@
       <Boundary>Провайдеры и fallback — C-008 в M-COMMON; промпт и схема полей — C-004.</Boundary>
       <Note>C-004: реализовано; замер показал, что локальный VLM не даёт прироста точности
         (gemma4:e4b отдаёт пустые поля), поэтому онлайн-fallback выключен по умолчанию.</Note>
+      <Note>C-073: наблюдатель усилен — промпт под графичные кириллические шрифты (отдельно
+        винодельня и название, «не выдумывать»), структурированное наблюдение через structured.py
+        с откатом на «ключ: значение», инвариант «пустое/неинформативное наблюдение не даёт
+        случайного вина», явный prompt для читателей (deepseek-ocr). Онлайн-дефолты не изменены.</Note>
       <Verification>V-M-VLM</Verification>
     </M-VLM>
 
@@ -226,6 +231,9 @@
         C-066: кириллический PP-OCRv5 rec доступен за флагом OCR_ENGINE=cyrillic|fusion, дефолт — rapidocr;
         замер (proxy 40 + поле 39): слова и сладость лучше (CER 0.672→0.451, сладость 0.075→1.0), но на реальных
         фото год хуже (0.513→0.410) — движок остаётся выключенным по умолчанию.</Note>
+      <Note>C-073: OCR-движки проекта (кириллица и слияние) впервые измерены как самостоятельные читатели
+        в бенче scripts/eval/vision_bench.py на 21 проверенном фото и подвыборке 100: качество чтения,
+        сквозной accuracy@1/@5, честный not_found и время. Результаты — reports/vision_bench.{json,md}.</Note>
       <Verification>V-M-OCR</Verification>
     </M-OCR>
 
@@ -288,6 +296,7 @@
       <Test>tests/test_llm_router.py</Test>
       <Test>tests/test_c030_fixes.py</Test>
       <Test>tests/test_preprocessing.py</Test>
+      <Test>tests/test_c073_observer.py</Test>
       <Exports>LLMRouter, get_router, build_adapter, OpenAICompatAdapter, ChatResult, EmbedResult,
         CircuitBreaker, CostVelocityBreaker, RouterConfig, load_router_config, CatalogStore, load_catalog</Exports>
       <Depends>
@@ -296,6 +305,10 @@
       <Verification>V-M-COMMON</Verification>
       <Note>LLM Router реализован в C-008; живой smoke против Ollama подтвержден (qwen3.5:9b, gemma4:12b,
         qwen3-embedding:0.6b). Блокер для C-004 снят.</Note>
+      <Note>C-073: observer расширен общим structured.py (схема observer), нормализация омоглифов
+        усилена латинскими двойниками кириллицы в смешанных токенах (text_norm.homoglyphs_to_cyrillic),
+        но чистые латинские бренды не портятся; заглушки модели и одиночные атрибуты (год) больше не
+        считаются наблюдением — инвариант против случайной выдачи.</Note>
     </M-COMMON>
 
     <M-CONTRACTS>
@@ -333,13 +346,15 @@
       <Test>tests/test_c065_near_dup.py</Test>
       <Test>tests/test_c067_organizer_contract.py</Test>
       <Test>tests/test_c072_field21.py</Test>
+      <Test>tests/test_c073_vision_bench.py</Test>
       <Exports>post_image, extract_slug, extract_top5, load_ground_truth, compute_metrics, percentile,
         field_augment, random_background, synthetic pairs CLI (scripts/train/synthetic_pairs.py),
         head training CLI (scripts/train/train_head.py, модуль головы живёт в M-RETRIEVAL),
         cyrillic OCR benchmark CLI (scripts/eval/ocr_cyrillic_bench.py, C-066),
         organizer run report (scripts/eval/participant_run.py, C-067),
         field21 gold mapping + leak invariant (scripts/eval/field21_gold.py, C-072),
-        field21 A/B/C stand (scripts/eval/field21_abc.py, C-072)</Exports>
+        field21 A/B/C stand (scripts/eval/field21_abc.py, C-072),
+        vision reader bench (scripts/eval/vision_bench.py, C-073)</Exports>
       <Verification>V-M-EVAL</Verification>
     </M-EVAL>
 

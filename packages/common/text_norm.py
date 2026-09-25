@@ -24,6 +24,8 @@
 # similarity - максимум fuzzy-похожести по вариантам написания
 # GREEK_LOOKALIKES - греческие визуальные двойники кириллицы
 # greek_to_cyrillic - перевод омоглифов наблюдения в кириллицу
+# LATIN_LOOKALIKES_CYR - латинские визуальные двойники кириллицы для смешанных токенов
+# homoglyphs_to_cyrillic - перевод греческих и смешанных латино-кириллических омоглифов
 # END_MODULE_MAP
 """Нормализация текста для сопоставления.
 
@@ -134,9 +136,9 @@ ALIASES: dict[str, tuple[str, ...]] = {
     "геленджик": ("gelendzhik", "геленджик"),
     "кубань вино": ("kuban vino", "kuban-vino", "кубань вино"),
 }
-__all__ = ["ALIASES", "GREEK_LOOKALIKES", "LAT_ORDER", "LAT_TO_RU", "LOOKALIKES", "MAX_FORMS", "RU_TO_LAT", "apply_aliases",
-           "cyr_to_lat",
-    "greek_to_cyrillic", "delookalike", "fold", "forms", "lat_to_cyr", "similarity", "tokens"]
+__all__ = ["ALIASES", "GREEK_LOOKALIKES", "LATIN_LOOKALIKES_CYR", "LAT_ORDER", "LAT_TO_RU", "LOOKALIKES",
+           "MAX_FORMS", "RU_TO_LAT", "apply_aliases", "cyr_to_lat",
+    "greek_to_cyrillic", "homoglyphs_to_cyrillic", "delookalike", "fold", "forms", "lat_to_cyr", "similarity", "tokens"]
 
 
 def fold(text: str | None) -> str:
@@ -182,6 +184,42 @@ def greek_to_cyrillic(text: str | None) -> str:
         if any(char in _GREEK_CHARS for char in token):
             token = "".join(GREEK_LOOKALIKES.get(char, char) for char in token)
         out.append(token)
+    return " ".join(out)
+
+
+# C-073: латинские визуальные двойники кириллицы. Модель читает кириллицу латинскими буквами
+# внутри слова, где уже есть кириллица («СKАЛИСТЫЙ», «МACCAНДРА»), а чистый латинский бренд
+# («FANAGORIA») трогать нельзя. Поэтому замена применяется только к смешанным токенам.
+LATIN_LOOKALIKES_CYR = {
+    "a": "а", "b": "в", "c": "с", "e": "е", "h": "н", "k": "к", "m": "м", "n": "п",
+    "o": "о", "p": "р", "t": "т", "x": "х", "y": "у", "3": "з", "0": "о",
+}
+_LATIN_LOOKALIKES_CYR_CASED = {**LATIN_LOOKALIKES_CYR,
+                                **{key.upper(): value.upper() for key, value in LATIN_LOOKALIKES_CYR.items()}}
+
+
+def homoglyphs_to_cyrillic(text: str | None) -> str:
+    """Переводит омоглифы наблюдения в кириллицу, не портя чистые латинские бренды.
+
+    Различаются три случая на токен: (1) есть греческие буквы — токен целиком переводится как
+    раньше (:func:`greek_to_cyrillic`); (2) токен смешивает кириллицу и латинские двойники —
+    латинские символы заменяются на кириллицу («СKАЛИСТЫЙ» → «СКАЛИСТЫЙ»); (3) чистый латинский
+    бренд или чистая кириллица — не меняются. Так «FANAGORIA» остаётся латиницей, а искажённое
+    чтение кириллицы приходит к сопоставимому виду.
+    """
+    if not text:
+        return ""
+    out: list[str] = []
+    for token in str(text).split():
+        if any(char in _GREEK_CHARS for char in token):
+            out.append("".join(GREEK_LOOKALIKES.get(char, char) for char in token))
+            continue
+        has_cyrillic = any("а" <= char.lower() <= "я" or char.lower() == "ё" for char in token)
+        has_latin = any("a" <= char.lower() <= "z" or char in "30" for char in token)
+        if has_cyrillic and has_latin:
+            out.append("".join(_LATIN_LOOKALIKES_CYR_CASED.get(char, char) for char in token))
+        else:
+            out.append(token)
     return " ".join(out)
 
 

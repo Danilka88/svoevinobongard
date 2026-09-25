@@ -11,6 +11,7 @@
         Онлайн-модель — gemma4:e4b с reasoning_effort=none и жёстким таймаутом.</Description>
       <TestFiles>
         <File>tests/test_vlm_matcher.py</File>
+        <File>tests/test_c073_observer.py</File>
         <File>services/vlm/app/extract.py</File>
         <File>services/vlm/app/prompt.py</File>
       </TestFiles>
@@ -78,6 +79,15 @@
       <Evidence note="english-sweetness-gap">Найдена и закрыта дыра: 26b часто отвечает латиницей (Brut, Dry, Semi-Sweet),
         и русский словарь сладости такие ответы не ловил — добавлены англоязычные термины в parse_fields
         (Brut-&gt;брют, Dry-&gt;сухое, Semi-Sweet-&gt;полусладкое, Extra Brut-&gt;экстра брют), покрыто тестом.</Evidence>
+      <Scenario id="S-VLM-10">C-073: наблюдение структурировано — строгая JSON-схема observer в packages/common/llm/structured.py
+        с откатом на терпимый «ключ: значение»; промпт отделяет винодельню от названия и запрещает выдумывать; заглушки
+        («неразборчиво», «не указано») не становятся полями поиска; пустое/неинформативное наблюдение не даёт случайного вина.</Scenario>
+      <Evidence note="C073-observer-hardening">C-073: tests/test_c073_observer.py (10 тестов) — греческие и латинские омоглифы
+        кириллицы в смешанных токенах приводятся к кириллице, чистые латинские бренды не портятся, заглушки не считаются
+        наблюдением, один год без названия неинформативен, свободный текст по-прежнему ищется, JSON по схеме и «грязный» JSON
+        репарируются, не-JSON откатывается на «ключ: значение». Бенч читателей (reports/vision_bench.md): лучшее чтение —
+        gemma4:26b (title_sim 0.8158, бренд 0.5), против OCR слияния 0.5657 и кириллицы 0.4653; PaddleOCR-VL не измерен
+        (≈226 с/фото на MPS). Онлайн-дефолты config и пороги решения не менялись.</Evidence>
     </V-M-VLM>
 
     <V-M-MATCHER>

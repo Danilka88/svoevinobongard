@@ -171,12 +171,16 @@ def _resize_for_observer(image, max_side: int):
     return _np.asarray(resized)[:, :, ::-1].copy()
 
 
-def _observe_native_ollama(images: list, model: str, *, max_tokens: int, timeout_s: float) -> dict | None:
+def _observe_native_ollama(images: list, model: str, *, max_tokens: int, timeout_s: float,
+                           prompt: str | None = None) -> dict | None:
     """Нативный вызов Ollama для thinking-моделей (C-063).
 
     Совместимый с OpenAI путь не даёт отключить рассуждения: модель тратит бюджет на reasoning и
     возвращает пустой ответ при finish_reason=length. Нативный API принимает think=false и images,
     поэтому используется как запасной путь только для таких случаев.
+
+    C-073: ``prompt`` позволяет задать инструкцию под конкретный читатель (например, чистый OCR-промпт
+    для deepseek-ocr); по умолчанию берётся штатная инструкция наблюдателя.
     """
     import base64
     import json
@@ -187,7 +191,7 @@ def _observe_native_ollama(images: list, model: str, *, max_tokens: int, timeout
     base = str(getattr(settings, "ollama_base_url", "") or "http://127.0.0.1:11434").rstrip("/")
     if base.endswith("/v1"):
         base = base[:-3]
-    payload = {"model": model, "prompt": OBSERVER_INSTRUCTION, "stream": False, "think": False,
+    payload = {"model": model, "prompt": prompt or OBSERVER_INSTRUCTION, "stream": False, "think": False,
                "images": [base64.b64encode(_png_bytes(image)).decode() for image in images[:2]],
                "options": {"num_predict": max_tokens, "temperature": 0.0}}
     try:
@@ -224,12 +228,16 @@ def observe_label(
     timeout_s: float | None = None,
     num_ctx: int = 8192,
     reasoning_effort: str = "none",
+    instruction: str | None = None,
 ) -> dict:
     """Наблюдение этикетки в жёстком бюджете времени.
 
     Скрипт организатора даёт десять секунд на запрос, поэтому наблюдатель обязан уложиться в свой
     таймаут: вызывается один уменьшенный кадр, рассуждения отключены, а на превышении бюджета
     возвращается неуспех — gateway в этом случае отдаёт результат поиска, а не ошибку.
+
+    C-073: ``instruction`` переопределяет штатную инструкцию наблюдателя (нужно бенчу читателей и
+    чисто OCR-моделям); по умолчанию поведение не меняется — берётся ``OBSERVER_INSTRUCTION``.
     """
     from packages.common.config import settings
 
@@ -245,7 +253,7 @@ def observe_label(
     # укладывается в бюджет; совместимый с OpenAI путь оставлен для облачных провайдеров.
     if "/" not in str(selected):
         native = _observe_native_ollama([frame], str(selected), max_tokens=budget_tokens,
-                                        timeout_s=hard_budget)
+                                        timeout_s=hard_budget, prompt=instruction)
         if native is not None:
             return native
         # Локальная модель не уложилась в бюджет: второй путь не пробуем, иначе суммарное время
@@ -254,7 +262,7 @@ def observe_label(
                 "budget_s": hard_budget}
 
     active = router or get_router()
-    content = [{"type": "text", "text": OBSERVER_INSTRUCTION}]
+    content = [{"type": "text", "text": instruction or OBSERVER_INSTRUCTION}]
     content.append({"type": "image_url", "image_url": {"url": encode_image_data_url(frame)}})
     payload = {"reasoning_effort": reasoning_effort, "options": {"num_ctx": num_ctx}, "think": False}
     try:
