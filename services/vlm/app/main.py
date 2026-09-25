@@ -1,9 +1,9 @@
 # START_MODULE_CONTRACT
 # PURPOSE: FastAPI-сервис VLM: POST /extract собирает letterbox-базу и P&S-тайлы полного кадра и отдаёт поля
-# SCOPE: app, health, extract_endpoint
+# SCOPE: app, health, extract_endpoint, observe_endpoint, match_endpoint
 # DEPENDS: fastapi, packages.common.config, packages.common.images, packages.common.logging,
-#          packages.common.preprocess, services.vlm.app.extract
-# LINKS: M-VLM
+#          packages.common.preprocess, packages.common.llm.matcher, services.vlm.app.extract
+# LINKS: M-VLM, M-COMMON
 # ROLE: RUNTIME
 # MAP_MODE: EXPORTS
 # END_MODULE_CONTRACT
@@ -12,6 +12,7 @@
 # health - GET /health с параметрами препроцессинга и провайдера
 # extract_endpoint - POST /extract (multipart image) → поля этикетки с полного кадра
 # observe_endpoint - POST /observe (multipart image) → наблюдение этикетки свободным текстом
+# match_endpoint - POST /match (JSON observation+candidates) → выбор slug LLM-матчером (C-074)
 # END_MODULE_MAP
 """Сервис VLM для полного кадра.
 
@@ -23,18 +24,19 @@ from __future__ import annotations
 
 import time
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import Body, FastAPI, File, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 
 from packages.common.config import settings
 from packages.common.images import load_bgr
+from packages.common.llm.matcher import match_candidates
 from packages.common.logging import log_marker
 from packages.common.preprocess import PreprocessConfig, build_vlm_inputs
 from services.vlm.app.extract import extract_fields, observe_label
 
 app = FastAPI(title="Svoe Vino Scanner — VLM", version="0.2.0")
 
-__all__ = ["app", "health", "extract_endpoint", "observe_endpoint"]
+__all__ = ["app", "health", "extract_endpoint", "observe_endpoint", "match_endpoint"]
 
 
 @app.get("/health")
@@ -74,6 +76,25 @@ async def observe_endpoint(image: UploadFile = File(...)) -> dict:
     result["latency_ms"] = round((time.perf_counter() - started) * 1000.0, 1)
     log_marker("M-VLM", "observe", "DONE", ok=str(result.get("ok")),
                model=settings.observer_model, latency_ms=result["latency_ms"])
+    return result
+
+
+@app.post("/match")
+async def match_endpoint(payload: dict = Body(...)) -> dict:
+    """LLM-матчер: по наблюдению и кандидатам каталога выбирает slug или честно отказывается (C-074).
+
+    Тело: {"observation": {...}, "candidates": [{"slug", "name", "winery", ...}]}. Модель не может
+    вернуть slug вне списка; при недоступной LLM ответ содержит slug=null и source=degraded.
+    """
+    observation = payload.get("observation") or {}
+    candidates = payload.get("candidates") or []
+    started = time.perf_counter()
+    result = await run_in_threadpool(match_candidates, observation, candidates,
+                                     model=settings.llm_matcher_model or None,
+                                     timeout_s=settings.llm_matcher_timeout_s)
+    result["latency_ms"] = round((time.perf_counter() - started) * 1000.0, 1)
+    log_marker("M-VLM", "match", "DONE", slug=str(result.get("slug") or "none"),
+               candidates=len(candidates), source=result.get("source"))
     return result
 
 

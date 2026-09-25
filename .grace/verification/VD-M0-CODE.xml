@@ -229,6 +229,18 @@
         Вывод: на реальных полевых этикетках LLM-зрение читает лучше OCR; сильная модель (26b) — лучший читатель,
         а узкое место переносится на сопоставление с каталогом и отказ (вводные C-074).
         Отчёты: reports/vision_bench.json и reports/vision_bench.md.</Evidence>
+      <Command>PYTHONPATH=. .venv/bin/python scripts/eval/llm_match_eval.py --out reports/llm_match.json --md reports/llm_match.md</Command>
+      <Scenario id="S-EVAL-17">C-074: офлайн-стенд LLM-пути «наблюдение сильной моделью + LLM-матчер» на 21
+        проверенном и подвыборке 100 реальных фото: acc@1/@5, strict@1, not_found, качество чтения и latency;
+        результаты в reports/llm_match.{json,md}.</Scenario>
+      <Evidence note="C074-llm-path">C-074, 21 фото (вычислимых 11): чтение title_sim 0.8278 (выше всех
+        движков — C-073 давал у 26b 0.8158), бренд 0.5; accuracy@1 0.3636, @5 0.5455, strict@1 0.75,
+        not_found 0.7619; p50/p95 54321.9/129760.5 мс (чтение p50/p95 24620.4/106646.1 мс, n=20).
+        Верные попадания при попадании в пул: Abrau Reserve, fanagoriya 5 elements, Высокий берег графит розе;
+        честные отказы на зарубежных (Bosca, DaschBosch, Toskana) и вне-каталожных (Бахус). Главный промах —
+        верное вино не доходит до пула текстового поиска (например shato-taman-polusladkoe при чтении
+        «Château Tamagne / полусладкое»). Вывод: матчеру нужен визуальный кандидат-пул; это вводная C-075/C-076.
+        Отчёты: reports/llm_match.json и reports/llm_match.md.</Evidence>
     </V-M-EVAL>
 
     <V-M-GATEWAY>

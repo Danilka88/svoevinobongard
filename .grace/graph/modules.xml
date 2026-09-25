@@ -28,6 +28,7 @@
       <Test>tests/test_c064_budget.py</Test>
       <Test>tests/test_c065_near_dup.py</Test>
       <Test>tests/test_c067_organizer_contract.py</Test>
+      <Test>tests/test_c074_matcher.py</Test>
       <Test>tests/test_flywheel.py</Test>
       <Test>tests/test_gateway_media.py</Test>
       <Test>tests/test_recommend.py</Test>
@@ -46,6 +47,11 @@
       </Depends>
       <Verification>V-M-GATEWAY</Verification>
       <Note>M0: /v1/health, /v1/eval/predict и /v1/scan реализованы (C-002); дополнительно /v1/warmup, /v1/similar, /v1/sommelier, /v1/enotourism (C-018, C-019).</Note>
+      <Note>C-074: pipeline получил LLM-ядро на каждом запросе. При OBSERVER_ALWAYS наблюдение
+        запускается независимо от уверенности retrieval; пул кандидатов (находки наблюдения по всему
+        каталогу + визуальный топ) отправляется LLM-матчеру, который выбирает slug или честно
+        отказывается. При недоступной LLM путь штатно деградирует до прежнего retrieval; метрики
+        синтетического гейта не меняются (code-дефолты выключены, качественный режим — в .env.example).</Note>
     </M-GATEWAY>
 
     <M-NORMALIZE>
@@ -116,7 +122,9 @@
       <Test>tests/test_c063_observer_llm.py</Test>
       <Test>tests/test_c064_budget.py</Test>
       <Test>tests/test_c073_observer.py</Test>
-      <Interface>POST /extract (image) → поля этикетки; вызов только через router.chat(role=vision_model)</Interface>
+      <Test>tests/test_c074_matcher.py</Test>
+      <Interface>POST /extract (image) → поля этикетки; POST /observe (image) → наблюдение; POST /match
+        (observation + candidates) → выбранный slug и вероятность; вызов только через router.chat(role=vision_model)</Interface>
       <Depends>
         <M-COMMON/>
       </Depends>
@@ -127,6 +135,12 @@
         винодельня и название, «не выдумывать»), структурированное наблюдение через structured.py
         с откатом на «ключ: значение», инвариант «пустое/неинформативное наблюдение не даёт
         случайного вина», явный prompt для читателей (deepseek-ocr). Онлайн-дефолты не изменены.</Note>
+      <Note>C-074: LLM становится ядром на каждом запросе (OBSERVER_ENABLED=1, OBSERVER_ALWAYS=1,
+        сильная модель gemma4:26b-mlx, щедрый бюджет) — решение владельца: качество важнее скорости,
+        и неизвестно, какое фото придёт от клиента. Добавлен эндпоинт POST /match (LLM-матчер): модель
+        выбирает slug из списка кандидатов или честно отказывается, slug вне списка не принимается;
+        для локальных Ollama-моделей используется нативный /api/chat (think=false, format=json),
+        потому что совместимый путь тратит весь бюджет на reasoning и отдаёт пустой content.</Note>
       <Verification>V-M-VLM</Verification>
     </M-VLM>
 
@@ -297,8 +311,10 @@
       <Test>tests/test_c030_fixes.py</Test>
       <Test>tests/test_preprocessing.py</Test>
       <Test>tests/test_c073_observer.py</Test>
+      <Test>tests/test_c074_matcher.py</Test>
       <Exports>LLMRouter, get_router, build_adapter, OpenAICompatAdapter, ChatResult, EmbedResult,
-        CircuitBreaker, CostVelocityBreaker, RouterConfig, load_router_config, CatalogStore, load_catalog</Exports>
+        CircuitBreaker, CostVelocityBreaker, RouterConfig, load_router_config, CatalogStore, load_catalog,
+        match_candidates, MATCHER_INSTRUCTION, parse_match, build_matcher_prompt</Exports>
       <Depends>
         <M-CONTRACTS/>
       </Depends>
@@ -309,6 +325,10 @@
         усилена латинскими двойниками кириллицы в смешанных токенах (text_norm.homoglyphs_to_cyrillic),
         но чистые латинские бренды не портятся; заглушки модели и одиночные атрибуты (год) больше не
         считаются наблюдением — инвариант против случайной выдачи.</Note>
+      <Note>C-074: добавлен LLM-матчер (packages/common/llm/matcher.py) и схема matcher в structured.py.
+        Матчер выбирает slug из переданного списка кандидатов или честно отказывается; slug вне списка
+        не принимается. Для локальных Ollama-моделей используется нативный /api/chat (think=false,
+        format=json) — совместимый путь у reasoning-моделей отдаёт пустой content при finish_reason=length.</Note>
     </M-COMMON>
 
     <M-CONTRACTS>
@@ -347,6 +367,7 @@
       <Test>tests/test_c067_organizer_contract.py</Test>
       <Test>tests/test_c072_field21.py</Test>
       <Test>tests/test_c073_vision_bench.py</Test>
+      <Test>tests/test_c074_matcher.py</Test>
       <Exports>post_image, extract_slug, extract_top5, load_ground_truth, compute_metrics, percentile,
         field_augment, random_background, synthetic pairs CLI (scripts/train/synthetic_pairs.py),
         head training CLI (scripts/train/train_head.py, модуль головы живёт в M-RETRIEVAL),
@@ -354,8 +375,14 @@
         organizer run report (scripts/eval/participant_run.py, C-067),
         field21 gold mapping + leak invariant (scripts/eval/field21_gold.py, C-072),
         field21 A/B/C stand (scripts/eval/field21_abc.py, C-072),
-        vision reader bench (scripts/eval/vision_bench.py, C-073)</Exports>
+        vision reader bench (scripts/eval/vision_bench.py, C-073),
+        LLM-path stand: observation + matcher (scripts/eval/llm_match_eval.py, C-074)</Exports>
       <Verification>V-M-EVAL</Verification>
+      <Note>C-074: scripts/eval/llm_match_eval.py измеряет LLM-путь (наблюдение сильной моделью +
+        LLM-матчер) на 21 проверенном и подвыборке 100 реальных фото: acc@1/@5, not_found, чтение
+        и latency. Результаты — reports/llm_match.{json,md}. Итог на 21 фото: acc@1 0.3636, @5 0.5455,
+        strict@1 0.75, not_found 0.7619, чтение title_sim 0.8278; узкое место — поиск кандидатов
+        (верное вино не всегда доходит до пула), вводная C-075/C-076.</Note>
     </M-EVAL>
 
     <M-DEPLOY>

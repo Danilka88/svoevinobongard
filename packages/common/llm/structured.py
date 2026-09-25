@@ -122,6 +122,18 @@ SCHEMAS: dict[str, dict] = {
         "required": [],
         "additionalProperties": True,
     },
+    # (д) выбор лучшего совпадения наблюдения с каталогом (C-074): slug или честный отказ.
+    "matcher": {
+        "type": "object",
+        "properties": {
+            "slug": {"type": ["string", "null"], "maxLength": 200},
+            "p_correct": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+            "in_catalog": {"type": "boolean"},
+            "reason": {"type": "string", "maxLength": 300},
+        },
+        "required": [],
+        "additionalProperties": True,
+    },
 }
 
 KEY_ALIASES: dict[str, tuple[str, ...]] = {
@@ -140,6 +152,10 @@ KEY_ALIASES: dict[str, tuple[str, ...]] = {
     "verdict": ("verdict", "result", "вердикт", "итог"),
     "score": ("score", "rating", "оценка", "балл"),
     "reasons": ("reasons", "why", "notes", "причины", "обоснование"),
+    "slug": ("slug", "id", "wine_slug", "article", "артикул", "слаг"),
+    "p_correct": ("p_correct", "probability", "confidence", "prob", "вероятность", "уверенность"),
+    "in_catalog": ("in_catalog", "incatalog", "in_catalogue", "found", "есть_в_каталоге", "найден"),
+    "reason": ("reason", "explanation", "why", "причина", "обоснование"),
 }
 
 ENUM_SYNONYMS: dict[str, dict[str, str]] = {
@@ -520,6 +536,9 @@ def _retry_hint(schema_name: str, errors: list[str] | None = None) -> str:
     elif schema_name == "sommelier":
         hint = ('Верни строго JSON вида {"recommendations": [{"slug": "slug-вина", "why": "причина"}], '
                 '"pairing": ["блюдо"]} без пояснений и без текста вокруг.')
+    elif schema_name == "matcher":
+        hint = ('Верни строго JSON вида {"slug": "slug-вина-из-списка или null", "p_correct": 0.0, '
+                '"in_catalog": true, "reason": "почему"} без пояснений вокруг.')
     else:
         hint = 'Верни строго JSON вида {"verdict": "pass|fail|uncertain", "score": 0.0, "reasons": []}.'
     if errors:

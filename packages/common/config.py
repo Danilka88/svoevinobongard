@@ -215,6 +215,16 @@ class AppSettings:
         default_factory=lambda: _env_int("OBSERVER_MAX_TOKENS", 200))
     observer_threshold: float = field(
         default_factory=lambda: _env_float("OBSERVER_THRESHOLD", 0.95))
+    # C-074: LLM — ядро на каждом запросе. observer_always запускает наблюдение независимо от
+    # уверенности retrieval (мы не знаем, какое фото придёт от клиента). llm_matcher_enabled
+    # включает LLM-сопоставление наблюдения с каталогом: slug выбирает LLM, а не текстовый поиск.
+    # Code-дефолты выключены, чтобы тесты и синтетический гейт оставались детерминированными;
+    # качественный режим задаётся .env.example (OBSERVER_ENABLED=1, OBSERVER_ALWAYS=1, модель 26b).
+    observer_always: bool = field(default_factory=lambda: _env_bool("OBSERVER_ALWAYS", False))
+    llm_matcher_enabled: bool = field(default_factory=lambda: _env_bool("LLM_MATCHER_ENABLED", False))
+    llm_matcher_model: str = field(default_factory=lambda: _env("LLM_MATCHER_MODEL", ""))
+    llm_matcher_timeout_s: float = field(
+        default_factory=lambda: _env_float("LLM_MATCHER_TIMEOUT_S", 30.0))
     # C-071: бюджет цифрового сомелье. Вызов text-модели ограничен по времени, а при
     # таймауте/ошибке/пустом ответе фича отдаёт детерминированный подбор по каталогу.
     # Бюджет мал намеренно: локальная thinking-модель медленная, а retention-фича важнее

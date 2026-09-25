@@ -1,0 +1,155 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-074>
+    <IntentSummary>Сделать LLM ядром распознавания на каждом запросе: наблюдение этикетки всегда идёт через
+      LLM (по умолчанию gemma4:26b-mlx, щедрый бюджет), а сопоставление наблюдения с каталогом выполняет
+      LLM-матчер со вероятностью и честным отказом. Классический retrieval и текстовый поиск дают пул
+      кандидатов, но slug выбирает LLM. Качественный режим включается конфигурацией (.env.example), code-дефолты
+      остаются безопасными для тестов и синтетического гейта; при недоступной LLM путь деградирует без регрессий.
+      Измерение на 21 проверенном и 100 реальных фото, отчёты reports/llm_match.{json,md}. Коммит не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-074/spec.xml</Value></MustExist>
+      <MustExist><Value>packages/common/observer.py</Value></MustExist>
+      <MustExist><Value>packages/common/llm/structured.py</Value></MustExist>
+      <MustExist><Value>services/vlm/app/main.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/pipeline.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/clients.py</Value></MustExist>
+      <MustExist><Value>data/samples/real_field/manifest.tsv</Value></MustExist>
+      <MustExist><Value>data/samples/real100/manifest.tsv</Value></MustExist>
+      <MustExist><Value>reports/field21_gold.json</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>test -f packages/common/llm/matcher.py &amp;&amp; test -f tests/test_c074_matcher.py</Command></MustPassCommand>
+      <MustPassCommand><Command>test -f reports/llm_match.json &amp;&amp; test -f reports/llm_match.md</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c074_matcher.py -q</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-COMMON</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-VLM</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/>
+      <M-COMMON/>
+      <M-VLM/>
+      <M-EVAL/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/llm/matcher.py</Path>
+      <Path>packages/common/llm/structured.py</Path>
+      <Path>packages/common/config.py</Path>
+      <Path>services/vlm/app/main.py</Path>
+      <Path>services/vlm/app/extract.py</Path>
+      <Path>services/gateway/app/clients.py</Path>
+      <Path>services/gateway/app/pipeline.py</Path>
+      <Path>scripts/eval/llm_match_eval.py</Path>
+      <Path>scripts/eval/vision_bench.py</Path>
+      <Path>tests/test_c074_matcher.py</Path>
+      <Path>reports/llm_match.json</Path>
+      <Path>reports/llm_match.md</Path>
+      <Path>.grace/graph/modules.xml</Path>
+      <Path>.grace/verification/VD-M0-CODE.xml</Path>
+      <Path>.grace/verification/VD-M3-VLM.xml</Path>
+      <Path>.grace/verification/VD-SHARED.xml</Path>
+      <Path>.env.example</Path>
+      <Path>docs/LIMITATIONS.md</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>LLM-матчер и схема matcher (M-COMMON)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>packages/common/llm/matcher.py: MATCHER_INSTRUCTION и match_candidates(observation,
+            candidates, *, router=None, limit) — строит компактный список кандидатов (slug, название,
+            винодельня, год, сладость), просит строгий JSON по схеме matcher и возвращает нормализованный
+            результат {slug|None, p_correct|None, reason, source}.</Criterion>
+          <Criterion>structured.py получает схему matcher (slug, p_correct, in_catalog, reason) и алиасы;
+            невалидный/пустой ответ не подменяется выдумкой — матчер возвращает source=degraded и slug=None.</Criterion>
+          <Criterion>Матчер не обращается к сети при тестах: LLM-вызов инъектируется (router/callable).</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c074_matcher.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Сервисный эндпоинт /match и клиент gateway (M-VLM, M-GATEWAY)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>services/vlm/app/main.py получает POST /match: JSON {observation, candidates} →
+            результат матчера; сервис не импортирует gateway.</Criterion>
+          <Criterion>services/gateway/app/clients.py получает async match(observation, candidates) с
+            таймаутом; при недоступности сервиса возвращает None без исключения.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c074_matcher.py tests/ -q -k "match or observe or vlm"</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>LLM на каждом запросе и решение через матчер (M-GATEWAY, M-COMMON)</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>config: observer_always и llm_matcher_enabled (env OBSERVER_ALWAYS,
+            LLM_MATCHER_ENABLED); .env.example задаёт качественный режим (OBSERVER_ENABLED=1,
+            OBSERVER_ALWAYS=1, OBSERVER_MODEL=gemma4:26b-mlx, щедрый OBSERVER_TIMEOUT_S).</Criterion>
+          <Criterion>pipeline.run_scan: при observer_always наблюдение запускается на каждом запросе; пул
+            кандидатов = наблюдение (текстовый поиск по всему каталогу) + визуальный топ; при
+            llm_matcher_enabled LLM-матчер выбирает slug и p(correct); slug=None от матчера → честный not_found.</Criterion>
+          <Criterion>При недоступной LLM ответ не падает и не хуже прежнего: путь retrieval сохраняется,
+            метрики синтетического гейта не меняются.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q -k "scan or observer or matcher"</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Реальный замер LLM-пути на 21 и 100 фото (M-EVAL)</Title>
+        <DependsOn>T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>scripts/eval/llm_match_eval.py прогоняет LLM-путь (26b reader + матчер) на 21
+            проверенном фото и подвыборке 100 реальных, считает acc@1/@5, not_found, чтение и latency,
+            пишет reports/llm_match.{json,md} со сравнением против baseline C-072/C-073.</Criterion>
+          <Criterion>Выводы не подгоняются: если прироста нет — это фиксируется; мусор и галлюцинации
+            читателей отмечаются явно. При недоступности модели — честная пометка, не подстановка.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/llm_match_eval.py --out reports/llm_match.json --md reports/llm_match.md</Command>
+        </Verification>
+      </T-004>
+
+      <T-005>
+        <Title>Тесты, граф, verification, финальные гейты и архив (M-GATEWAY, M-COMMON, M-VLM, M-EVAL)</Title>
+        <DependsOn>T-001, T-002, T-003, T-004</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>tests/test_c074_matcher.py: выбор кандидата, отказ при отсутствии совпадения, деградация
+            при недоступной LLM, нормализация ответа и схема matcher; без сети.</Criterion>
+          <Criterion>graph/modules.xml и verification (V-M-COMMON, V-M-VLM, V-M-EVAL) получают сценарии C-074
+            с фактическими числами; AGENTS.md roadmap дополняется строкой C-074.</Criterion>
+          <Criterion>grace lint 0/0, полный pytest зелёный, make gate без изменений метрик, после гейтов код не
+            меняется, бандл уезжает в .grace/changes/archive/C-074/ со статусом applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-005>
+    </ImplementationPlan>
+  </C-074>
+</GraceChangePlan>

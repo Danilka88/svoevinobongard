@@ -1,5 +1,5 @@
 # START_MODULE_CONTRACT
-# PURPOSE: HTTP-клиенты внутренних сервисов (normalize, retrieval) — единственный канал связи между сервисами
+# PURPOSE: HTTP-клиенты внутренних сервисов (normalize, retrieval, vlm, ocr, matcher) — единственный канал связи между сервисами
 # SCOPE: ServiceClients, post_image
 # DEPENDS: httpx, packages.common.config, packages.common.logging
 # LINKS: M-GATEWAY
@@ -7,9 +7,10 @@
 # MAP_MODE: EXPORTS
 # END_MODULE_CONTRACT
 # START_MODULE_MAP
-# ServiceClients - асинхронные клиенты normalize и retrieval
+# ServiceClients - асинхронные клиенты внутренних сервисов
 # post_image - multipart-POST изображения с обработкой ошибки связи
 # ServiceClients.observe - наблюдение этикетки через VLM-сервис
+# ServiceClients.match - LLM-сопоставление наблюдения с кандидатами каталога (C-074)
 # END_MODULE_MAP
 """Клиенты внутренних сервисов.
 
@@ -114,6 +115,30 @@ class ServiceClients:
             self.client, f"{self.vlm_url}/observe", data, filename,
             timeout or settings.observer_timeout_s,
         )
+
+    async def match(self, observation: dict, candidates: list[dict],
+                    timeout: float | None = None) -> dict | None:
+        """LLM-сопоставление наблюдения с кандидатами каталога (POST /match, C-074).
+
+        Ошибка связи или не-200 возвращает None: вызывающий код сохраняет прежний путь и
+        не роняет ответ.
+        """
+        try:
+            response = await self.client.post(
+                f"{self.vlm_url}/match",
+                json={"observation": observation, "candidates": candidates},
+                timeout=timeout or settings.llm_matcher_timeout_s,
+            )
+        except httpx.HTTPError as error:
+            log_marker("M-GATEWAY", "match", "CONN_ERROR", error=type(error).__name__)
+            return None
+        if response.status_code != 200:
+            log_marker("M-GATEWAY", "match", "BAD_STATUS", status=response.status_code)
+            return None
+        try:
+            return response.json()
+        except ValueError:
+            return None
 
     async def extract(self, data: bytes, filename: str = "query.png",
                      timeout: float | None = None) -> dict | None:

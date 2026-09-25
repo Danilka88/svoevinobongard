@@ -485,8 +485,10 @@ async def run_scan(
     observer_hits: list[tuple[str, float]] = []
     observation: dict = {}
     observer_used = False
-    if settings.observer_enabled and escalation_trigger(
-            _calibrated_probability(best.score), confident, settings.observer_threshold):
+    # C-074: LLM — ядро на каждом запросе. При observer_always наблюдение запускается независимо
+    # от уверенности retrieval: мы не знаем, какое фото придёт от клиента.
+    if settings.observer_enabled and (settings.observer_always or escalation_trigger(
+            _calibrated_probability(best.score), confident, settings.observer_threshold)):
         observed = await active_clients.observe(payload, "query.png")
         if observed and observed.get("ok"):
             observation = parse_observation(observed.get("raw_text") or "")
@@ -509,6 +511,47 @@ async def run_scan(
                     confident = True
         else:
             diagnostics.notes.append("observer unavailable; Tier-1 kept")
+
+    # C-074: LLM-матчер. Пул кандидатов — находки наблюдения по всему каталогу плюс визуальный топ;
+    # LLM выбирает из них лучшее совпадение или честно отказывается. Slug вне списка не принимается.
+    if settings.llm_matcher_enabled and observation:
+        records = store.slug_to_record()
+        pool: list[str] = []
+        for slug, _score in observer_hits:
+            if slug not in pool:
+                pool.append(slug)
+        for item in top10:
+            if item.slug and item.slug not in pool:
+                pool.append(item.slug)
+        candidates = [
+            {"slug": slug, "name": (records.get(slug) or {}).get("name"),
+             "winery": (records.get(slug) or {}).get("winery"),
+             "year": (records.get(slug) or {}).get("year"),
+             "grape": (records.get(slug) or {}).get("grape"),
+             "sweetness": (records.get(slug) or {}).get("sweetness")}
+            for slug in pool[:20]
+        ]
+        matched = await active_clients.match(observation, candidates)
+        if matched and matched.get("slug"):
+            winner = str(matched["slug"])
+            summary = store.summary(winner)
+            rest = [item for item in top10 if item.slug != winner]
+            top5 = [TopKItem(slug=winner, score=float(matched.get("p_correct") or 0.9),
+                             name=summary.get("name"), winery=summary.get("winery"))] + rest[:4]
+            top10 = [top5[0]] + rest
+            best = top5[0]
+            margin = round(best.score - (top5[1].score if len(top5) > 1 else 0.0), 6)
+            path = "llm_match"
+            not_found = False
+            confident = True
+            diagnostics.notes.append(f"llm match: {winner}")
+        elif matched and matched.get("source") == "llm" and matched.get("in_catalog") is False:
+            # LLM явно сказала: среди кандидатов совпадения нет → честный отказ, а не случайное вино.
+            not_found = True
+            confident = False
+            diagnostics.notes.append("llm match: no catalog match")
+        elif matched is None:
+            diagnostics.notes.append("llm matcher unavailable; retrieval kept")
 
     # C-065: дизамбигуация near-дубликатов и аналоги при отказе. Флаг по умолчанию выключен, поэтому
     # метрики гейта не меняются; при включении внутри одной серии выбираем по подтверждённым сигналам

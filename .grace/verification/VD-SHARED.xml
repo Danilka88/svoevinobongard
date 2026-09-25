@@ -71,6 +71,15 @@
         parse_structured с откатом на «ключ: значение», фильтр заглушек (PLACEHOLDER_VALUES) и инвариант
         is_informative. tests/test_c073_observer.py (10 тестов) зелёный; полный pytest 517 passed; grace lint 0/0.
         Пример: «СKАЛИСТЫЙ» → «СКАЛИСТЫЙ» (латинские двойники в смешанном токене), а «FANAGORIA» не портится.</Evidence>
+      <Scenario id="S-COMMON-9">C-074: LLM-матчер (packages/common/llm/matcher.py) выбирает slug только из
+        переданного списка кандидатов каталога или честно отказывается; выдуманный slug сводится к отказу.
+        Схема matcher добавлена в structured.py; для локальных Ollama-моделей матчер идёт нативным путём
+        /api/chat (think=false, format=json), потому что совместимый путь у reasoning-моделей отдаёт пустой content.</Scenario>
+      <Evidence note="C074-llm-matcher">C-074: tests/test_c074_matcher.py (9 тестов, без сети) — список кандидатов
+        и промпт, приём slug из списка, отказ на выдуманный slug, degraded при невалидном JSON и недоступной LLM,
+        нативный путь Ollama для локального имени модели. Проверка вживую: gemma4:12b-mlx через нативный путь
+        уверенно выбрал верный slug (Abrau Reserve) из 20 кандидатов; совместимый OpenAI-путь на том же промпте
+        отдавал пустой content при finish_reason=length. Полный pytest зелёный; grace lint 0/0.</Evidence>
     </V-M-COMMON>
   </VD-SHARED>
 </GraceVerificationDocument>
