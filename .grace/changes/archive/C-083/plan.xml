@@ -1,0 +1,67 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-083>
+    <IntentSummary>Перевести log_marker на logging (INFO, stderr, формат без изменений) и покрыть тестом;
+      задокументировать в AGENTS.md известное ограничение CLI (module health ищет литерал маркера в
+      исходнике, поэтому 16/16 blocked — ложно). Поведение сервисов и метрики гейта не меняются; коммит
+      не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-083/spec.xml</Value></MustExist>
+      <MustExist><Value>packages/common/logging.py</Value></MustExist>
+      <MustExist><Value>AGENTS.md</Value></MustExist>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>test -f tests/test_c083_logging.py</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c083_logging.py -q</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-COMMON</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-COMMON/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/logging.py</Path>
+      <Path>tests/test_c083_logging.py</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/graph/modules.xml</Path>
+      <Path>.grace/verification/VD-SHARED.xml</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>log_marker через logging и тест эмиссии (M-COMMON)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>log_marker эмитит маркер через logging-логгер grace.markers (StreamHandler, stderr),
+            формат строки [MODULE][function][BLOCK] с параметрами сохраняется.</Criterion>
+          <Criterion>tests/test_c083_logging.py: перехват logging (assertLogs) подтверждает строку и
+            поля; маркер эмитится на уровне INFO.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c083_logging.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Документация ограничения CLI, граф и финальные гейты (M-COMMON)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>AGENTS.md: раздел о ложных blocked (статсканер ищет литерал; log_marker собирает
+            строку из аргументов; grace lint зелёный, маркеры работают в рантайме).</Criterion>
+          <Criterion>grace lint 0/0, полный pytest, make gate без изменений, бандл в archive/C-083 applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-083>
+</GraceChangePlan>

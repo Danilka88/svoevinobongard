@@ -1,0 +1,32 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-083>
+    <Summary>Маркер-логирование через logging и фиксация ограничения CLI. log_marker переведён с print на
+      logging (уровень INFO, вывод в stderr, формат строки не изменился), чтобы маркер формировался в
+      вызове логгера, а не отдельной печатью. Добавлен тест, что маркер реально эмитится и его формат
+      стабилен. Одновременно в AGENTS.md зафиксировано известное ограничение статического сканера
+      `grace module health`: он ищет литерал маркера в исходнике и не кредитует сборку строки из
+      аргументов, поэтому 16/16 модулей помечаются blocked ложно — при этом `grace lint` 0/0, а маркеры
+      реально работают в рантайме (доказано).</Summary>
+    <Goals>(1) Перевести эмиссию маркеров на logging с сохранением формата и stderr. (2) Покрыть маркер
+      тестом (эмиссия + формат). (3) Документировать ложные blocked как ограничение CLI, а не дефект
+      проекта. (4) Не менять поведение сервисов и метрики гейта.</Goals>
+    <Constraints>Формат маркера [MODULE][function][BLOCK] и вывод в stderr сохраняются — это контракт
+      наблюдаемости. Метрики make gate не меняются. Исходники получают MODULE_CONTRACT/MODULE_MAP.
+      Коммит не создаётся.</Constraints>
+    <NonGoals>Не переписывать вызовы log_marker по всему проекту под литералы (инвазивно, без пользы).
+      Не менять verification-записи. Не трогать поведение бизнес-логики.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>packages/common/logging.py: log_marker эмитит через logging.StreamHandler (stderr),
+        формат строки без изменений; тест tests/test_c083_logging.py проверяет эмиссию и формат.</Criterion>
+      <Criterion>AGENTS.md фиксирует известное ограничение: grace module health ищет литерал маркера в
+        исходнике и ложно помечает модули blocked; grace lint остаётся зелёным, маркеры работают в рантайме.</Criterion>
+      <Criterion>pytest зелёный, grace lint --path . 0 errors / 0 warnings, метрики make gate не изменились.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-COMMON/>
+    </AffectedAreas>
+    <VerificationIntent>Эмиссия маркера проверяется тестом через перехват logging (без подмены stdout);
+      формат строки сверяется с контрактом. Отсутствие регрессий — полный pytest, lint 0/0, неизменные
+      метрики гейта.</VerificationIntent>
+  </C-083>
+</GraceChangeSpec>

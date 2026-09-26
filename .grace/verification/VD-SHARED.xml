@@ -112,6 +112,15 @@
         MODULE_MAP/SCOPE/__all__; normalizer.py и scripts/train/build_confirmed_pairs.py переведены на
         общий хелпер. Существующие тесты (test_c077_normalizer 9, test_c078_pairs 6) зелёные без правок
         — рефакторинг поведенчески нейтрален; полный pytest зелёный, lint 0/0, метрики гейта не изменились.</Evidence>
+      <Scenario id="S-COMMON-14">C-083: log_marker эмитит маркер через logging (уровень INFO, вывод в
+        stderr), формат [MODULE][function][BLOCK] и поля сохраняются; тест перехватывает логгер и
+        подтверждает строку.</Scenario>
+      <Evidence note="C083-logging-marker">C-083: packages/common/logging.py — log_marker переведён с
+        print на logging.StreamHandler (stderr) с сохранением формата; маркер формируется в вызове
+        логгера. tests/test_c083_logging.py (3 теста): эмиссия через assertLogs, формат и поля, уровень
+        INFO. Рантайм-проверка: log_marker('M-CATALOG','ETL','START') печатает [M-CATALOG][ETL][START].
+        Известное ограничение CLI (module health ищет литерал маркера) зафиксировано в AGENTS.md;
+        grace lint 0/0, полный pytest зелёный, метрики гейта не изменились.</Evidence>
     </V-M-COMMON>
   </VD-SHARED>
 </GraceVerificationDocument>
