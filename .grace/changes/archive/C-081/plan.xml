@@ -1,0 +1,71 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-081>
+    <IntentSummary>Закрыть гигиенические хвосты после C-073…C-080: добавить evidence-маркеры M-ENOTOURISM
+      (совпадающие с реальными log_marker), адресовать schemas.py в V-M-CONTRACTS и привести сводку
+      AGENTS.md к факту (79 архивных change). Правки только в verification и документации; код и метрики
+      гейта не меняются; коммит не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-081/spec.xml</Value></MustExist>
+      <MustExist><Value>.grace/verification/VD-M7-ENOTOURISM.xml</Value></MustExist>
+      <MustExist><Value>.grace/verification/VD-M1-TIER1.xml</Value></MustExist>
+      <MustExist><Value>AGENTS.md</Value></MustExist>
+      <MustExist><Value>services/gateway/app/enotourism.py</Value></MustExist>
+      <MustVerify><Module>M-CONTRACTS</Module></MustVerify>
+      <MustVerify><Module>M-ENOTOURISM</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>grep -q "M-ENOTOURISM]\[load\]\[DONE" .grace/verification/VD-M7-ENOTOURISM.xml</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "packages.contracts.schemas" .grace/verification/VD-M1-TIER1.xml</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-CONTRACTS</Module></MustVerify>
+      <MustVerify><Module>M-ENOTOURISM</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-CONTRACTS</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-ENOTOURISM</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-COMMON/>
+      <M-CONTRACTS/>
+      <M-ENOTOURISM/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>.grace/verification/VD-M7-ENOTOURISM.xml</Path>
+      <Path>.grace/verification/VD-M1-TIER1.xml</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Evidence-маркеры M-ENOTOURISM и M-CONTRACTS (M-ENOTOURISM, M-CONTRACTS)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>VD-M7-ENOTOURISM объявляет Marker'ы, совпадающие с log_marker в enotourism.py
+            (load DONE, build DONE, load CORRUPT).</Criterion>
+          <Criterion>V-M-CONTRACTS получает команду импорта packages.contracts.schemas и маркер схем.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path .</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Сводка AGENTS.md, статус и финальные гейты (M-COMMON)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>AGENTS.md: «79 архивных change после C-080».</Criterion>
+          <Criterion>grace lint 0/0; grace status без необъяснённого дрейфа; полный pytest; make gate
+            без изменений; бандл в archive/C-081 applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-081>
+</GraceChangePlan>

@@ -12,6 +12,8 @@
         <File>packages/contracts/schemas.py</File>
       </TestFiles>
       <Command>.venv/bin/python -m pytest tests/test_contracts_schemas.py -v</Command>
+      <Command>PYTHONPATH=. .venv/bin/python -c "import packages.contracts.schemas as s; assert s.EvalPredictResponse(slug='x').model_dump() == {'slug': 'x'}"</Command>
+      <Marker>[M-CONTRACTS][SCHEMAS][IMPORT_OK]</Marker>
       <Scenario id="S-CONTRACTS-1">ScanResponse по умолчанию имеет path retrieval и все поля контракта.</Scenario>
       <Scenario id="S-CONTRACTS-2">EvalPredictResponse.model_dump() равен ровно {"slug": ...} (плоский контракт организатора).</Scenario>
       <Scenario id="S-CONTRACTS-3">ErrorResponse требует error и detail.</Scenario>

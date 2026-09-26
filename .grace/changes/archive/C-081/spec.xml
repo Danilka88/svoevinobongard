@@ -1,0 +1,35 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-081>
+    <Summary>Гигиена артефактов после закрытия C-073…C-080: устранены два реальных пробела evidence,
+      найденных dd_grace-status, и устаревшая сводка roadmap. M-ENOTOURISM и M-CONTRACTS получают
+      лог-маркеры, соответствующие реально эмитируемым событиям (enotourism) и импорт-контракту схем,
+      а команда контрактов теперь адресует сам файл packages/contracts/schemas.py. Сводка AGENTS.md
+      приведена к факту (79 архивных change после C-080). Поведение кода не меняется: правки только
+      в verification и документации.</Summary>
+    <Goals>(1) Устранить два attention-пробела evidence (M-ENOTOURISM, M-CONTRACTS). (2) Привести
+      roadmap AGENTS.md к фактическому числу архивных change. (3) Снять наблюдаемый дрейф артефактов.
+      (4) Не менять поведение распознавания и метрики синтетического гейта.</Goals>
+    <Constraints>Правки только в verification-артефактах и документации — кода не касаемся. Метрики
+      make gate не меняются. Новые исходники не создаются. Коммит не создаётся.</Constraints>
+    <NonGoals>Не менять код сервисов и модулей. Не переписывать историю verification. Не закрывать
+      ложноположительные «blocked» статического сканера (это ограничение evidence-модели CLI,
+      зафиксировано в отчёте). </NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>VD-M7-ENOTOURISM содержит Marker'ы, совпадающие с реальными log_marker вызовами
+        ([M-ENOTOURISM][load][DONE], [build][DONE], [load][CORRUPT]).</Criterion>
+      <Criterion>V-M-CONTRACTS содержит команду, адресующую packages/contracts/schemas.py, и маркер
+        импорта схем.</Criterion>
+      <Criterion>AGENTS.md roadmap: «79 архивных change после C-080».</Criterion>
+      <Criterion>grace lint --path . 0 errors / 0 warnings; grace status не показывает дрейфа
+        (unexplained 0); полный pytest зелёный; метрики make gate не изменились.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-COMMON/>
+      <M-CONTRACTS/>
+      <M-ENOTOURISM/>
+    </AffectedAreas>
+    <VerificationIntent>Правки проверяются grace lint (грамматика и целостность) и grace status
+      (дрейф снят); отсутствие регрессий — полный pytest и неизменные метрики гейта. Изменение
+      документационное, поведение не тестируется как новое.</VerificationIntent>
+  </C-081>
+</GraceChangeSpec>

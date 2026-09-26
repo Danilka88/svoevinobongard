@@ -16,6 +16,9 @@
       </TestFiles>
       <Command>PYTHONPATH=. .venv/bin/python scripts/kb/sync_official_api.py collections --resume --articles 180 --report reports/enotourism_sync.json</Command>
       <Command>curl -s "http://127.0.0.1:8080/v1/enotourism/aristov-anima-millesimato-beloe-bryut"</Command>
+      <Marker>[M-ENOTOURISM][load][DONE]</Marker>
+      <Marker>[M-ENOTOURISM][build][DONE]</Marker>
+      <Marker>[M-ENOTOURISM][load][CORRUPT]</Marker>
       <Scenario id="S-ENO-1">Туры, регионы и статьи закэшированы; повторный запуск с --resume не перекачивает ответы.</Scenario>
       <Scenario id="S-ENO-2">Эндпоинт отдаёт регион с фактом, туры с адресом и ценой и 3–5 статей с автором и датой.</Scenario>
       <Scenario id="S-ENO-3">Релевантность статей помечается: matched при совпадении региона, категории или сорта, latest — для добора свежими материалами.</Scenario>

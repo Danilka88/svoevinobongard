@@ -147,7 +147,7 @@ grace file show scripts/catalog/etl_catalog.py --path .
 
 | Change | Этап | Цель |
 |---|---|---|
-Составлено по фактическому содержимому `.grace/changes/archive/` (72 архивных change после C-073, активных нет). Полный список: C-001…C-073, номер C-045 поглощён изменением C-046.
+Составлено по фактическому содержимому `.grace/changes/archive/` (79 архивных change после C-080, активных нет). Полный список: C-001…C-080, номер C-045 поглощён изменением C-046.
 Все изменения применялись одним циклом: spec → plan (approved) → execute → `grace lint` → target/final-гейты → archive.
 
 | Change | Этап | Цель |
