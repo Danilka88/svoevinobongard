@@ -222,6 +222,7 @@ class AppSettings:
     # качественный режим задаётся .env.example (OBSERVER_ENABLED=1, OBSERVER_ALWAYS=1, модель 26b).
     observer_always: bool = field(default_factory=lambda: _env_bool("OBSERVER_ALWAYS", False))
     llm_matcher_enabled: bool = field(default_factory=lambda: _env_bool("LLM_MATCHER_ENABLED", False))
+    # C-080: матчер остаётся на gemma4:12b-mlx — по замеру лучший acc@1 (26b/e4b хуже).
     llm_matcher_model: str = field(default_factory=lambda: _env("LLM_MATCHER_MODEL", ""))
     llm_matcher_timeout_s: float = field(
         default_factory=lambda: _env_float("LLM_MATCHER_TIMEOUT_S", 30.0))

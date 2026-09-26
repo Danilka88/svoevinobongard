@@ -45,7 +45,8 @@ def _ollama_base() -> str:
 
 
 def ollama_native_chat(prompt: str, model: str, *, max_tokens: int = 256,
-                       timeout_s: float = 60.0, fmt: str = "json", num_gpu: int | None = None) -> str | None:
+                       timeout_s: float = 60.0, fmt: str = "json", num_gpu: int | None = None,
+                       keep_alive: str | None = "30m") -> str | None:
     """Нативный вызов Ollama /api/chat с think=false.
 
     Args:
@@ -58,6 +59,9 @@ def ollama_native_chat(prompt: str, model: str, *, max_tokens: int = 256,
         num_gpu: сколько слоёв отдать GPU; 0 — считать на CPU. Нужно для параллельной работы с
             тяжёлым читателем (26b): маленькая модель на CPU не вытесняет её из VRAM и не платит
             минуты за переключение моделей.
+        keep_alive: как долго держать модель в памяти после ответа (по умолчанию 30 минут). Без
+            этого Ollama выгружает модель через 5 минут, и следующий вызов платит за холодную
+            загрузку (десятки секунд) — на трёхфазном конвейере это выглядит как «таймаут».
 
     Returns:
         Текст ответа или None, если вызов не удался (исключение наружу не поднимается).
@@ -70,6 +74,8 @@ def ollama_native_chat(prompt: str, model: str, *, max_tokens: int = 256,
         options["num_gpu"] = num_gpu
     payload: dict = {"model": model, "messages": [{"role": "user", "content": prompt}],
                      "stream": False, "think": False, "options": options}
+    if keep_alive:
+        payload["keep_alive"] = keep_alive
     # Ollama принимает только "json" или отсутствие format; для свободного текста не ставим поле.
     if fmt == "json":
         payload["format"] = "json"

@@ -109,7 +109,7 @@ def parse_match(text: str | None, candidates: list[dict]) -> dict:
 
 
 def match_candidates(observation: dict, candidates: list[dict], *, router=None,
-                     role: str = "text_model", model: str | None = None, max_tokens: int = 256,
+                     role: str = "text_model", model: str | None = None, max_tokens: int = 96,
                      timeout_s: float | None = None, limit: int = 20) -> dict:
     """Просит LLM выбрать лучшее совпадение среди кандидатов каталога.
 

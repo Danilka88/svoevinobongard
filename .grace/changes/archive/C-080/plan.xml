@@ -1,0 +1,93 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-080>
+    <IntentSummary>Проверить замену матчера (26b/e4b) ради снятия свопа VRAM и выбрать лучший по числам.
+      Замеры показали: 12b лучше (acc@1 0.3636 против 0.2727 и 0.1818), поэтому матчер остаётся на 12b;
+      своп решается keep-alive и отдельными проходами с кэшем. Полезные улучшения сохранены: keep_alive в
+      нативном вызове, короткий max_tokens матчера. Контракт и метрики гейта не меняются.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-080/spec.xml</Value></MustExist>
+      <MustExist><Value>packages/common/llm/matcher.py</Value></MustExist>
+      <MustExist><Value>packages/common/llm/ollama_native.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/llm_match_eval.py</Value></MustExist>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>grep -q "gemma4:12b-mlx" config/providers.yaml &amp;&amp; grep -q "gemma4:12b-mlx" .env.example</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c074_matcher.py tests/test_c077_normalizer.py -q</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-COMMON</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-COMMON/>
+      <M-VLM/>
+      <M-EVAL/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>config/providers.yaml</Path>
+      <Path>.env.example</Path>
+      <Path>packages/common/config.py</Path>
+      <Path>packages/common/llm/matcher.py</Path>
+      <Path>packages/common/llm/ollama_native.py</Path>
+      <Path>scripts/eval/llm_match_eval.py</Path>
+      <Path>reports/llm_match.json</Path>
+      <Path>reports/llm_match.md</Path>
+      <Path>docs/LIMITATIONS.md</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/graph/modules.xml</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Замер трёх матчеров и выбор лучшего (M-EVAL, M-COMMON)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Прогнаны матчеры gemma4:12b-mlx, gemma4:26b-mlx, gemma4:e4b-mlx на 21 фото с
+            нормализацией; результаты зафиксированы: 12b acc@1 0.3636/strict 0.75; 26b 0.2727/0.5;
+            e4b 0.1818/0.25.</Criterion>
+          <Criterion>Итог — матчер gemma4:12b-mlx во всех конфигах; reports/llm_match.{json,md} отражают
+            конфигурацию 12b+нормализация.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c074_matcher.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Улучшения нативного вызова и матчера (M-COMMON)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>ollama_native_chat поддерживает keep_alive (модели не выгружаются через 5 минут);
+            matcher использует короткий max_tokens (96) — ответ в 2-3 раза быстрее без потери качества.</Criterion>
+          <Criterion>Поведение матчера не меняется по смыслу (native-path, отказ при отсутствии совпадения).</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c074_matcher.py tests/test_c077_normalizer.py -q</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Документация, гейты и архив (M-COMMON, M-EVAL)</Title>
+        <DependsOn>T-001, T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>docs/LIMITATIONS.md фиксирует отрицательный результат замены матчера (12b лучший) и
+            роль keep_alive; AGENTS.md roadmap дополняется строкой C-080.</Criterion>
+          <Criterion>grace lint 0/0, полный pytest, make gate без изменений, бандл в archive/C-080 applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-080>
+</GraceChangePlan>

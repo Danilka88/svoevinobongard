@@ -56,8 +56,8 @@ routing:
     - {provider: yandex, model: yandexgpt-pro}
 
   text_model:
-    - {provider: ollama, model: qwen3-vl:2b}
-    - {provider: ollama, model: qwen3-vl:2b}
+    - {provider: ollama, model: gemma4:12b-mlx}
+    - {provider: ollama, model: gemma4:e4b-mlx}
     - {provider: openrouter, model: qwen/qwen3.5-9b}
     - {provider: yandex, model: yandexgpt-pro}
 
