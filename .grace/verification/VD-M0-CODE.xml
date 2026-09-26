@@ -260,6 +260,14 @@
         acc@1 на 11 вычислимых не изменился, acc@5 стабилен. Зарубежные/вне-каталожные (Bosca, DaschBosch,
         Cecchi/Toskana, Бахус) → winery пусто, честный отказ сохранён. Кэш: reports/normalize_cache.json;
         скрипт отдельного прохода — scripts/eval/normalize_readings.py.</Evidence>
+      <Scenario id="S-EVAL-20">C-078: подтверждённые пары «фото → slug» собираются из независимых
+        источников (21 gold matched, flywheel feedback up, консенсус real100) с детерминированным разбиением
+        fit/holdout и защитой от утечки; обучение на малом объёме не запускается, фиксируется готовность.</Scenario>
+      <Evidence note="C078-confirmed-pairs">C-078: data/train-confirmed/pairs_confirmed.jsonl — 15 пар,
+        из них 7 подтверждённых (4 gold_matched, 2 feedback_up, 1 real100_consensus), 6 уникальных slug из
+        2103 (покрытие 0.29%), 5 виноделен; fit 7 / holdout 0; готовность к дообучению (порог 200 пар) — нет.
+        tests/test_c078_pairs.py (6 тестов) — разбиение, отсутствие пересечения fit/holdout, только vote=up.
+        Отчёты: reports/confirmed_pairs.{json,md}.</Evidence>
     </V-M-EVAL>
 
     <V-M-GATEWAY>

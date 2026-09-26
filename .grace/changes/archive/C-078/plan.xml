@@ -1,0 +1,80 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-078>
+    <IntentSummary>Собрать подтверждённые пары «фото → slug» из независимых источников (21 gold, 100 real,
+      flywheel-фидбек) в датасет с разбиением fit/holdout и защитой от утечки, воспроизводимым скриптом и
+      отчётом покрытия. На малом объёме обучение не запускаем — фиксируем готовность. Онлайн-поведение и
+      метрики гейта не меняются; коммит не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-078/spec.xml</Value></MustExist>
+      <MustExist><Value>reports/field21_gold.json</Value></MustExist>
+      <MustExist><Value>data/samples/real100/manifest.tsv</Value></MustExist>
+      <MustExist><Value>data/flywheel/feedback.jsonl</Value></MustExist>
+      <MustExist><Value>data/catalog/catalog.jsonl</Value></MustExist>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-ACTIVE-LEARNING</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>test -f scripts/train/build_confirmed_pairs.py &amp;&amp; test -f tests/test_c078_pairs.py</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c078_pairs.py -q</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustVerify><Module>M-ACTIVE-LEARNING</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-ACTIVE-LEARNING</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-EVAL/>
+      <M-ACTIVE-LEARNING/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>scripts/train/build_confirmed_pairs.py</Path>
+      <Path>tests/test_c078_pairs.py</Path>
+      <Path>data/train-confirmed/pairs_confirmed.jsonl</Path>
+      <Path>reports/confirmed_pairs.json</Path>
+      <Path>reports/confirmed_pairs.md</Path>
+      <Path>.grace/graph/modules.xml</Path>
+      <Path>.grace/verification/VD-M0-CODE.xml</Path>
+      <Path>docs/LIMITATIONS.md</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Сборка подтверждённых пар и разбиение (M-EVAL, M-ACTIVE-LEARNING)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>build_confirmed_pairs.py собирает пары из field21_gold (matched/ambiguous),
+            real100 (согласие источников) и feedback.jsonl (vote=up), с полями slug, file/sha, source,
+            winery, split.</Criterion>
+          <Criterion>Разбиение fit/holdout детерминированное (по хэшу фото), без пересечения; тестовые
+            файлы конкурса в fit не попадают.</Criterion>
+          <Criterion>Чистые функции (build_pairs, assign_split) тестируемы без сети.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c078_pairs.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Реальный сбор, отчёт покрытия и финальные гейты (M-EVAL)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Реально собран data/train-confirmed/pairs_confirmed.jsonl; отчёт
+            reports/confirmed_pairs.{json,md} с числом пар, источниками, покрытием каталога, долей holdout
+            и честным выводом о готовности (малый объём — не запускаем обучение).</Criterion>
+          <Criterion>grace lint 0/0, полный pytest, make gate без изменений, бандл в archive/C-078 applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/train/build_confirmed_pairs.py --out data/train-confirmed/pairs_confirmed.jsonl --report reports/confirmed_pairs.json --md reports/confirmed_pairs.md</Command>
+          <Command>grace lint --path . &amp;&amp; PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-078>
+</GraceChangePlan>

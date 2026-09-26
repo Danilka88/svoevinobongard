@@ -1,0 +1,36 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-078>
+    <Summary>Обучение на подтверждённых парах: сбор подтверждённых «фото → slug» пар из независимых
+      источников (21 проверенное полевое фото reports/field21_gold.json, 100 реальных фото с консенсусной
+      разметкой, обратная связь flywheel data/flywheel/feedback.jsonl) в обучающий датасет с защитой от
+      утечки (разбиение fit/holdout по фото, а не по метрикам оценки). Строится воспроизводимый скрипт
+      сборки пар, отчёт о покрытии и отложенный замер «до/после» на holdout; на малом числе пар обучение
+      не запускается, а фиксируется как готовность (честный порог).</Summary>
+    <Goals>(1) Собрать подтверждённые пары из независимых источников в единый датасет с провенансом.
+      (2) Защитить от утечки: тестовые наборы конкурса не попадают в обучение (fit/holdout по фото).
+      (3) Дать воспроизводимый пайплайн и отчёт покрытия. (4) Не менять поведение онлайн-пути и метрики
+      синтетического гейта.</Goals>
+    <Constraints>Данные конкурса (eval/private) не попадают в обучение; 21 gold и 100 real используются
+      только как подтверждённые пары там, где метка однозначна, с разбиением fit/holdout. Метрики make gate
+      не меняются. Новые исходники получают MODULE_CONTRACT/MODULE_MAP. Коммит не создаётся.</Constraints>
+    <NonGoals>Не запускать фактическое обучение на 7 парах (это переобучение). Не менять индекс/галерею.
+      Не строить UI. Не решать C-079 (жёсткие словари).</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>scripts/train/build_confirmed_pairs.py: собирает подтверждённые пары из
+        reports/field21_gold.json (matched), data/samples/real100 с консенсусом и data/flywheel/feedback.jsonl
+        (vote=up), выводит data/train-confirmed/pairs_confirmed.jsonl с разбиением split=fit|holdout.</Criterion>
+      <Criterion>Защита от утечки: slug/фото, помеченные как тест конкурса, в fit не попадают; доля
+        holdout фиксируется и не пересекается с fit.</Criterion>
+      <Criterion>Отчёт reports/confirmed_pairs.{json,md}: сколько пар, источников, winery/сорта, покрытие
+        каталога, доля holdout; честный вывод про малый объём и готовность к дообучению.</Criterion>
+      <Criterion>Тест tests/test_c078_pairs.py проверяет сборку, разбиение и отсутствие утечки на
+        синтетических данных; pytest зелёный, grace lint 0/0, метрики make gate не изменились.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-EVAL/>
+      <M-ACTIVE-LEARNING/>
+    </AffectedAreas>
+    <VerificationIntent>Сборка пар и разбиение проверяются машинно (чистые функции, без сети); отчёт
+      строится из реальных файлов; отсутствие регрессий — pytest, lint 0/0, неизменные метрики гейта.</VerificationIntent>
+  </C-078>
+</GraceChangeSpec>
