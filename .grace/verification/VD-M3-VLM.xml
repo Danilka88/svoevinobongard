@@ -97,6 +97,14 @@
         (scripts/eval/llm_match_eval.py, 21 фото): чтение title_sim 0.8278 (лучше всех движков C-073),
         acc@1 0.3636, acc@5 0.5455, strict@1 0.75, not_found 0.7619, p50/p95 54321.9/129760.5 мс.
         Узкое место — попадание верного вина в пул кандидатов; вывод зафиксирован для C-075/C-076.</Evidence>
+      <Scenario id="S-VLM-12">C-077: эндпоинт POST /normalize-reading приводит чтение к каталожной форме
+        (винодельня/бренд/название/параметры), опираясь на словарь каталога; при недоступной LLM возвращает
+        фолбэк (source=fallback), исключение наружу не поднимается.</Scenario>
+      <Evidence note="C077-normalize-endpoint">C-077: POST /normalize-reading в M-VLM вызывает
+        normalizer.normalize_reading с read-only каталогом (ленивый кэш). На живом примере «Château Tamagne /
+        SEMI-SWEET» вернул winery=Кубань-Вино, brand=Шато Тамань, wine_name=Шато Тамань, sweetness=полусладкое.
+        Открытие: бренд «Шато Тамань» в каталоге — часть названия вина (45 позиций), а производитель —
+        «Кубань-Вино»; нормализатор разводит winery и brand.</Evidence>
     </V-M-VLM>
 
     <V-M-MATCHER>

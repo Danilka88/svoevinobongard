@@ -225,6 +225,13 @@ class AppSettings:
     llm_matcher_model: str = field(default_factory=lambda: _env("LLM_MATCHER_MODEL", ""))
     llm_matcher_timeout_s: float = field(
         default_factory=lambda: _env_float("LLM_MATCHER_TIMEOUT_S", 30.0))
+    # C-077: LLM-нормализатор чтения под каталог. Маленькая модель приводит винодельню и название к
+    # каталожной форме, опираясь на список виноделен/регионов/enum из каталога. Code-дефолт выключен
+    # (тесты и синтетический гейт детерминированы); качественный режим задаётся .env.example.
+    normalizer_enabled: bool = field(default_factory=lambda: _env_bool("NORMALIZER_ENABLED", False))
+    normalizer_model: str = field(default_factory=lambda: _env("NORMALIZER_MODEL", "gemma4:e4b-mlx"))
+    normalizer_timeout_s: float = field(
+        default_factory=lambda: _env_float("NORMALIZER_TIMEOUT_S", 30.0))
     # C-071: бюджет цифрового сомелье. Вызов text-модели ограничен по времени, а при
     # таймауте/ошибке/пустом ответе фича отдаёт детерминированный подбор по каталогу.
     # Бюджет мал намеренно: локальная thinking-модель медленная, а retention-фича важнее

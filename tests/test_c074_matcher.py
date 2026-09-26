@@ -130,11 +130,12 @@ def test_match_candidates_native_path_uses_ollama(monkeypatch) -> None:
     """Локальное имя модели (без слэша) идёт нативным путём Ollama; ответ связывается с моделью."""
     captured: dict = {}
 
-    def fake_native(prompt, model, *, max_tokens, timeout_s):  # noqa: ANN001
-        captured.update(prompt=prompt, model=model, max_tokens=max_tokens, timeout_s=timeout_s)
+    def fake_native(*args, **kwargs):  # noqa: ANN002, ANN003
+        captured.update(kwargs, prompt=args[0] if args else kwargs.get("prompt"),
+                        model=args[1] if len(args) > 1 else kwargs.get("model"))
         return '{"slug": "skalistyy-bereg-shepot-czvetov", "p_correct": 0.7, "in_catalog": true}'
 
-    monkeypatch.setattr("packages.common.llm.matcher._native_ollama_chat", fake_native)
+    monkeypatch.setattr("packages.common.llm.matcher.ollama_native_chat", fake_native)
     outcome = match_candidates(OBSERVATION, CANDIDATES, model="gemma4:12b-mlx")
     assert captured["model"] == "gemma4:12b-mlx" and "Кандидаты каталога" in captured["prompt"]
     assert outcome["slug"] == "skalistyy-bereg-shepot-czvetov"

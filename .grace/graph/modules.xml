@@ -29,6 +29,7 @@
       <Test>tests/test_c065_near_dup.py</Test>
       <Test>tests/test_c067_organizer_contract.py</Test>
       <Test>tests/test_c074_matcher.py</Test>
+      <Test>tests/test_c077_normalizer.py</Test>
       <Test>tests/test_flywheel.py</Test>
       <Test>tests/test_gateway_media.py</Test>
       <Test>tests/test_recommend.py</Test>
@@ -123,8 +124,9 @@
       <Test>tests/test_c064_budget.py</Test>
       <Test>tests/test_c073_observer.py</Test>
       <Test>tests/test_c074_matcher.py</Test>
+      <Test>tests/test_c077_normalizer.py</Test>
       <Interface>POST /extract (image) → поля этикетки; POST /observe (image) → наблюдение; POST /match
-        (observation + candidates) → выбранный slug и вероятность; вызов только через router.chat(role=vision_model)</Interface>
+        (observation + candidates) → выбранный slug и вероятность; POST /normalize-reading → каталожная форма (C-077); вызов только через router.chat(role=vision_model)</Interface>
       <Depends>
         <M-COMMON/>
       </Depends>
@@ -312,9 +314,11 @@
       <Test>tests/test_preprocessing.py</Test>
       <Test>tests/test_c073_observer.py</Test>
       <Test>tests/test_c074_matcher.py</Test>
+      <Test>tests/test_c077_normalizer.py</Test>
       <Exports>LLMRouter, get_router, build_adapter, OpenAICompatAdapter, ChatResult, EmbedResult,
         CircuitBreaker, CostVelocityBreaker, RouterConfig, load_router_config, CatalogStore, load_catalog,
-        match_candidates, MATCHER_INSTRUCTION, parse_match, build_matcher_prompt</Exports>
+        match_candidates, MATCHER_INSTRUCTION, parse_match, build_matcher_prompt,
+        normalize_reading, build_catalog_vocab, NORMALIZER_WINERY_INSTRUCTION</Exports>
       <Depends>
         <M-CONTRACTS/>
       </Depends>
@@ -368,6 +372,7 @@
       <Test>tests/test_c072_field21.py</Test>
       <Test>tests/test_c073_vision_bench.py</Test>
       <Test>tests/test_c074_matcher.py</Test>
+      <Test>tests/test_c077_normalizer.py</Test>
       <Exports>post_image, extract_slug, extract_top5, load_ground_truth, compute_metrics, percentile,
         field_augment, random_background, synthetic pairs CLI (scripts/train/synthetic_pairs.py),
         head training CLI (scripts/train/train_head.py, модуль головы живёт в M-RETRIEVAL),
@@ -376,7 +381,8 @@
         field21 gold mapping + leak invariant (scripts/eval/field21_gold.py, C-072),
         field21 A/B/C stand (scripts/eval/field21_abc.py, C-072),
         vision reader bench (scripts/eval/vision_bench.py, C-073),
-        LLM-path stand: observation + matcher (scripts/eval/llm_match_eval.py, C-074)</Exports>
+        LLM-path stand: observation + matcher (scripts/eval/llm_match_eval.py, C-074),
+        LLM-path with normalization (scripts/eval/llm_match_eval.py --normalize, C-077)</Exports>
       <Verification>V-M-EVAL</Verification>
       <Note>C-074: scripts/eval/llm_match_eval.py измеряет LLM-путь (наблюдение сильной моделью +
         LLM-матчер) на 21 проверенном и подвыборке 100 реальных фото: acc@1/@5, not_found, чтение

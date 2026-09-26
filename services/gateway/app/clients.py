@@ -140,6 +140,29 @@ class ServiceClients:
         except ValueError:
             return None
 
+    async def normalize_reading(self, observation: dict,
+                                timeout: float | None = None) -> dict | None:
+        """Приводит чтение этикетки к каталожной форме (POST /normalize-reading, C-077).
+
+        Ошибка связи или не-200 возвращает None: pipeline сохраняет исходное наблюдение.
+        """
+        try:
+            response = await self.client.post(
+                f"{self.vlm_url}/normalize-reading",
+                json={"observation": observation},
+                timeout=timeout or settings.normalizer_timeout_s,
+            )
+        except httpx.HTTPError as error:
+            log_marker("M-GATEWAY", "normalize_reading", "CONN_ERROR", error=type(error).__name__)
+            return None
+        if response.status_code != 200:
+            log_marker("M-GATEWAY", "normalize_reading", "BAD_STATUS", status=response.status_code)
+            return None
+        try:
+            return response.json()
+        except ValueError:
+            return None
+
     async def extract(self, data: bytes, filename: str = "query.png",
                      timeout: float | None = None) -> dict | None:
         """Извлекает поля этикетки через VLM (POST /extract).

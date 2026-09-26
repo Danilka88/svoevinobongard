@@ -512,6 +512,29 @@ async def run_scan(
         else:
             diagnostics.notes.append("observer unavailable; Tier-1 kept")
 
+    # C-077: LLM-нормализатор приводит чтение к каталожной форме (винодельня/название/параметры)
+    # на каждом запросе, опираясь на список виноделен и перечисления каталога. При недоступной LLM
+    # возвращается фолбэк (транслит), поэтому путь не обрывается; нормализатор не выбирает товар.
+    if settings.normalizer_enabled and observation:
+        normalized = await active_clients.normalize_reading(observation)
+        if normalized and normalized.get("source") != "degraded":
+            merged_observation = dict(observation)
+            for key in ("winery", "brand", "wine_name", "sweetness", "color", "wine_type", "region"):
+                value = normalized.get(key)
+                if value:
+                    merged_observation[key] = value
+            if normalized.get("brand"):
+                merged_observation["raw_text"] = (str(observation.get("raw_text") or "") + " " +
+                                                  str(normalized.get("brand"))).strip()
+            observation = merged_observation
+            observer_hits = observer_candidates(observation, store.slug_to_record(),
+                                                limit=settings.observer_top_k)
+            diagnostics.notes.append(
+                f"normalized reading: winery={normalized.get('winery') or '—'} "
+                f"brand={normalized.get('brand') or '—'} ({normalized.get('source')})")
+        else:
+            diagnostics.notes.append("normalizer unavailable; raw observation kept")
+
     # C-074/C-075: LLM-матчер. Пул кандидатов — находки наблюдения по всему каталогу ПЛЮС визуальный
     # top-N (C-075: верное вино часто есть в визуальном топе, но не доходит до текстового поиска).
     # LLM выбирает из пула лучшее совпадение или честно отказывается; slug вне списка не принимается.

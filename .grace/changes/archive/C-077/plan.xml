@@ -1,0 +1,154 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-077>
+    <IntentSummary>Добавить LLM-нормализатор чтения под каталог: маленькая gemma4:e4b (нативный Ollama) двумя
+      текстовыми запросами приводит прочитанные винодельню и название к каталожной форме, опираясь на
+      динамические списки из каталога (135 виноделен, 9 регионов, enum сладости/цвета/типа). Устраняет узкое
+      место C-075 (расхождение чтения и имени каталога); новые бренды подхватываются без словаря. Выход не
+      доверяется слепо (матчер выбирает slug из пула), при недоступной LLM — фолбэк на транслит. Применение на
+      каждом запросе, кэш в памяти. Замер на 21 и 100 фото, честное сравнение с C-075. Онлайн-контракт и
+      метрики гейта не меняются; коммит не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-077/spec.xml</Value></MustExist>
+      <MustExist><Value>packages/common/llm/matcher.py</Value></MustExist>
+      <MustExist><Value>packages/common/text_norm.py</Value></MustExist>
+      <MustExist><Value>services/vlm/app/main.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/clients.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/pipeline.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/llm_match_eval.py</Value></MustExist>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>test -f packages/common/llm/ollama_native.py &amp;&amp; test -f packages/common/llm/normalizer.py &amp;&amp; test -f tests/test_c077_normalizer.py</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c077_normalizer.py -q</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-COMMON</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-VLM</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-COMMON/>
+      <M-GATEWAY/>
+      <M-VLM/>
+      <M-EVAL/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/llm/ollama_native.py</Path>
+      <Path>packages/common/llm/normalizer.py</Path>
+      <Path>packages/common/llm/matcher.py</Path>
+      <Path>packages/common/config.py</Path>
+      <Path>services/vlm/app/main.py</Path>
+      <Path>services/gateway/app/clients.py</Path>
+      <Path>services/gateway/app/pipeline.py</Path>
+      <Path>scripts/eval/llm_match_eval.py</Path>
+      <Path>tests/test_c077_normalizer.py</Path>
+      <Path>reports/llm_match.json</Path>
+      <Path>reports/llm_match.md</Path>
+      <Path>.grace/graph/modules.xml</Path>
+      <Path>.grace/verification/VD-M0-CODE.xml</Path>
+      <Path>.grace/verification/VD-M3-VLM.xml</Path>
+      <Path>.grace/verification/VD-SHARED.xml</Path>
+      <Path>.env.example</Path>
+      <Path>docs/LIMITATIONS.md</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Общий нативный вызов Ollama (M-COMMON)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>packages/common/llm/ollama_native.py: функция ollama_native_chat(prompt, model, *,
+            max_tokens, timeout_s, fmt="json") с think=false; возвращает текст или None; ошибки логируются,
+            исключение наружу не поднимается.</Criterion>
+          <Criterion>matcher.py использует общий модуль вместо собственного _native_ollama_chat; поведение
+            матчера не меняется (тесты C-074 зелёные).</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c074_matcher.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>LLM-нормализатор и словарь каталога (M-COMMON)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>normalizer.py: build_catalog_vocab(catalog) → {'wineries': [...], 'regions': [...],
+            'sweetness': [...], 'colors': [...], 'types': [...]} из каталога; NORMALIZER_WINERY_INSTRUCTION
+            и NORMALIZER_FIELDS_INSTRUCTION (текстовые); normalize_reading(observation, catalog, *,
+            router/caller, model) двумя вызовами; winery и brand возвращаются отдельно.</Criterion>
+          <Criterion>Разбор текстового ответа терпимый (строка → значение, без строгого JSON); кэш в памяти
+            по ключу сырого чтения; при недоступной LLM — source=degraded и фолбэк на text_norm (транслит/
+            омоглифы) без исключения.</Criterion>
+          <Criterion>Нормализатор не выдумывает slug и не принимает решений о товаре: возвращает только
+            стандартизированные поля наблюдения.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c077_normalizer.py -q</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Интеграция: эндпоинт, клиент, pipeline (M-VLM, M-GATEWAY)</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>services/vlm/app/main.py: POST /normalize-reading (JSON observation → нормализованное
+            наблюдение); сервис не импортирует gateway.</Criterion>
+          <Criterion>clients.py: async normalize_reading(observation); при недоступном сервисе None.</Criterion>
+          <Criterion>pipeline: при NORMALIZER_ENABLED на каждом запросе после наблюдения выполняется
+            нормализация; результат уходит в пул и матчер; в ответ/трейс добавляется normalization; при
+            выключенном флаге и при недоступной LLM поведение прежнее.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q -k "normaliz or scan or matcher"</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Повторный замер LLM-пути с нормализацией (M-EVAL)</Title>
+        <DependsOn>T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>llm_match_eval получает --normalize (и --no-normalize) и отправляет нормализованное
+            наблюдение в пул; прогон на 21 и подвыборке 100 реальных фото.</Criterion>
+          <Criterion>reports/llm_match.{json,md} содержат acc@1/@5, strict@1, not_found, чтение и latency и
+            сравнение с C-075 и baseline C-072; закрытие кейса shato-taman-polusladkoe проверяется явно.</Criterion>
+          <Criterion>Выводы не подгоняются: прирост/отсутствие прироста и остаточные промахи фиксируются.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/llm_match_eval.py --normalize --out reports/llm_match.json --md reports/llm_match.md</Command>
+        </Verification>
+      </T-004>
+
+      <T-005>
+        <Title>Тесты, граф, verification, финальные гейты и архив (M-COMMON, M-GATEWAY, M-VLM, M-EVAL)</Title>
+        <DependsOn>T-001, T-002, T-003, T-004</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>tests/test_c077_normalizer.py: сборка словаря из каталога, два промпта, разбор текста,
+            winery+brand, кэш, фолбэк при недоступной LLM, нормализация Château Tamagne, отсутствие решения
+            о slug у нормализатора.</Criterion>
+          <Criterion>graph/modules.xml и verification (V-M-COMMON, V-M-VLM, V-M-EVAL) получают заметки/
+            сценарии C-077 с числами; AGENTS.md roadmap дополняется строкой C-077.</Criterion>
+          <Criterion>grace lint 0/0, полный pytest зелёный, make gate без изменений, бандл в archive/C-077
+            со статусом applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-005>
+    </ImplementationPlan>
+  </C-077>
+</GraceChangePlan>

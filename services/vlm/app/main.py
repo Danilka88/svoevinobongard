@@ -1,8 +1,9 @@
 # START_MODULE_CONTRACT
-# PURPOSE: FastAPI-сервис VLM: POST /extract собирает letterbox-базу и P&S-тайлы полного кадра и отдаёт поля
-# SCOPE: app, health, extract_endpoint, observe_endpoint, match_endpoint
-# DEPENDS: fastapi, packages.common.config, packages.common.images, packages.common.logging,
-#          packages.common.preprocess, packages.common.llm.matcher, services.vlm.app.extract
+# PURPOSE: FastAPI-сервис VLM: /extract (поля), /observe (наблюдение), /match (матчер), /normalize-reading (C-077)
+# SCOPE: app, health, extract_endpoint, observe_endpoint, match_endpoint, normalize_reading_endpoint
+# DEPENDS: fastapi, packages.common.catalog, packages.common.config, packages.common.images,
+#          packages.common.logging, packages.common.preprocess, packages.common.llm.matcher,
+#          packages.common.llm.normalizer, services.vlm.app.extract
 # LINKS: M-VLM, M-COMMON
 # ROLE: RUNTIME
 # MAP_MODE: EXPORTS
@@ -13,6 +14,7 @@
 # extract_endpoint - POST /extract (multipart image) → поля этикетки с полного кадра
 # observe_endpoint - POST /observe (multipart image) → наблюдение этикетки свободным текстом
 # match_endpoint - POST /match (JSON observation+candidates) → выбор slug LLM-матчером (C-074)
+# normalize_reading_endpoint - POST /normalize-reading (JSON observation) → каталожная форма чтения (C-077)
 # END_MODULE_MAP
 """Сервис VLM для полного кадра.
 
@@ -27,16 +29,19 @@ import time
 from fastapi import Body, FastAPI, File, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 
+from packages.common.catalog import load_catalog
 from packages.common.config import settings
 from packages.common.images import load_bgr
 from packages.common.llm.matcher import match_candidates
+from packages.common.llm.normalizer import normalize_reading
 from packages.common.logging import log_marker
 from packages.common.preprocess import PreprocessConfig, build_vlm_inputs
 from services.vlm.app.extract import extract_fields, observe_label
 
 app = FastAPI(title="Svoe Vino Scanner — VLM", version="0.2.0")
 
-__all__ = ["app", "health", "extract_endpoint", "observe_endpoint", "match_endpoint"]
+__all__ = ["app", "health", "extract_endpoint", "observe_endpoint", "match_endpoint",
+           "normalize_reading_endpoint"]
 
 
 @app.get("/health")
@@ -54,7 +59,23 @@ def health() -> dict:
         "max_tokens": settings.vlm_max_tokens,
         "timeout_s": settings.vlm_timeout_s,
         "fallback_enabled": settings.vlm_fallback_enabled,
+        "normalizer_enabled": settings.normalizer_enabled,
+        "normalizer_model": settings.normalizer_model,
     }
+
+
+_catalog_cache: dict = {}
+
+
+def _catalog_records() -> dict:
+    """Read-only записи каталога для словаря нормализатора (ленивый кэш). C-077."""
+    if "records" not in _catalog_cache:
+        try:
+            _catalog_cache["records"] = load_catalog(settings.catalog_jsonl)
+        except Exception as error:  # noqa: BLE001 - без каталога нормализатор работает на фолбэке
+            log_marker("M-VLM", "normalize_reading", "CATALOG_FAILED", error=type(error).__name__)
+            _catalog_cache["records"] = {}
+    return _catalog_cache["records"]
 
 
 @app.post("/observe")
@@ -95,6 +116,25 @@ async def match_endpoint(payload: dict = Body(...)) -> dict:
     result["latency_ms"] = round((time.perf_counter() - started) * 1000.0, 1)
     log_marker("M-VLM", "match", "DONE", slug=str(result.get("slug") or "none"),
                candidates=len(candidates), source=result.get("source"))
+    return result
+
+
+@app.post("/normalize-reading")
+async def normalize_reading_endpoint(payload: dict = Body(...)) -> dict:
+    """Приводит чтение этикетки к каталожной форме (C-077).
+
+    Тело: {"observation": {...}}. Каталог читается локально как словарь виноделен/регионов/enum.
+    При недоступной LLM возвращается фолбэк (source=fallback), исключение наружу не поднимается.
+    """
+    observation = payload.get("observation") or {}
+    started = time.perf_counter()
+    catalog = _catalog_records()
+    result = await run_in_threadpool(normalize_reading, observation, catalog,
+                                     model=settings.normalizer_model,
+                                     timeout_s=settings.normalizer_timeout_s)
+    result["latency_ms"] = round((time.perf_counter() - started) * 1000.0, 1)
+    log_marker("M-VLM", "normalize_reading", "DONE", winery=str(result.get("winery") or "")[:40],
+               source=result.get("source"), latency_ms=result["latency_ms"])
     return result
 
 

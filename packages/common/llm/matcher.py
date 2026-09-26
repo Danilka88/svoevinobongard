@@ -12,7 +12,6 @@
 # build_matcher_prompt - полный промпт: наблюдение + кандидаты + требование строгого JSON
 # parse_match - разбор ответа матчера по схеме с проверкой, что slug взят из списка
 # match_candidates - вызов LLM-матчера с деградацией: slug None вместо выдумки
-# _native_ollama_chat - нативный вызов Ollama /api/chat с think=false и format=json (обход reasoning)
 # END_MODULE_MAP
 """LLM-сопоставление наблюдения с каталогом (C-074).
 
@@ -25,11 +24,12 @@ from __future__ import annotations
 
 import json
 
+from packages.common.llm.ollama_native import ollama_native_chat
 from packages.common.llm.router import get_router
 from packages.common.llm.structured import parse_structured
 
 __all__ = ["MATCHER_INSTRUCTION", "build_candidates_text", "build_matcher_prompt", "match_candidates",
-           "parse_match", "_native_ollama_chat"]
+           "parse_match"]
 
 MATCHER_INSTRUCTION = (
     "Ты сопоставляешь этикетку вина, прочитанную с фото, со списком кандидатов каталога. "
@@ -108,37 +108,6 @@ def parse_match(text: str | None, candidates: list[dict]) -> dict:
             "reason": _clean(data.get("reason")), "source": "llm" if parsed.get("valid") else "degraded"}
 
 
-def _native_ollama_chat(prompt: str, model: str, *, max_tokens: int, timeout_s: float) -> str | None:
-    """Нативный вызов Ollama /api/chat с think=false и format=json.
-
-    OpenAI-совместимый путь не даёт отключить рассуждения: reasoning-модели (gemma4) тратят весь
-    бюджет на внутренний монолог и возвращают пустой content при finish_reason=length. Нативный API
-    принимает think=false и format=json, поэтому используется как основной путь для локального Ollama.
-    Возвращает текст ответа или None, если вызов не удался.
-    """
-    import urllib.request
-
-    from packages.common.config import settings
-
-    base = str(getattr(settings, "ollama_base_url", "") or "http://127.0.0.1:11434").rstrip("/")
-    if base.endswith("/v1"):
-        base = base[:-3]
-    payload = {"model": model, "messages": [{"role": "user", "content": prompt}], "stream": False,
-               "think": False, "format": "json",
-               "options": {"num_predict": max_tokens, "temperature": 0.0}}
-    try:
-        request = urllib.request.Request(f"{base}/api/chat", data=json.dumps(payload).encode(),
-                                         headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(request, timeout=timeout_s) as response:  # noqa: S310
-            data = json.loads(response.read().decode())
-    except Exception as error:  # noqa: BLE001 - нативный путь не должен ронять матчер
-        from packages.common.logging import log_marker
-
-        log_marker("M-COMMON", "matcher_native", "FAILED", error=type(error).__name__)
-        return None
-    return str((data.get("message") or {}).get("content") or "").strip()
-
-
 def match_candidates(observation: dict, candidates: list[dict], *, router=None,
                      role: str = "text_model", model: str | None = None, max_tokens: int = 256,
                      timeout_s: float | None = None, limit: int = 20) -> dict:
@@ -165,8 +134,8 @@ def match_candidates(observation: dict, candidates: list[dict], *, router=None,
     prompt = build_matcher_prompt(observation, candidates, limit=limit)
     # Локальное Ollama-имя (без слэша провайдера) идёт нативным путём: только он отключает reasoning.
     if router is None and model and "/" not in str(model):
-        text = _native_ollama_chat(prompt, str(model), max_tokens=max_tokens,
-                                   timeout_s=timeout_s or 60.0)
+        text = ollama_native_chat(prompt, str(model), max_tokens=max_tokens,
+                                  timeout_s=timeout_s or 60.0, fmt="json")
         if text is None:
             return {"slug": None, "p_correct": None, "in_catalog": False,
                     "reason": "native ollama unavailable", "source": "degraded"}

@@ -18,6 +18,8 @@
 # BASE - корень репозитория для путей по умолчанию
 # POOL_LIMIT - сколько кандидатов давать матчеру и держать в top-5
 # DEFAULT_VISUAL_K - сколько визуальных кандидатов retrieval добавлять в пул (C-075)
+# DEFAULT_NORMALIZER_MODEL - модель LLM-нормализатора чтения (C-077)
+# DEFAULT_NORMALIZER_TIMEOUT_S - таймаут нормализатора
 # DEFAULT_FIELD_DIR - 21 проверенное полевое фото владельца
 # DEFAULT_TIMING_DIR - подвыборка 100 реальных фото для замера времени
 # DEFAULT_TIMING_LIMIT - сколько фото времени брать по умолчанию
@@ -58,6 +60,7 @@ from pathlib import Path
 
 from packages.common.catalog import load_catalog
 from packages.common.llm.matcher import match_candidates
+from packages.common.llm.normalizer import normalize_reading
 from packages.common.observer import is_informative, observation_fields, parse_observation
 from packages.common.text_rank import text_index, text_search
 from scripts.eval.field21_abc import build_result, compute_metrics, normalize_image, retrieval_top
@@ -79,9 +82,12 @@ DEFAULT_READER_TIMEOUT_S = 180.0
 DEFAULT_MATCHER_TIMEOUT_S = 60.0
 POOL_LIMIT = 20
 DEFAULT_VISUAL_K = 10
+DEFAULT_NORMALIZER_MODEL = "gemma4:e4b-mlx"
+DEFAULT_NORMALIZER_TIMEOUT_S = 30.0
 
 __all__ = ["DEFAULT_CATALOG", "DEFAULT_FIELD_DIR", "DEFAULT_GOLD", "DEFAULT_MATCHER_MODEL",
-           "DEFAULT_MATCHER_TIMEOUT_S", "DEFAULT_MD", "DEFAULT_MODEL", "DEFAULT_OUT",
+           "DEFAULT_MATCHER_TIMEOUT_S", "DEFAULT_MD", "DEFAULT_MODEL", "DEFAULT_NORMALIZER_MODEL",
+           "DEFAULT_NORMALIZER_TIMEOUT_S", "DEFAULT_OUT",
            "DEFAULT_READER_TIMEOUT_S", "DEFAULT_READER_TOKENS", "DEFAULT_TIMING_DIR",
            "DEFAULT_TIMING_LIMIT", "DEFAULT_VISUAL_K", "build_candidate_pool", "build_markdown",
            "decide", "main", "observe_reading", "render_console", "run_quality", "run_timing",
@@ -133,9 +139,27 @@ def build_candidate_pool(text_hits: list[tuple[str, float]] | list[str],
 
 def decide(reading_text: str, catalog: dict, index: dict, records: dict, *, router=None,
            matcher_model: str | None = None, matcher_timeout_s: float = DEFAULT_MATCHER_TIMEOUT_S,
-           pool_limit: int = POOL_LIMIT, visual_slugs: list[str] | None = None) -> dict:
-    """Наблюдение + (текстовый и визуальный) пул кандидатов → LLM-матчер → slug или честный отказ."""
+           pool_limit: int = POOL_LIMIT, visual_slugs: list[str] | None = None,
+           normalize: bool = False, normalizer_model: str | None = None,
+           normalizer_timeout_s: float = DEFAULT_NORMALIZER_TIMEOUT_S,
+           normalize_cache: dict | None = None) -> dict:
+    """Наблюдение (+ нормализация C-077) + пул кандидатов → LLM-матчер → slug или честный отказ."""
     observation = parse_observation(reading_text)
+    normalized: dict = {}
+    if normalize and observation:
+        # C-077: при наличии кэша берём готовую нормализацию (отдельный проход), иначе вызываем LLM.
+        cached = (normalize_cache or {}).get(str(reading_text or "").strip())
+        normalized = cached if cached is not None else normalize_reading(
+            observation, catalog, model=normalizer_model, timeout_s=normalizer_timeout_s)
+        if normalized.get("source") == "llm":
+            merged = dict(observation)
+            for key in ("winery", "brand", "wine_name", "sweetness", "color", "wine_type", "region"):
+                if normalized.get(key):
+                    merged[key] = normalized[key]
+            if normalized.get("brand"):
+                merged["raw_text"] = (str(observation.get("raw_text") or "") + " " +
+                                      str(normalized.get("brand"))).strip()
+            observation = merged
     fields = observation_fields(observation)
     hits: list[tuple[str, float]] = []
     if is_informative(observation) and fields:
@@ -157,9 +181,9 @@ def decide(reading_text: str, catalog: dict, index: dict, records: dict, *, rout
         "source": "degraded"}
     winner = matched.get("slug")
     top5 = ([winner] if winner else []) + [slug for slug in pool if slug != winner]
-    return {"observation": observation, "fields": fields, "candidates": pool, "match": matched,
-            "top1": winner or None, "top5": top5[:5], "not_found": winner is None,
-            "source": matched.get("source"),
+    return {"observation": observation, "normalized": normalized, "fields": fields,
+            "candidates": pool, "match": matched, "top1": winner or None, "top5": top5[:5],
+            "not_found": winner is None, "source": matched.get("source"),
             "text_candidates": [slug for slug, _ in hits],
             "visual_candidates": list(visual_slugs or [])}
 
@@ -184,8 +208,15 @@ def visual_candidates(path: str | Path, *, k: int = DEFAULT_VISUAL_K) -> list[st
 def run_quality(gold: dict, catalog: dict, field_dir: Path, *, model: str, tokens: int,
                 timeout_s: float, matcher_model: str | None, matcher_timeout_s: float,
                 router=None, limit: int | None = None, visual_k: int = DEFAULT_VISUAL_K,
+                normalize: bool = False, normalizer_model: str | None = None,
+                normalizer_timeout_s: float = DEFAULT_NORMALIZER_TIMEOUT_S,
+                normalize_cache: dict | None = None, readings_cache: dict | None = None,
                 on_photo=None) -> dict:
-    """Прогоняет LLM-путь на эталонных фото: чтение, acc@1/@5, not_found и latency."""
+    """Прогоняет LLM-путь на эталонных фото: чтение, acc@1/@5, not_found и latency.
+
+    ``readings_cache`` позволяет взять сохранённые чтения (file → {raw_text, ...}) и не вызывать
+    тяжёлый читатель снова: нужен для второго прохода «матчер + нормализация» на маленьких моделях.
+    """
     records = catalog
     index = text_index(catalog)
     files = gold.get("files", {})
@@ -196,11 +227,22 @@ def run_quality(gold: dict, catalog: dict, field_dir: Path, *, model: str, token
     results: list[dict] = []
     for name in names:
         started = time.perf_counter()
-        reading = observe_reading(field_dir / name, model, tokens=tokens, timeout_s=timeout_s)
+        cached_reading = (readings_cache or {}).get(name)
+        if cached_reading is not None:
+            reading = {"raw_text": cached_reading.get("raw_text") or "",
+                       "ok": bool(cached_reading.get("ok", True)),
+                       "latency_ms": float(cached_reading.get("latency_ms") or 0.0),
+                       "wall_ms": float(cached_reading.get("wall_ms") or 0.0),
+                       "reason": str(cached_reading.get("reason") or "")}
+        else:
+            reading = observe_reading(field_dir / name, model, tokens=tokens, timeout_s=timeout_s)
         visuals = visual_candidates(field_dir / name, k=visual_k)
         decision = decide(reading["raw_text"], catalog, index, records, router=router,
                           matcher_model=matcher_model, matcher_timeout_s=matcher_timeout_s,
-                          visual_slugs=visuals)
+                          visual_slugs=visuals, normalize=normalize,
+                          normalizer_model=normalizer_model,
+                          normalizer_timeout_s=normalizer_timeout_s,
+                          normalize_cache=normalize_cache)
         latency_ms = (time.perf_counter() - started) * 1000.0
         result = build_result(name, decision["top1"], decision["top5"],
                               not_found=decision["not_found"], latency_ms=latency_ms,
@@ -208,6 +250,7 @@ def run_quality(gold: dict, catalog: dict, field_dir: Path, *, model: str, token
                               fields=decision["fields"], reader_ms=reading["wall_ms"])
         result["visual_candidates"] = decision["visual_candidates"]
         result["text_candidates"] = decision["text_candidates"]
+        result["normalized"] = decision.get("normalized") or {}
         readings[name] = {"file": name, "raw_text": reading["raw_text"], "ok": reading["ok"],
                           "latency_ms": reading["latency_ms"], "wall_ms": reading["wall_ms"],
                           "reason": reading["reason"]}
@@ -318,6 +361,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--visual-k", type=int, default=DEFAULT_VISUAL_K,
                         help="сколько визуальных кандидатов retrieval добавлять в пул")
     parser.add_argument("--no-visual", action="store_true", help="не добавлять визуальный пул")
+    parser.add_argument("--normalize", action="store_true", help="нормализовать чтение под каталог (C-077)")
+    parser.add_argument("--normalizer-model", default=DEFAULT_NORMALIZER_MODEL)
+    parser.add_argument("--readings-cache", default="",
+                        help="JSON с сохранёнными чтениями (reader из отчёта), чтобы не вызывать читатель")
+    parser.add_argument("--normalize-cache", default="",
+                        help="JSON-кэш нормализации (scripts/eval/normalize_readings.py), "
+                             "чтобы не вызывать нормализатор во время прогона (C-077)")
     parser.add_argument("--reader-tokens", type=int, default=DEFAULT_READER_TOKENS)
     parser.add_argument("--reader-timeout", type=float, default=DEFAULT_READER_TIMEOUT_S)
     parser.add_argument("--matcher-timeout", type=float, default=DEFAULT_MATCHER_TIMEOUT_S)
@@ -333,10 +383,25 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     catalog = load_catalog(args.catalog)
     out, md = Path(args.out), Path(args.md)
+    normalize_cache: dict = {}
+    readings_cache: dict = {}
+    if args.readings_cache and Path(args.readings_cache).is_file():
+        try:
+            cached_payload = json.loads(Path(args.readings_cache).read_text(encoding="utf-8"))
+            readings_cache = cached_payload.get("reader") or cached_payload
+        except ValueError:
+            readings_cache = {}
+    if args.normalize_cache and Path(args.normalize_cache).is_file():
+        try:
+            normalize_cache = json.loads(Path(args.normalize_cache).read_text(encoding="utf-8"))
+        except ValueError:
+            normalize_cache = {}
     quality = run_quality(gold, catalog, Path(args.dir), model=args.model,
                           tokens=args.reader_tokens, timeout_s=args.reader_timeout,
                           matcher_model=args.matcher_model, matcher_timeout_s=args.matcher_timeout,
-                          limit=args.limit or None, visual_k=(0 if args.no_visual else args.visual_k))
+                          limit=args.limit or None, visual_k=(0 if args.no_visual else args.visual_k),
+                          normalize=args.normalize, normalizer_model=args.normalizer_model,
+                          normalize_cache=normalize_cache, readings_cache=readings_cache)
     timing = {} if args.skip_timing else run_timing(
         Path(args.timing_dir), model=args.model, tokens=args.reader_tokens,
         timeout_s=args.reader_timeout, matcher_model=args.matcher_model,

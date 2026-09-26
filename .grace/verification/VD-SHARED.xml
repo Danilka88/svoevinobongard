@@ -80,6 +80,17 @@
         нативный путь Ollama для локального имени модели. Проверка вживую: gemma4:12b-mlx через нативный путь
         уверенно выбрал верный slug (Abrau Reserve) из 20 кандидатов; совместимый OpenAI-путь на том же промпте
         отдавал пустой content при finish_reason=length. Полный pytest зелёный; grace lint 0/0.</Evidence>
+      <Scenario id="S-COMMON-10">C-077: LLM-нормализатор (packages/common/llm/normalizer.py) приводит чтение
+        этикетки к каталожной форме двумя текстовыми запросами к маленькой модели: список виноделен/регионов
+        и перечисления берутся из каталога динамически (новые бренды подхватываются без словаря); выход не
+        принимает решений о товаре; при недоступной LLM — детерминированный фолбэк (транслит/омоглифы). Общий
+        нативный вызов Ollama вынесен в packages/common/llm/ollama_native.py (базовый URL из providers.yaml).</Scenario>
+      <Evidence note="C077-normalizer">C-077: tests/test_c077_normalizer.py (8 тестов, без сети) — сборка
+        словаря из каталога, два промпта, разбор текстового ответа (semi-sweet → полусладкое), winery+brand,
+        кэш в памяти, фолбэк «МACCAНДРА → МАССАНДРА» без LLM, отсутствие slug у нормализатора. Живая проверка
+        gemma4:e4b: «CHATEAU TAMAGNE → winery Кубань-Вино, brand Шато Тамань»; «ABRAU-DURSO → Абрау-Дюрсо»;
+        «CECCHI (нет в каталоге) → winery пусто» (честный отказ, не выдумал). Нативный Ollama принимает только
+        format=json или пусто — свободный текст идёт без поля format.</Evidence>
     </V-M-COMMON>
   </VD-SHARED>
 </GraceVerificationDocument>
