@@ -132,6 +132,14 @@
         ocr_signal_eval, baseline_report, kb/build_label_kb) используют общий group_key; живой
         `_resize_bgr` сохранён только в baseline_report. Рефакторинг поведенчески нейтрален: полный
         pytest зелёный, grace lint 0/0, метрики гейта не изменились.</Evidence>
+      <Scenario id="S-COMMON-15">C-087: постоянный кэш чтений этикетки — ключ sha256(фото)+модель+
+        версия промпта, хранение на диске, инвалидация по любому изменению; cache hit не вызывает модель.</Scenario>
+      <Evidence note="C087-reader-cache">C-087: packages/common/reader_cache.py (image_key, get/put/clear);
+        observe_reading использует кэш по умолчанию, CLI --no-reader-cache форсирует живое чтение.
+        tests/test_c087_reader_cache.py (6 тестов): ключ, хит/мисс, инвалидация по фото/модели/промпту,
+        повреждённый файл = мисс, очистка, повторное чтение не вызывает модель. Живая проверка: первое
+        чтение Bosca.jpg 10.1с, повторное 0.00с (from_cache, текст совпал). Кэш на диске data/cache/reader
+        (data/ в .gitignore). grace lint 0/0, метрики гейта не менялись.</Evidence>
     </V-M-COMMON>
   </VD-SHARED>
 </GraceVerificationDocument>

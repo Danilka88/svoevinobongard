@@ -62,6 +62,7 @@ from packages.common.catalog import load_catalog
 from packages.common.llm.matcher import match_candidates
 from packages.common.llm.normalizer import normalize_reading
 from packages.common.observer import is_informative, observation_fields, parse_observation
+from packages.common.reader_cache import get_cached_reading, image_key, put_cached_reading
 from packages.common.text_rank import text_index, text_search
 from scripts.eval.field21_abc import build_result, compute_metrics, normalize_image, retrieval_top
 from scripts.eval.field21_gold import load_gold
@@ -95,14 +96,33 @@ __all__ = ["DEFAULT_CATALOG", "DEFAULT_FIELD_DIR", "DEFAULT_GOLD", "DEFAULT_MATC
 
 
 def observe_reading(path: str | Path, model: str, *, tokens: int = DEFAULT_READER_TOKENS,
-                    timeout_s: float = DEFAULT_READER_TIMEOUT_S) -> dict:
-    """Чтение этикетки моделью без бюджетного ограничения (через vision_bench.observe_image)."""
+                    timeout_s: float = DEFAULT_READER_TIMEOUT_S, use_cache: bool = True,
+                    cache_dir: str | Path | None = None) -> dict:
+    """Чтение этикетки моделью без бюджетного ограничения (через vision_bench.observe_image).
+
+    C-087: чтение кэшируется на диск по ключу ``sha256(фото)+модель+версия промпта``. Если фото, модель
+    и промпт не менялись, модель не вызывается повторно — это экономит десятки секунд GPU на повторных
+    прогонах (gold/real100, демо, отладка). ``use_cache=False`` форсирует живое чтение.
+    """
     started = time.perf_counter()
+    key = None
+    if use_cache:
+        key = image_key(path, model)
+        cached = get_cached_reading(key, cache_dir=cache_dir) if cache_dir else get_cached_reading(key)
+        if cached is not None:
+            scored = float(cached.get("latency_ms") or 0.0)
+            cached["wall_ms"] = 0.0
+            cached.setdefault("reader_ms", scored)
+            return cached
     result = observe_image(path, model, tokens=tokens, timeout_s=timeout_s)
-    return {"ok": bool(result.get("ok")), "raw_text": str(result.get("raw_text") or ""),
-            "latency_ms": float(result.get("latency_ms") or 0.0),
-            "wall_ms": round((time.perf_counter() - started) * 1000.0, 1),
-            "reason": str(result.get("reason") or "")}
+    reading = {"ok": bool(result.get("ok")), "raw_text": str(result.get("raw_text") or ""),
+               "latency_ms": float(result.get("latency_ms") or 0.0),
+               "wall_ms": round((time.perf_counter() - started) * 1000.0, 1),
+               "reason": str(result.get("reason") or ""), "model": model}
+    if use_cache and key is not None:
+        stored = put_cached_reading(key, reading, cache_dir=cache_dir) if cache_dir else put_cached_reading(key, reading)
+        reading["cached_written"] = bool(stored)
+    return reading
 
 
 def build_candidate_pool(text_hits: list[tuple[str, float]] | list[str],
@@ -211,7 +231,7 @@ def run_quality(gold: dict, catalog: dict, field_dir: Path, *, model: str, token
                 normalize: bool = False, normalizer_model: str | None = None,
                 normalizer_timeout_s: float = DEFAULT_NORMALIZER_TIMEOUT_S,
                 normalize_cache: dict | None = None, readings_cache: dict | None = None,
-                on_photo=None) -> dict:
+                use_reader_cache: bool = True, on_photo=None) -> dict:
     """Прогоняет LLM-путь на эталонных фото: чтение, acc@1/@5, not_found и latency.
 
     ``readings_cache`` позволяет взять сохранённые чтения (file → {raw_text, ...}) и не вызывать
@@ -235,7 +255,8 @@ def run_quality(gold: dict, catalog: dict, field_dir: Path, *, model: str, token
                        "wall_ms": float(cached_reading.get("wall_ms") or 0.0),
                        "reason": str(cached_reading.get("reason") or "")}
         else:
-            reading = observe_reading(field_dir / name, model, tokens=tokens, timeout_s=timeout_s)
+            reading = observe_reading(field_dir / name, model, tokens=tokens, timeout_s=timeout_s,
+                                      use_cache=use_reader_cache)
         visuals = visual_candidates(field_dir / name, k=visual_k)
         decision = decide(reading["raw_text"], catalog, index, records, router=router,
                           matcher_model=matcher_model, matcher_timeout_s=matcher_timeout_s,
@@ -365,6 +386,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--normalizer-model", default=DEFAULT_NORMALIZER_MODEL)
     parser.add_argument("--readings-cache", default="",
                         help="JSON с сохранёнными чтениями (reader из отчёта), чтобы не вызывать читатель")
+    parser.add_argument("--no-reader-cache", action="store_true",
+                        help="не использовать дисковый кэш чтений (C-087): форсировать живое чтение")
     parser.add_argument("--normalize-cache", default="",
                         help="JSON-кэш нормализации (scripts/eval/normalize_readings.py), "
                              "чтобы не вызывать нормализатор во время прогона (C-077)")
@@ -401,7 +424,8 @@ def main(argv: list[str] | None = None) -> int:
                           matcher_model=args.matcher_model, matcher_timeout_s=args.matcher_timeout,
                           limit=args.limit or None, visual_k=(0 if args.no_visual else args.visual_k),
                           normalize=args.normalize, normalizer_model=args.normalizer_model,
-                          normalize_cache=normalize_cache, readings_cache=readings_cache)
+                          normalize_cache=normalize_cache, readings_cache=readings_cache,
+                          use_reader_cache=not args.no_reader_cache)
     timing = {} if args.skip_timing else run_timing(
         Path(args.timing_dir), model=args.model, tokens=args.reader_tokens,
         timeout_s=args.reader_timeout, matcher_model=args.matcher_model,
