@@ -96,6 +96,14 @@
       <Evidence note="C076-normalization-contract">C-076: tests/test_c076_contract.py (3 теста) —
         поле normalization в ScanResponse, пустой дефолт, приём результата нормализации; полный pytest
         зелёный, UI собирается (nuxt build), grace lint 0/0.</Evidence>
+      <Scenario id="S-COMMON-12">C-079: жёсткие словари остаются детерминированным фолбэком, а
+        LLM-нормализация работает поверх них; реестр dict_audit.dict_inventory() делает устаревание
+        словарей наблюдаемым (размер и назначение), не удаляя их.</Scenario>
+      <Evidence note="C079-dict-audit">C-079: packages/common/dict_audit.py — реестр 12 словарей
+        (ALIASES 54, GREEK_LOOKALIKES 45, LATIN_LOOKALIKES_CYR 15, observer/structured KEY_ALIASES и
+        ENUM_SYNONYMS, near_dup сладость/цвет, textfusion цвет). tests/test_c079_dict_audit.py (4 теста):
+        все целевые словари найдены, размеры положительны, отсутствующий модуль помечается missing без
+        падения. Поведение онлайн-пути и метрики гейта не меняются. Полный pytest зелёный, lint 0/0.</Evidence>
     </V-M-COMMON>
   </VD-SHARED>
 </GraceVerificationDocument>

@@ -1,0 +1,71 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-079>
+    <IntentSummary>Зафиксировать и сделать наблюдаемым принцип «жёсткий словарь — детерминированный фолбэк,
+      LLM-нормализация — обобщение поверх него». Добавить реестр жёстких словарей проекта со сводкой их
+      размеров и назначения, чтобы видеть, где словарь устаревает и требует обновления по данным. Словари
+      не удаляются; поведение онлайн-пути и метрики гейта не меняются; коммит не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-079/spec.xml</Value></MustExist>
+      <MustExist><Value>packages/common/text_norm.py</Value></MustExist>
+      <MustExist><Value>packages/common/observer.py</Value></MustExist>
+      <MustExist><Value>packages/common/near_dup.py</Value></MustExist>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>test -f packages/common/dict_audit.py &amp;&amp; test -f tests/test_c079_dict_audit.py</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c079_dict_audit.py -q</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-COMMON</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-COMMON/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/dict_audit.py</Path>
+      <Path>tests/test_c079_dict_audit.py</Path>
+      <Path>docs/LIMITATIONS.md</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/graph/modules.xml</Path>
+      <Path>.grace/verification/VD-SHARED.xml</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Реестр жёстких словарей и сводка покрытия (M-COMMON)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>dict_audit.py: DICTIONARIES (реестр путей и имён), dict_inventory() возвращает
+            {путь: {symbol: size, purpose}} по словарям text_norm/observer/near_dup/structured/textfusion;
+            несуществующие модули не роняют функцию.</Criterion>
+          <Criterion>Принцип «словарь — фолбэк, LLM — обобщение» зафиксирован в документации.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c079_dict_audit.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Тесты, документация, граф и финальные гейты (M-COMMON)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>tests/test_c079_dict_audit.py: реестр находит все целевые словари, размеры
+            положительны, сводка устойчива к отсутствующим модулям.</Criterion>
+          <Criterion>docs/LIMITATIONS.md фиксирует принцип и список словарей; AGENTS.md roadmap дополняется
+            строкой C-079; graph/verification обновлены.</Criterion>
+          <Criterion>grace lint 0/0, полный pytest, make gate без изменений, бандл в archive/C-079 applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-079>
+</GraceChangePlan>
