@@ -2,8 +2,8 @@
 # START_MODULE_CONTRACT
 # PURPOSE: Замер OCR-сигнала: Tier-1+geo против +OCR на proxy и near-duplicate подвыборке, бюджет времени и чтение года
 # SCOPE: parse_args, main
-# DEPENDS: numpy, PIL, packages.common.catalog, packages.common.config, packages.common.images, packages.common.logging,
-#          packages.common.ocr, scripts.eval.augment, services.matcher.app.merge, services.normalize.app.detect,
+# DEPENDS: numpy, PIL, packages.common.catalog, packages.common.config, packages.common.logging,
+#          packages.common.near_dup, packages.common.ocr, scripts.eval.augment, services.matcher.app.merge, services.normalize.app.detect,
 #          services.normalize.app.tta, services.retrieval.app.encoder, services.retrieval.app.geo,
 #          services.retrieval.app.head, services.retrieval.app.index, services.retrieval.app.search
 # LINKS: M-OCR, M-MATCHER, M-EVAL
@@ -38,8 +38,8 @@ if str(_ROOT) not in sys.path:
 
 from packages.common.catalog import CatalogStore, load_catalog  # noqa: E402
 from packages.common.config import settings  # noqa: E402
-from packages.common.images import flatten_alpha  # noqa: E402
 from packages.common.logging import log_marker  # noqa: E402
+from packages.common.near_dup import group_key  # noqa: E402
 from packages.common.ocr import resolve_engine, run_ocr  # noqa: E402
 from scripts.eval.augment import field_augment  # noqa: E402
 from services.matcher.app.merge import rerank_candidates  # noqa: E402
@@ -55,29 +55,8 @@ _DEFAULT_MATERIALS = (
     _ROOT.parent / "материалы для конкурса" / "Датасет"
     / "prod-svoe-vino-strapi" / "prod-svoe-vino" / "strapi" / "uploads"
 )
-_MAX_SIDE = 512
 
 __all__ = ["parse_args", "main"]
-
-
-def _resize_bgr(array: np.ndarray, max_side: int = _MAX_SIDE) -> np.ndarray:
-    """Пропорционально уменьшает BGR-изображение."""
-    import cv2
-
-    height, width = array.shape[:2]
-    longest = max(height, width)
-    if longest <= max_side:
-        return array
-    scale = max_side / float(longest)
-    return cv2.resize(array, (max(1, int(width * scale)), max(1, int(height * scale))),
-                      interpolation=cv2.INTER_AREA)
-
-
-def _group_key(record: dict) -> str:
-    """Ключ группы near-duplicates."""
-    winery = (record.get("winery") or "").strip().lower()
-    name = " ".join(re.sub(r"\d+", " ", (record.get("name") or "").lower()).split())[:48]
-    return f"{winery}|{name}"
 
 
 def _truth_year(record: dict) -> str:
@@ -122,7 +101,7 @@ def main(argv: list[str] | None = None) -> int:
     uploads = Path(args.uploads)
     group_sizes: dict[str, int] = {}
     for record in catalog.values():
-        key = _group_key(record)
+        key = group_key(record)
         group_sizes[key] = group_sizes.get(key, 0) + 1
 
     available = [
@@ -186,8 +165,8 @@ def main(argv: list[str] | None = None) -> int:
         truth_year = _truth_year(record)
         rows.append({
             "slug": slug,
-            "group": _group_key(record),
-            "group_size": group_sizes.get(_group_key(record), 1),
+            "group": group_key(record),
+            "group_size": group_sizes.get(group_key(record), 1),
             "tier_top1": tier_top1,
             "tier_correct": tier_top1 == slug,
             "tier_top5_correct": slug in tier_top5,

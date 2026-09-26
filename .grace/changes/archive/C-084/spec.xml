@@ -1,0 +1,37 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-084>
+    <Summary>Гигиена вспомогательных функций eval-скриптов, поведенчески нейтральная.
+      (1) Идентичная `_group_key()` из четырёх скриптов (vlm_fallback_eval, ocr_signal_eval,
+      baseline_report и kb/build_label_kb) выносится в общую `packages.common.near_dup.group_key`.
+      (2) Удаляется мёртвый код в трёх скриптах: `_resize_bgr()`, константа `_MAX_SIDE` и неиспользуемый
+      импорт `flatten_alpha` определены, но нигде не вызываются (единственный живой вызов `_resize_bgr`
+      — в baseline_report.py, он остаётся как единственная копия). Результат функций не меняется,
+      меняется лишь место определения и удаляются неиспользуемые определения.</Summary>
+    <Goals>(1) Убрать дублирование идентичной функции без изменения поведения. (2) Удалить мёртвый код
+      (неиспользуемые функции, константы и импорты). (3) Дать общий именованный хелпер для будущих
+      eval/KB-скриптов. (4) Не менять онлайн-путь и метрики синтетического гейта.</Goals>
+    <Constraints>Поведение не меняется (кроме удаления неиспользуемого кода). Метрики make gate не меняются.
+      Живой `_resize_bgr` в baseline_report.py не трогается (иначе сдвинулось бы округление ресайза).
+      Новый символ получает запись в MODULE_MAP, SCOPE и __all__. Коммит не создаётся.</Constraints>
+    <NonGoals>Не объединять семантически иные варианты `_percentile` (доля/процент, интерполяция/ближайший)
+      и `_clean` в observer/matcher/ocr_benchmark. Не переносить живой `_resize_bgr` в images.resize_max_side
+      (иное округление). Не делать другие рефакторинги (split gateway main.py). Не менять логику.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>packages/common/near_dup.py экспортирует `group_key(record) -> str` (винодельня + название
+        без цифр, нижний регистр, обрезка 48 символов) с той же семантикой, что прежняя `_group_key`.</Criterion>
+      <Criterion>Четыре скрипта (vlm_fallback_eval, ocr_signal_eval, baseline_report, kb/build_label_kb)
+        импортируют `group_key` из packages.common.near_dup; локальные `_group_key` удалены.</Criterion>
+      <Criterion>В vlm_fallback_eval.py, ocr_signal_eval.py и calibrate.py нет определений `_resize_bgr`
+        и `_MAX_SIDE` и импорта `flatten_alpha`; их контракты DEPENDS приведены в соответствие.</Criterion>
+      <Criterion>Поведение не изменилось: существующие тесты зелёные без правок; полный pytest зелёный;
+        grace lint 0/0; метрики make gate не изменились.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-COMMON/>
+      <M-EVAL/>
+    </AffectedAreas>
+    <VerificationIntent>Рефакторинг проверяется тестом эквивалентности group_key прежнему алгоритму,
+      структурной проверкой отсутствия дублей/мёртвого кода, существующими тестами и lint 0/0;
+      отсутствие регрессий — полный pytest и неизменные метрики гейта.</VerificationIntent>
+  </C-084>
+</GraceChangeSpec>

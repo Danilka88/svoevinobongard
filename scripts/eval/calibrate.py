@@ -2,7 +2,7 @@
 # START_MODULE_CONTRACT
 # PURPOSE: Калибровка порогов решения и веса геоверификации на proxy-наборе: SCORE_TAU, MARGIN_DELTA, CONFIDENCE_TEMPERATURE, GEO_WEIGHT
 # SCOPE: parse_args, main
-# DEPENDS: numpy, PIL, packages.common.catalog, packages.common.config, packages.common.images, packages.common.logging,
+# DEPENDS: numpy, PIL, packages.common.catalog, packages.common.config, packages.common.logging,
 #          scripts.eval.augment, services.normalize.app.detect, services.normalize.app.tta,
 #          services.retrieval.app.encoder, services.retrieval.app.geo, services.retrieval.app.head,
 #          services.retrieval.app.index, services.retrieval.app.search
@@ -40,7 +40,6 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from packages.common.catalog import CatalogStore, load_catalog  # noqa: E402
-from packages.common.images import flatten_alpha  # noqa: E402
 from packages.common.config import settings
 from packages.common.logging import log_marker  # noqa: E402
 from scripts.eval.augment import field_augment  # noqa: E402
@@ -56,24 +55,10 @@ _DEFAULT_MATERIALS = (
     _ROOT.parent / "материалы для конкурса" / "Датасет"
     / "prod-svoe-vino-strapi" / "prod-svoe-vino" / "strapi" / "uploads"
 )
-_MAX_SIDE = 512
 _WEIGHT_GRID = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.5, 2.0, 2.5, 3.0]
 _TEMPERATURE_GRID = [0.02, 0.03, 0.05, 0.07, 0.1, 0.15, 0.2, 0.3]
 
 __all__ = ["parse_args", "main"]
-
-
-def _resize_bgr(array: np.ndarray, max_side: int = _MAX_SIDE) -> np.ndarray:
-    """Пропорционально уменьшает BGR-изображение."""
-    import cv2
-
-    height, width = array.shape[:2]
-    longest = max(height, width)
-    if longest <= max_side:
-        return array
-    scale = max_side / float(longest)
-    return cv2.resize(array, (max(1, int(width * scale)), max(1, int(height * scale))),
-                      interpolation=cv2.INTER_AREA)
 
 
 def _f1_at_threshold(scores: np.ndarray, correct: np.ndarray, threshold: float) -> float:

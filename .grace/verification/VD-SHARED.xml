@@ -121,6 +121,17 @@
         INFO. Рантайм-проверка: log_marker('M-CATALOG','ETL','START') печатает [M-CATALOG][ETL][START].
         Известное ограничение CLI (module health ищет литерал маркера) зафиксировано в AGENTS.md;
         grace lint 0/0, полный pytest зелёный, метрики гейта не изменились.</Evidence>
+      <Scenario id="S-COMMON-15">C-084: общий group_key в near_dup (винодельня + название без цифр,
+        обрезка 48) заменил четыре идентичные локальные копии `_group_key` в eval/KB-скриптах; в трёх
+        eval-скриптах удалён мёртвый `_resize_bgr`/`_MAX_SIDE` и неиспользуемый импорт `flatten_alpha`.
+        Функция отличается от более строгой signature (та убирает ещё сладость и цвет) и намеренно
+        остаётся отдельной; поведение онлайн-пути и метрики гейта не меняются.</Scenario>
+      <Evidence note="C084-group-key">C-084: packages/common/near_dup.py — group_key в
+        MODULE_MAP/SCOPE/__all__; test_c084_refactor.py (4 теста) проверяет эквивалентность прежнему
+        алгоритму, экспорт и отсутствие дублей/мёртвого кода. Четыре скрипта (vlm_fallback_eval,
+        ocr_signal_eval, baseline_report, kb/build_label_kb) используют общий group_key; живой
+        `_resize_bgr` сохранён только в baseline_report. Рефакторинг поведенчески нейтрален: полный
+        pytest зелёный, grace lint 0/0, метрики гейта не изменились.</Evidence>
     </V-M-COMMON>
   </VD-SHARED>
 </GraceVerificationDocument>

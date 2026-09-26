@@ -1,0 +1,92 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-084>
+    <IntentSummary>Вынести идентичную `_group_key` из четырёх скриптов в общую
+      `packages.common.near_dup.group_key` и удалить мёртвый код (`_resize_bgr`, `_MAX_SIDE`,
+      импорт `flatten_alpha`) в трёх eval-скриптах. Поведение нейтрально, метрики гейта не меняются;
+      коммит не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-084/spec.xml</Value></MustExist>
+      <MustExist><Value>packages/common/near_dup.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/vlm_fallback_eval.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/ocr_signal_eval.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/baseline_report.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/calibrate.py</Value></MustExist>
+      <MustExist><Value>scripts/kb/build_label_kb.py</Value></MustExist>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -c "from packages.common.near_dup import group_key; assert group_key({'winery': 'Fanagoria', 'name': 'Рислинг 2023'}) == 'fanagoria|рислинг'"</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c084_refactor.py -q</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-COMMON</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-COMMON/>
+      <M-EVAL/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/near_dup.py</Path>
+      <Path>scripts/eval/vlm_fallback_eval.py</Path>
+      <Path>scripts/eval/ocr_signal_eval.py</Path>
+      <Path>scripts/eval/baseline_report.py</Path>
+      <Path>scripts/eval/calibrate.py</Path>
+      <Path>scripts/kb/build_label_kb.py</Path>
+      <Path>tests/test_c084_refactor.py</Path>
+      <Path>.grace/graph/modules.xml</Path>
+      <Path>.grace/verification/VD-SHARED.xml</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Общий group_key и переключение четырёх скриптов (M-COMMON, M-EVAL)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>near_dup.group_key добавлен в SCOPE/MODULE_MAP/__all__; поведение совпадает с прежней
+            `_group_key` (нижний регистр, цифры в пробел, схлопывание пробелов, обрезка 48, `winery|name`).</Criterion>
+          <Criterion>Четыре скрипта импортируют group_key; локальные `_group_key` удалены; вызовы заменены.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c084_refactor.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Удаление мёртвого кода в eval-скриптах (M-EVAL)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>В vlm_fallback_eval.py, ocr_signal_eval.py и calibrate.py удалены определения
+            `_resize_bgr`/`_MAX_SIDE` и импорт `flatten_alpha`; DEPENDS приведён в соответствие; живой
+            `_resize_bgr` в baseline_report.py сохранён.</Criterion>
+          <Criterion>Импорт изменённых скриптов не падает, определения отсутствуют, `grace lint` 0/0.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path .</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Граф, verification, гейты и архив (M-COMMON, M-EVAL)</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>graph/verification отражают C-084; AGENTS.md roadmap дополняется строкой C-084.</Criterion>
+          <Criterion>grace lint 0/0, полный pytest, make gate без изменений, бандл в archive/C-084 applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-084>
+</GraceChangePlan>

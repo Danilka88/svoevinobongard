@@ -53,6 +53,7 @@
         с self-retrieval и synthetic proxy.</Description>
       <TestFiles>
         <File>tests/test_eval_harness.py</File>
+        <File>tests/test_c084_refactor.py</File>
         <File>scripts/eval/baseline_report.py</File>
         <File>scripts/eval/calibrate.py</File>
       </TestFiles>
@@ -268,6 +269,13 @@
         2103 (покрытие 0.29%), 5 виноделен; fit 7 / holdout 0; готовность к дообучению (порог 200 пар) — нет.
         tests/test_c078_pairs.py (6 тестов) — разбиение, отсутствие пересечения fit/holdout, только vote=up.
         Отчёты: reports/confirmed_pairs.{json,md}.</Evidence>
+      <Scenario id="S-EVAL-21">C-084: eval-скрипты (vlm_fallback_eval, ocr_signal_eval, baseline_report)
+        используют общий near_dup.group_key и не содержат дублей `_group_key`; в трёх из них удалён
+        мёртвый `_resize_bgr`/`_MAX_SIDE` и неиспользуемый импорт `flatten_alpha` (живой вызов сохранён
+        только в baseline_report). Поведение скриптов не изменилось.</Scenario>
+      <Evidence note="C084-eval-hygiene">C-084: tests/test_c084_refactor.py (4 теста) — эквивалентность
+        group_key прежнему алгоритму, экспорт, общий хелпер в четырёх скриптах, отсутствие мёртвого кода.
+        Все пять скриптов импортируются без ошибок; полный pytest зелёный, grace lint 0/0.</Evidence>
     </V-M-EVAL>
 
     <V-M-GATEWAY>

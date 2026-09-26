@@ -318,7 +318,7 @@
       <Exports>LLMRouter, get_router, build_adapter, OpenAICompatAdapter, ChatResult, EmbedResult,
         CircuitBreaker, CostVelocityBreaker, RouterConfig, load_router_config, CatalogStore, load_catalog,
         match_candidates, MATCHER_INSTRUCTION, parse_match, build_matcher_prompt,
-        normalize_reading, build_catalog_vocab, NORMALIZER_WINERY_INSTRUCTION</Exports>
+        normalize_reading, build_catalog_vocab, NORMALIZER_WINERY_INSTRUCTION, group_key</Exports>
       <Depends>
         <M-CONTRACTS/>
       </Depends>
@@ -333,6 +333,9 @@
         Матчер выбирает slug из переданного списка кандидатов или честно отказывается; slug вне списка
         не принимается. Для локальных Ollama-моделей используется нативный /api/chat (think=false,
         format=json) — совместимый путь у reasoning-моделей отдаёт пустой content при finish_reason=length.</Note>
+      <Note>C-084: near_dup.group_key — грубый ключ группы near-дубликатов (винодельня + название без
+        цифр, обрезка 48), вынесенный из четырёх eval/KB-скриптов; отличается от более строгой signature
+        и обслуживает только офлайн-подвыборку и отчётность. Поведение онлайн-пути не меняется.</Note>
     </M-COMMON>
 
     <M-CONTRACTS>
@@ -393,6 +396,9 @@
         находкам наблюдения (квота на текст, чтобы визуальный кандидат не вытеснялся). Прирост к C-074:
         accuracy@1 0.2727 → 0.3636, accuracy@5 0.5455 → 0.6364; остаточное ограничение — расхождение
         чтения и имени каталога (вводная C-077).</Note>
+      <Note>C-084: eval-скрипты переведены на общий near_dup.group_key; в vlm_fallback_eval,
+        ocr_signal_eval и calibrate удалён мёртвый `_resize_bgr`/`_MAX_SIDE` и неиспользуемый импорт
+        `flatten_alpha` (единственный живой `_resize_bgr` — в baseline_report). Поведение не меняется.</Note>
     </M-EVAL>
 
     <M-DEPLOY>

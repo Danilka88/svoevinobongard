@@ -3,7 +3,7 @@
 # PURPOSE: Baseline-отчёт Tier-1: self-retrieval, proxy F1 на синтетике, групповые метрики near-duplicates и статистика геоверификации
 # SCOPE: parse_args, main
 # DEPENDS: numpy, cv2, PIL, packages.common.catalog, packages.common.config, packages.common.logging,
-#          scripts.eval.augment, services.normalize.app.detect, services.normalize.app.tta,
+#          packages.common.near_dup, scripts.eval.augment, services.normalize.app.detect, services.normalize.app.tta,
 #          services.retrieval.app.encoder, services.retrieval.app.geo, services.retrieval.app.head,
 #          services.retrieval.app.index, services.retrieval.app.search
 # LINKS: M-EVAL, M-RETRIEVAL
@@ -32,7 +32,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 import time
 from pathlib import Path
@@ -48,6 +47,7 @@ from packages.common.catalog import CatalogStore, load_catalog  # noqa: E402
 from packages.common.config import settings  # noqa: E402
 from packages.common.images import flatten_alpha  # noqa: E402
 from packages.common.logging import log_marker  # noqa: E402
+from packages.common.near_dup import group_key  # noqa: E402
 from scripts.eval.augment import field_augment, holdout_augment  # noqa: E402
 from services.normalize.app.detect import detect_label  # noqa: E402
 from services.normalize.app.tta import build_variants  # noqa: E402
@@ -87,14 +87,6 @@ def _load_reference_rgba(path: Path) -> np.ndarray | None:
             return np.asarray(raw.convert("RGBA"))
     except Exception:  # noqa: BLE001 - битый файл пропускаем
         return None
-
-
-def _group_key(record: dict) -> str:
-    """Ключ группы near-duplicates: винодельня + название без года и цифр."""
-    winery = (record.get("winery") or "").strip().lower()
-    name = re.sub(r"\d+", " ", (record.get("name") or "").lower())
-    name = " ".join(name.split())[:48]
-    return f"{winery}|{name}"
 
 
 def _macro_f1(pairs: list[tuple[str, str]]) -> float:
@@ -171,7 +163,7 @@ def main(argv: list[str] | None = None) -> int:
     group_sizes: dict[str, int] = {}
     gold_group: dict[str, str] = {}
     for slug, record in catalog.items():
-        key = _group_key(record)
+        key = group_key(record)
         gold_group[slug] = key
         group_sizes[key] = group_sizes.get(key, 0) + 1
 

@@ -1,8 +1,8 @@
 # START_MODULE_CONTRACT
 # PURPOSE: Группы near-дубликатов каталога и дизамбигуация внутри серии по подтверждённым сигналам
-# SCOPE: NEAR_DUP_THRESHOLD, DIFFERENT_FIELDS, signature, build_groups, near_dup_group, group_stats,
-#        match_signals, disambiguate
-# DEPENDS: collections, packages.common.text_norm
+# SCOPE: NEAR_DUP_THRESHOLD, DIFFERENT_FIELDS, group_key, signature, build_groups, near_dup_group,
+#        group_stats, match_signals, disambiguate
+# DEPENDS: collections, re, packages.common.text_norm
 # LINKS: M-GATEWAY, M-MATCHER, M-DATA
 # ROLE: RUNTIME
 # MAP_MODE: EXPORTS
@@ -10,6 +10,7 @@
 # START_MODULE_MAP
 # NEAR_DUP_THRESHOLD - порог схожести названия внутри одной серии
 # DIFFERENT_FIELDS - поля, различие по которым делает вина разными позициями
+# group_key - грубый ключ группы для eval/KB: винодельня + название без цифр, обрезка 48
 # signature - подпись серии: винодельня и название без различителей
 # build_groups - строит группы near-дубликатов по каталогу
 # near_dup_group - возвращает группу для конкретного вина
@@ -28,6 +29,7 @@
 """
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 
 from packages.common.text_norm import fold, similarity
@@ -40,8 +42,22 @@ _SWEETNESS_ALIASES = {"брют": "брют", "brut": "брют", "сухое": 
 _COLOR_ALIASES = {"красное": "красное", "red": "красное", "белое": "белое", "white": "белое",
                   "розовое": "розовое", "rose": "розовое", "игристое": "игристое", "sparkling": "игристое"}
 
-__all__ = ["NEAR_DUP_THRESHOLD", "DIFFERENT_FIELDS", "signature", "build_groups", "near_dup_group",
-           "group_stats", "match_signals", "disambiguate"]
+__all__ = ["NEAR_DUP_THRESHOLD", "DIFFERENT_FIELDS", "group_key", "signature", "build_groups",
+           "near_dup_group", "group_stats", "match_signals", "disambiguate"]
+
+
+def group_key(record: dict) -> str:
+    """Грубый ключ группы near-дубликатов: винодельня + название без цифр (C-084).
+
+    Общий хелпер eval/KB-скриптов: цифры (год, объём) в названии заменяются пробелом, регистр
+    приводится к нижнему, пробелы схлопываются, результат обрезается до 48 символов. Это **не**
+    :func:`signature` — та дополнительно убирает слова сладости и цвета, поэтому ключи двух функций
+    для одной записи могут различаться; `group_key` умышленно мягче и используется только для
+    подвыборки и отчётности офлайн-инструментов.
+    """
+    winery = (record.get("winery") or "").strip().lower()
+    name = " ".join(re.sub(r"\d+", " ", (record.get("name") or "").lower()).split())[:48]
+    return f"{winery}|{name}"
 
 
 def signature(record: dict) -> tuple[str, str]:

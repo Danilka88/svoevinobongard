@@ -3,7 +3,8 @@
 # PURPOSE: Label-text KB: точечное чтение текста эталонов (OCR везде, 12b для пробелов) и обогащение каталога
 # SCOPE: parse_args, main
 # DEPENDS: numpy, PIL, rapidfuzz, packages.common.catalog, packages.common.config, packages.common.images,
-#          packages.common.logging, packages.common.ocr, packages.common.preprocess, services.vlm.app.extract
+#          packages.common.logging, packages.common.near_dup, packages.common.ocr, packages.common.preprocess,
+#          services.vlm.app.extract
 # LINKS: M-TEXT, M-OCR, M-CATALOG, M-VLM
 # ROLE: SCRIPT
 # MAP_MODE: LOCALS
@@ -47,6 +48,7 @@ from packages.common.catalog import load_catalog  # noqa: E402
 from packages.common.config import settings  # noqa: E402
 from packages.common.images import flatten_alpha  # noqa: E402
 from packages.common.logging import log_marker  # noqa: E402
+from packages.common.near_dup import group_key  # noqa: E402
 from packages.common.ocr import run_ocr  # noqa: E402
 from packages.common.preprocess import PreprocessConfig, build_vlm_inputs  # noqa: E402
 from services.vlm.app.extract import extract_fields  # noqa: E402
@@ -63,18 +65,11 @@ ENRICH_FIELDS = ("sweetness", "year", "grape")
 __all__ = ["parse_args", "main"]
 
 
-def _group_key(record: dict) -> str:
-    """Ключ near-dup группы: винодельня + название без цифр."""
-    winery = (record.get("winery") or "").strip().lower()
-    name = " ".join(re.sub(r"\d+", " ", (record.get("name") or "").lower()).split())[:48]
-    return f"{winery}|{name}"
-
-
 def _near_dup_slugs(catalog: dict) -> tuple[list[str], dict[str, list[str]], list[str]]:
     """Возвращает целевые slug, карту групп и список полностью неразличимых групп."""
     groups: dict[str, list[str]] = defaultdict(list)
     for slug, record in catalog.items():
-        groups[_group_key(record)].append(slug)
+        groups[group_key(record)].append(slug)
     near = {key: slugs for key, slugs in groups.items() if len(slugs) > 1}
     targets = sorted({slug for slugs in near.values() for slug in slugs})
     # ambiguous = все поля совпадают полностью (включая свободный color) — такие группы
@@ -308,7 +303,7 @@ def _enrich(args: argparse.Namespace, catalog: dict, uploads: Path) -> int:
         record["enriched"] = filled
         record["enrich_source"] = source if filled else "none"
         record["ambiguous"] = slug in ambiguous_slugs
-        record["near_dup_group"] = _group_key(record)
+        record["near_dup_group"] = group_key(record)
         if filled:
             enriched_count += 1
         records.append(record)

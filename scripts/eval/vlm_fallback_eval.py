@@ -2,8 +2,8 @@
 # START_MODULE_CONTRACT
 # PURPOSE: Замер Tier-1 против VLM-fallback на подвыборке near-duplicate сэмплов: точность, латентность VLM, доля деградаций
 # SCOPE: parse_args, main
-# DEPENDS: numpy, PIL, packages.common.catalog, packages.common.config, packages.common.images, packages.common.logging,
-#          packages.common.llm.router, scripts.eval.augment, services.matcher.app.merge, services.normalize.app.detect,
+# DEPENDS: numpy, PIL, packages.common.catalog, packages.common.config, packages.common.logging,
+#          packages.common.llm.router, packages.common.near_dup, scripts.eval.augment, services.matcher.app.merge, services.normalize.app.detect,
 #          services.normalize.app.tta, services.retrieval.app.encoder, services.retrieval.app.geo,
 #          services.retrieval.app.head, services.retrieval.app.index, services.retrieval.app.search, services.vlm.app.extract
 # LINKS: M-VLM, M-MATCHER, M-EVAL
@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 import time
 from pathlib import Path
@@ -41,9 +40,9 @@ if str(_ROOT) not in sys.path:
 
 from packages.common.catalog import CatalogStore, load_catalog  # noqa: E402
 from packages.common.config import settings  # noqa: E402
-from packages.common.images import flatten_alpha  # noqa: E402
 from packages.common.llm.router import LLMRouter  # noqa: E402
 from packages.common.logging import log_marker  # noqa: E402
+from packages.common.near_dup import group_key  # noqa: E402
 from scripts.eval.augment import field_augment  # noqa: E402
 from services.matcher.app.merge import rerank_candidates  # noqa: E402
 from services.normalize.app.detect import detect_label  # noqa: E402
@@ -59,29 +58,8 @@ _DEFAULT_MATERIALS = (
     _ROOT.parent / "материалы для конкурса" / "Датасет"
     / "prod-svoe-vino-strapi" / "prod-svoe-vino" / "strapi" / "uploads"
 )
-_MAX_SIDE = 512
 
 __all__ = ["parse_args", "main"]
-
-
-def _resize_bgr(array: np.ndarray, max_side: int = _MAX_SIDE) -> np.ndarray:
-    """Пропорционально уменьшает BGR-изображение."""
-    import cv2
-
-    height, width = array.shape[:2]
-    longest = max(height, width)
-    if longest <= max_side:
-        return array
-    scale = max_side / float(longest)
-    return cv2.resize(array, (max(1, int(width * scale)), max(1, int(height * scale))),
-                      interpolation=cv2.INTER_AREA)
-
-
-def _group_key(record: dict) -> str:
-    """Ключ группы near-duplicates (винодельня + название без цифр)."""
-    winery = (record.get("winery") or "").strip().lower()
-    name = " ".join(re.sub(r"\d+", " ", (record.get("name") or "").lower()).split())[:48]
-    return f"{winery}|{name}"
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -114,14 +92,14 @@ def main(argv: list[str] | None = None) -> int:
 
     group_sizes: dict[str, int] = {}
     for record in catalog.values():
-        key = _group_key(record)
+        key = group_key(record)
         group_sizes[key] = group_sizes.get(key, 0) + 1
 
     hard = [
         (slug, uploads / record["image"])
         for slug, record in sorted(catalog.items())
         if record.get("image") and (uploads / record["image"]).is_file()
-        and group_sizes.get(_group_key(record), 0) > 1
+        and group_sizes.get(group_key(record), 0) > 1
     ]
     if args.samples and args.samples < len(hard):
         picker = np.random.default_rng(args.seed)
