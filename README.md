@@ -23,11 +23,14 @@
 ## О продукте
 
 - **Работает на реальных фото, а не только на синтетике.** 21 магазинное фото: identity-match@1
-  **0.53**, @5 **0.58** по российским винам, корректный отказ для не-российских — **100%**
-  (`docs/METRICS.md`, C-025). Синтетический proxy (in-distribution): acc@1 **0.775**, acc@5 **0.970**.
-- **Трёхуровневый гибрид по цене и скорости.** Дешёвый Tier-1 (эмбеддинг + геоверификация) →
-  OCR-сигнал (сотни мс) → VLM-арбитр — только при неуверенности. Каждый уровень деградирует
-  корректно: без OCR/VLM система отдаёт результат Tier-1 (`services/gateway/app/pipeline.py:222`).
+  **0.53**, @5 **0.63** по российским винам (C-025; @5 поднят транслитом лат↔кир, C-027), корректный
+  отказ для не-российских вин — **100%** (`docs/METRICS.md`). Синтетический proxy (in-distribution):
+  acc@1 **0.775**, acc@5 **0.970**.
+- **Каскад по цене и скорости, LLM — ядро качества.** Дешёвый Tier-1 (эмбеддинг + геоверификация) даёт
+  ответ за ~160 мс; OCR-сигнал и VLM подключаются при неуверенности, и каждый уровень деградирует
+  корректно — без OCR/VLM система отдаёт результат Tier-1 (`services/gateway/app/pipeline.py:222`).
+  В качественном режиме (C-074) каждый запрос дополнительно проходит LLM-ядро: чтение 26b → нормализация
+  e4b → LLM-матчер 12b, а при недоступной LLM путь штатно откатывается к Tier-1.
 - **Data flywheel (самообучение).** Логи запросов без PII → очередь ревью (HITL) → подтверждённые
   метки → экспорт датасета → дообучение головы → реестр версий → реиндекс. `make flywheel-*`.
 - **Карточка = официальные данные портала.** Обогащение из `api.vino-svoe.ru/v1` для **2035 из 2103**
@@ -43,8 +46,8 @@
   Object Storage, Managed PostgreSQL + pgvector (`deploy/yandex/`).
 - **Только permissive-лицензии.** SigLIP 2, DINOv2, RapidOCR, OpenCV, FastAPI, Nuxt, PyTorch —
   Apache-2.0/MIT. AGPL (Ultralytics) не используется. Чистый clean-room относительно `old/`.
-- **Инженерная дисциплина.** GRACE 4: 162 governed-файла, контракты, assertion-гейты, 69 завершённых
-  change с машино-проверямыми критериями; `make gate` — один коммит-гейт качества и SLA.
+- **Инженерная дисциплина.** GRACE 4: 184 governed-файла, контракты, assertion-гейты, 83 завершённых
+  change (C-001…C-084) с машино-проверяемыми критериями; `make gate` — один коммит-гейт качества и SLA.
 
 ---
 
@@ -67,6 +70,11 @@
 | **Flywheel HITL**: SQLite-логи, очередь ревью, экспорт датасета, реестр версий, ретрейн | `services/active_learning/`, `scripts/flywheel/cli.py` | Замкнутый цикл улучшения качества на подтверждённых данных |
 | **Прогрев на старте** (`WARMUP_ON_START`) и P&S-тайлы по всему кадру | `services/retrieval/app/main.py`, `packages/common/preprocess.py` | Холодный старт ~6 с не попадает в первый запрос: 6137 мс → **955 мс** |
 | **Yandex Cloud deployment** (Serverless Containers + Workflow + Lockbox + pgvector) | `deploy/yandex/` | Архитектура готова к внедрению, а не только к демо |
+| **Explain-trace пути решения** (`EXPLAIN_ENABLED=1`) | `services/gateway/app/pipeline.py`, `apps/web/` | UI показывает, каким путём получен ответ (retrieval → geo → OCR → LLM) — витрина «как это работает» для судей, без секретов |
+| **Структурированный вывод LLM**: ремонт JSON, нормализация enum, один повтор, валидация по схеме | `packages/common/llm/structured.py` | Форма ответа гарантируется на нашей стороне независимо от провайдера; исходы (`exact`/`repaired`/`retried`/`failed`) видны в `/v1/telemetry/summary` |
+| **Реестр словарей `dict_audit`** | `packages/common/dict_audit.py` | Делает устаревание жёстких словарей наблюдаемым: словарь — детерминированный фолбэк, LLM-нормализация — обобщение поверх него |
+| **Внутренние LLM-эндпоинты** `/observe` · `/match` · `/normalize-reading` · `/extract` | `services/vlm/app/main.py` | Раздельные шаги: чтение этикетки, выбор slug из пула кандидатов, приведение к каталогу, извлечение полей |
+| **Честные off-флаги** (прототипы виноделен, цветовой tie-break, text-first/RRF, cross-encoder, cylinder unwrap) | `config.py`, `packages/common/{text_ce,palette,cylinder}.py` | Проверенные эксперименты с отрицательным результатом сохранены за флагом — воспроизводимость решений, а не удаление |
 
 ---
 
@@ -460,25 +468,36 @@ make web-build && make web-preview
 | VLM | `VLM_FALLBACK_ENABLED`, `VLM_PROVIDER`, `VLM_MODEL`, `VLM_REASONING_EFFORT` |
 | LLM Router | `LLM_PROVIDERS_FILE`, `LLM_LOCAL_ONLY`, ключи провайдеров |
 | Текстовый фьюжн | `TEXT_FUSION_MODE`, `TEXT_FUSION_WEIGHT` |
-| Observer (опц.) | `OBSERVER_ENABLED`, `OBSERVER_MODEL`, `OBSERVER_TIMEOUT_S`, `OBSERVER_TOP_K` |
+| LLM-ядро (quality mode) | `OBSERVER_ENABLED`, `OBSERVER_ALWAYS`, `LLM_MATCHER_ENABLED`, `NORMALIZER_ENABLED`, `OBSERVER_MODEL`, `OBSERVER_TIMEOUT_S` |
 | Калибровка / near-dup | `CALIBRATION_ENABLED`, `NEAR_DUP_DISAMBIGUATION`, `NEAR_DUP_THRESHOLD`, `SCAN_TOP_K` |
+| Сомелье / CORS | `SOMMELIER_LLM_TIMEOUT_S`, `SOMMELIER_WARMUP_ENABLED`, `CORS_ORIGINS` |
 | SLA | `WARMUP_ON_START`, `SERVICE_TIMEOUT_S` |
 
-### Флаги и дефолты
+### Флаги и дефолты: два слоя
 
-Полный список с пояснениями — в `.env.example`. Ключевые флаги и их **дефолты** (поведение зачётного пути):
+Проект различает **code-дефолты** (`packages/common/config.py`) и **качественный режим** (`.env.example`).
+Code-дефолты намеренно выключены, чтобы тесты и синтетический `make gate` оставались детерминированными;
+зачётный качественный режим (C-074…C-077) задаётся `.env` — LLM работает на **каждом** запросе.
 
-| Флаг | Дефолт | Смысл |
-|---|---|---|
-| `OBSERVER_ENABLED` | **`0`** (выключен) | Observer — опциональный «quality mode» для живого демо; в зачётном скрипте выключен (лимит 10 с, точность не доказана). |
-| `CALIBRATION_ENABLED` | **`0`** | Калиброванный `p_correct`-гейт; выключен — решение не меняется. |
-| `NEAR_DUP_DISAMBIGUATION` | **`0`** | Дизамбигуация near-дубликатов; выключена, метрики гейта не меняются (C-065). |
-| `OCR_ENGINE` | **`rapidocr`** | Онлайн-OCR (латиница+цифры); `cyrillic`/`fusion` — off-flag (C-066). |
-| `VLM_FALLBACK_ENABLED` | **`0`** | Локальная VLM не читает этикетки в бюджет SLA (C-004). |
-| `TEXT_FUSION_MODE` | **`conditional`** | Текстовый фьюжн только на near-dup пару в визуальном top-2. |
-| `SCORE_TAU` / `MARGIN_DELTA` | `0.7615` / `0.0058` | Пороги уверенности (калибровка C-021/C-022). |
-| `GEO_WEIGHT` / `VIEWS` | `0.7` / `6` | Геоверификация ORB и число видов галереи (C-023). |
-| `NORMALIZE_CROP` / `PAS_TILES` | `0` / `4` | Полный кадр без кропа этикетки + pan-and-scan тайлы. |
+| Флаг | Code-дефолт | `.env` (quality mode) | Смысл |
+|---|---|---|---|
+| `OBSERVER_ENABLED` | **`0`** | **`1`** | LLM-наблюдение этикетки; в качественном режиме — на каждом запросе |
+| `OBSERVER_ALWAYS` | **`0`** | **`1`** | Наблюдение всегда, а не только при низкой уверенности (C-074) |
+| `LLM_MATCHER_ENABLED` | **`0`** | **`1`** | Slug выбирает LLM-матчер из пула кандидатов, а не текстовый поиск (C-074/C-080) |
+| `NORMALIZER_ENABLED` | **`0`** | **`1`** | LLM-нормализация чтения под каталог по динамическому словарю (C-077) |
+| `EXPLAIN_ENABLED` | **`1`** | `1` | Explain-trace пути решения для UI (витрина, на решение не влияет) |
+| `CALIBRATION_ENABLED` | **`0`** | `0` | Калиброванный `p_correct`-гейт; выключен — решение не меняется (C-061) |
+| `NEAR_DUP_DISAMBIGUATION` | **`0`** | `0` | Дизамбигуация near-дубликатов; метрики гейта не меняются (C-065) |
+| `OCR_ENGINE` | **`rapidocr`** | `rapidocr` | Онлайн-OCR (латиница+цифры); `cyrillic`/`fusion` — off-flag (C-066) |
+| `VLM_FALLBACK_ENABLED` | **`0`** | `0` | Локальная VLM не читает этикетки в бюджет SLA (C-004) |
+| `TEXT_FUSION_MODE` | **`conditional`** | `conditional` | Текстовый фьюжн только на near-dup пару в визуальном top-2 |
+| `SCORE_TAU` / `MARGIN_DELTA` | `0.7615` / `0.0058` | те же | Пороги уверенности (калибровка C-021/C-022) |
+| `GEO_WEIGHT` / `VIEWS` | `0.7` / `6` | те же | Геоверификация ORB и число видов галереи (C-023) |
+| `NORMALIZE_CROP` / `PAS_TILES` | `0` / `4` | те же | Полный кадр без кропа этикетки + pan-and-scan тайлы |
+
+> **Почему два слоя.** LLM-ядро — основной путь качества (C-074), но его code-дефолт выключен: иначе
+> синтетический гейт и `pytest` зависели бы от наличия локальных моделей. Зачётный прогон использует
+> `.env.example`, где LLM включён на каждом запросе; при недоступной LLM путь штатно деградирует к Tier-1.
 
 Провайдеры и цепочки — `config/providers.yaml` (секреты только через env).
 
@@ -495,8 +514,8 @@ make gate     # финальный гейт: lint + тесты + eval (acc@1 ≥
 
 | Метрика | Значение | Источник |
 |---|---|---|
-| Тестов собрано | **484** (49 файлов) | `pytest --collect-only` |
-| syntax/grammar lint | 0 errors (162 governed-файла) | `grace lint` |
+| Тестов | **563** (61 файл) | `pytest -q` (123 с, все зелёные) |
+| syntax/grammar lint | 0 errors / 0 warnings (209 файлов, 184 governed) | `grace lint` |
 | acc@1 (in-distribution proxy, n=200, seed 42) | **0.775** | `reports/final.json` |
 | acc@5 | **0.970** | `reports/final.json` |
 | near-duplicate acc@1 | **0.7619** | `reports/final.json` |
@@ -529,11 +548,11 @@ make gate     # финальный гейт: lint + тесты + eval (acc@1 ≥
 
 ```text
 $ grace lint --path .
-Files checked: 187 · Governed files: 162 · XML artifacts checked: 158
+Files checked: 209 · Governed files: 184 · XML artifacts checked: 186
 Errors: 0 · Warnings: 0 — No issues found.
 
 $ make test   # pytest tests/ -q
-484 passed, 2 warnings in 134.66s
+563 passed, 2 warnings in 123.19s
 
 $ make eval   # → reports/final.json
 acc@1 0.775 · acc@5 0.97 · группа acc@1 0.785 · near-dup acc@1 0.7619 (n=21)
@@ -564,8 +583,9 @@ exit 0 · сервисы: postgres, gateway, normalize, retrieval, vlm, matcher,
   полевое качество; облачные ключи не подключены (облачный реранкер — кандидат на будущее).
 - Узкое место — **представление**: у 6 из 19 реальных российских фото правильной позиции нет даже в
   top-100 из 2103 (C-026). Дешёвые эвристики домена исчерпаны.
-- **Observer выключен по умолчанию** (`OBSERVER_ENABLED=0`): зачётный скрипт последовательный с лимитом
-  10 с/запрос, observer ~5–6 с на грани, точность не доказана. Это опциональный «quality mode» для демо.
+- **LLM-ядро — code-дефолт выключен**, а в качественном режиме включён на каждом запросе
+  (`.env.example`, C-074). Честное ограничение: точность LLM-пути не доказана (нет ground truth),
+  а latency высока (26b + матчер — десятки секунд), поэтому это «quality mode», а не гарантия F1.
 - VLM-fallback выключен по умолчанию: локальные модели не читают этикетки в бюджет SLA (3–34 с).
 - `faiss` недоступен на macOS arm64 (конфликт libomp с torch) — используется numpy-бэкенд.
 - PaddleOCR-VL — офлайн-инструмент (~186–234 с/кадр), не онлайн-путь.
@@ -576,20 +596,24 @@ exit 0 · сервисы: postgres, gateway, normalize, retrieval, vlm, matcher,
 
 ## План развития
 
-**Сделано (C-001…C-070, 69 change):**
+**Сделано (C-001…C-084, 83 change):**
 
 - ✅ **M0** — скелет репозитория, ETL каталога (2103 slug), self-evaluator.
 - ✅ **M1** — Tier-1 retrieval (SigLIP2-so400m + обученная голова), full-frame вход + P&S,
   мультивью-галерея (6 видов), OOD-валидация.
 - ✅ **M2** — геоверификация ORB+RANSAC, калибровка порогов, SLA-контроль, quality/SLA-гейт `make gate`.
 - ✅ **M3** — VLM-fallback + matcher fusion, LLM Router, OCR (rapidocr/cyrillic/fusion/paddleocr_vl),
-  текстовый KB + условный фьюжн, транслит лат↔кир, RRF text-first (флаг off), cross-encoder (флаг off).
+  текстовый KB + условный фьюжн, транслит лат↔кир, RRF text-first (флаг off), cross-encoder (флаг off);
+  **LLM-ядро распознавания** (чтение 26b → нормализация e4b → LLM-матчер 12b с честным отказом, C-074…C-080).
 - ✅ **M4** — Nuxt 3 UI: карточка, сомелье, аналоги, энотуризм; паритет карточки с порталом.
 - ✅ **M5** — flywheel: SQLite-логи, очередь ревью, HITL, экспорт датасета, реестр версий;
   офлайн-обогащение 26b.
 - ✅ **M6** — Docker/compose, Makefile, Yandex-манифесты, демо-документация, синк официального API
   (2035/2103), гигиена артефактов; пакет сдачи: документация под ТЗ, совместимость со скриптом
   организатора (100/100), решение по observer и доказательство воспроизводимости (C-070).
+- ✅ **M6+** — калиброванный гейт уверенности (C-061), датасет подтверждённых пар (C-078), реестр
+  словарей `dict_audit` (C-079), честный отрицательный результат по матчеру 26b/e4b (C-080),
+  рефакторинг-гигиена и маркер-логирование (C-081…C-084).
 
 **В плане:**
 
@@ -610,13 +634,14 @@ services/
   gateway/                # FastAPI — публичный API и оркестрация
   normalize/              # детекция этикетки, выпрямление, P&S-тайлы
   retrieval/              # энкодеры + numpy/FAISS/pgvector + геоверификация
-  vlm/                    # OpenAI-совместимый коннектор (fallback)
-  matcher/                # фьюжн скоров и текстовых полей
+  vlm/                    # LLM-ядро: /observe · /match · /normalize-reading · /extract
+  matcher/                # фьюжн скоров и текстовых полей (textfusion)
   ocr/                    # RapidOCR / PP-OCRv5
   catalog/                # ETL и хранение каталога
   active_learning/        # логи, ревью, аугментация, дообучение
-packages/{contracts,common}/
-scripts/{catalog,eval,kb,train,flywheel}/
+packages/contracts/       # Pydantic-схемы публичных ответов
+packages/common/          # общий код: catalog, preprocess, ocr*, text_norm, llm/{router,matcher,normalizer,structured,circuit}
+scripts/{catalog,eval,kb,train,flywheel,llm}/
 config/providers.yaml     # LLM-провайдеры и цепочки
 deploy/{docker,yandex}/   # базовые образы, манифесты Yandex Cloud
 docs/{METRICS,LIMITATIONS,DEMO,DATA}.md
