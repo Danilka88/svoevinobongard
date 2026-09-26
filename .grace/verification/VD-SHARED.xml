@@ -104,6 +104,14 @@
         ENUM_SYNONYMS, near_dup сладость/цвет, textfusion цвет). tests/test_c079_dict_audit.py (4 теста):
         все целевые словари найдены, размеры положительны, отсутствующий модуль помечается missing без
         падения. Поведение онлайн-пути и метрики гейта не меняются. Полный pytest зелёный, lint 0/0.</Evidence>
+      <Scenario id="S-COMMON-13">C-082: общая утилита compact_text в text_norm даёт однострочный
+        текст без обрезки и JSON-кодирования; normalizer и build_confirmed_pairs используют её вместо
+        локальных копий. Варианты с иной семантикой (observer стрипает кавычки, matcher обрезает и
+        кодирует JSON, ocr_benchmark приводит регистр) оставлены локальными — поведение не изменилось.</Scenario>
+      <Evidence note="C082-compact-text">C-082: packages/common/text_norm.py — compact_text в
+        MODULE_MAP/SCOPE/__all__; normalizer.py и scripts/train/build_confirmed_pairs.py переведены на
+        общий хелпер. Существующие тесты (test_c077_normalizer 9, test_c078_pairs 6) зелёные без правок
+        — рефакторинг поведенчески нейтрален; полный pytest зелёный, lint 0/0, метрики гейта не изменились.</Evidence>
     </V-M-COMMON>
   </VD-SHARED>
 </GraceVerificationDocument>

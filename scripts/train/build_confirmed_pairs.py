@@ -67,8 +67,10 @@ __all__ = ["DEFAULT_CATALOG", "DEFAULT_CONSENSUS", "DEFAULT_FEEDBACK", "DEFAULT_
 
 
 def _clean(value: object) -> str:
-    """Однострочное значение."""
-    return " ".join(str(value or "").split()).strip()
+    """Однострочное значение (общий compact_text, C-082)."""
+    from packages.common.text_norm import compact_text
+
+    return compact_text(value)
 
 
 def assign_split(key: str, *, holdout_mod: int = HOLDOUT_MOD) -> str:

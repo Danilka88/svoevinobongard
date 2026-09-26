@@ -22,6 +22,7 @@
 # forms - набор канонических вариантов строки для сопоставления
 # tokens - значимые токены с сохранением чисел и различающих слов
 # similarity - максимум fuzzy-похожести по вариантам написания
+# compact_text - однострочный текст без лишних пробелов (общая утилита, C-082)
 # GREEK_LOOKALIKES - греческие визуальные двойники кириллицы
 # greek_to_cyrillic - перевод омоглифов наблюдения в кириллицу
 # LATIN_LOOKALIKES_CYR - латинские визуальные двойники кириллицы для смешанных токенов
@@ -138,7 +139,17 @@ ALIASES: dict[str, tuple[str, ...]] = {
 }
 __all__ = ["ALIASES", "GREEK_LOOKALIKES", "LATIN_LOOKALIKES_CYR", "LAT_ORDER", "LAT_TO_RU", "LOOKALIKES",
            "MAX_FORMS", "RU_TO_LAT", "apply_aliases", "cyr_to_lat",
-    "greek_to_cyrillic", "homoglyphs_to_cyrillic", "delookalike", "fold", "forms", "lat_to_cyr", "similarity", "tokens"]
+    "greek_to_cyrillic", "homoglyphs_to_cyrillic", "delookalike", "fold", "forms", "lat_to_cyr", "similarity", "tokens",
+    "compact_text"]
+
+
+def compact_text(value: object) -> str:
+    """Однострочный текст: без лишних пробелов и переводов строк (C-082).
+
+    Общая утилита для промптов и разбора ответов: она НЕ обрезает длину и НЕ кодирует JSON — у
+    таких вариантов (`matcher`, `ocr_benchmark`) иная семантика и они остаются локальными.
+    """
+    return " ".join(str(value or "").split()).strip()
 
 
 def fold(text: str | None) -> str:

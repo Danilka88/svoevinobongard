@@ -1,0 +1,72 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-082>
+    <IntentSummary>Вынести идентичную `_clean` (однострочный вид текста) из normalizer.py и
+      build_confirmed_pairs.py в общую `text_norm.compact_text`. Варианты с иной семантикой
+      (observer/matcher/ocr_benchmark) не трогаем. Поведение нейтрально, метрики гейта не меняются;
+      коммит не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-082/spec.xml</Value></MustExist>
+      <MustExist><Value>packages/common/text_norm.py</Value></MustExist>
+      <MustExist><Value>packages/common/llm/normalizer.py</Value></MustExist>
+      <MustExist><Value>scripts/train/build_confirmed_pairs.py</Value></MustExist>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -c "from packages.common.text_norm import compact_text; assert compact_text('  a  b ') == 'a b'"</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c077_normalizer.py tests/test_c078_pairs.py -q</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-COMMON</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-COMMON/>
+      <M-EVAL/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/text_norm.py</Path>
+      <Path>packages/common/llm/normalizer.py</Path>
+      <Path>scripts/train/build_confirmed_pairs.py</Path>
+      <Path>.grace/graph/modules.xml</Path>
+      <Path>.grace/verification/VD-SHARED.xml</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Общий compact_text и переключение двух модулей (M-COMMON, M-EVAL)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>text_norm.compact_text добавлен в MODULE_MAP/SCOPE/__all__; поведение совпадает с
+            прежней `_clean` (однострочный вид без обрезки и json).</Criterion>
+          <Criterion>normalizer.py и build_confirmed_pairs.py импортируют compact_text; локальные
+            идентичные `_clean` удалены; вызовы заменены.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c077_normalizer.py tests/test_c078_pairs.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Граф, verification, гейты и архив (M-COMMON, M-EVAL)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>graph/verification отражают C-082; AGENTS.md roadmap дополняется строкой C-082.</Criterion>
+          <Criterion>grace lint 0/0, полный pytest, make gate без изменений, бандл в archive/C-082 applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-082>
+</GraceChangePlan>

@@ -35,7 +35,7 @@ from __future__ import annotations
 
 from packages.common.llm.ollama_native import ollama_native_chat
 from packages.common.observer import ENUM_SYNONYMS
-from packages.common.text_norm import fold, homoglyphs_to_cyrillic
+from packages.common.text_norm import compact_text, fold, homoglyphs_to_cyrillic
 
 __all__ = ["NORMALIZER_FIELDS_INSTRUCTION", "NORMALIZER_WINERY_INSTRUCTION", "build_catalog_vocab",
            "build_fields_prompt", "build_winery_prompt", "normalize_reading", "parse_fields_answer",
@@ -98,8 +98,8 @@ def build_catalog_vocab(catalog: dict) -> dict:
 
 
 def _clean(value: object) -> str:
-    """Однострочное текстовое значение."""
-    return " ".join(str(value or "").split()).strip()
+    """Однострочное текстовое значение (общий compact_text, C-082)."""
+    return compact_text(value)
 
 
 def build_winery_prompt(observation: dict, vocab: dict) -> str:

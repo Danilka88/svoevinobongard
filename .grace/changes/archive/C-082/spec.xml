@@ -1,0 +1,32 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-082>
+    <Summary>Устранение дублирования вспомогательной функции приведения текста к однострочному виду:
+      идентичные `_clean()` в packages/common/llm/normalizer.py и scripts/train/build_confirmed_pairs.py
+      выносятся в общую `packages/common/text_norm.compact_text`. Варианты с иной семантикой
+      (observer стрипает кавычки, matcher обрезает и кодирует JSON, ocr_benchmark приводит регистр и ё→е)
+      НЕ трогаются: наивное слияние изменило бы поведение. Refactor поведенчески нейтральный: результат
+      функций не меняется, меняется лишь место определения.</Summary>
+    <Goals>(1) Убрать дублирование идентичной функции без изменения поведения. (2) Дать общий именованный
+      хелпер, чтобы будущие модули не плодили копии. (3) Сохранить семантически отличающиеся варианты
+      как есть. (4) Не менять онлайн-путь и метрики синтетического гейта.</Goals>
+    <Constraints>Поведение не меняется (кроме места определения). Метрики make gate не меняются.
+      Семантически иные `_clean` не объединяются. Новый символ получает запись в MODULE_MAP. Коммит не
+      создаётся.</Constraints>
+    <NonGoals>Не трогать `_clean` в observer/matcher/ocr_benchmark (иная семантика). Не делать другие
+      рефакторинги (merge JSON-recovery, split main.py) — это отдельные изменения. Не менять логику.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>packages/common/text_norm.py экспортирует `compact_text(value) -> str` (однострочный вид
+        без обрезки и json-кодирования).</Criterion>
+      <Criterion>normalizer.py и build_confirmed_pairs.py используют `compact_text` вместо локальной копии;
+        локальные `_clean` удалены там, где были идентичны.</Criterion>
+      <Criterion>Поведение не изменилось: существующие тесты (test_c077_normalizer, test_c078_pairs)
+        зелёные без правок; pytest полный зелёный; grace lint 0/0; метрики make gate не изменились.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-COMMON/>
+      <M-EVAL/>
+    </AffectedAreas>
+    <VerificationIntent>Рефакторинг проверяется существующими тестами (поведение не должно измениться) и
+      lint 0/0; отсутствие регрессий — полный pytest и неизменные метрики гейта.</VerificationIntent>
+  </C-082>
+</GraceChangeSpec>
