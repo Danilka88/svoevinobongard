@@ -37,6 +37,9 @@ export interface ScanResponse {
   // C-065/C-067: расширенная выдача, неоднозначность и аналоги из других виноделен (аддитивно)
   top10?: TopKItem[]; ambiguous?: boolean; alternatives?: TopKItem[];
   recognized_fields?: Record<string, string | number | null>; reason?: string;
+  // C-074…C-077: LLM-ядро — прочитанное наблюдение и результат нормализации под каталог
+  observation?: Record<string, string | number | null>;
+  normalization?: Record<string, string | number | null>;
 }
 
 export interface SimilarItem {

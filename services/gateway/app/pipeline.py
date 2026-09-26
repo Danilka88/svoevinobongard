@@ -515,9 +515,11 @@ async def run_scan(
     # C-077: LLM-нормализатор приводит чтение к каталожной форме (винодельня/название/параметры)
     # на каждом запросе, опираясь на список виноделен и перечисления каталога. При недоступной LLM
     # возвращается фолбэк (транслит), поэтому путь не обрывается; нормализатор не выбирает товар.
+    normalization: dict = {}
     if settings.normalizer_enabled and observation:
         normalized = await active_clients.normalize_reading(observation)
         if normalized and normalized.get("source") != "degraded":
+            normalization = dict(normalized)
             merged_observation = dict(observation)
             for key in ("winery", "brand", "wine_name", "sweetness", "color", "wine_type", "region"):
                 value = normalized.get(key)
@@ -648,6 +650,7 @@ async def run_scan(
         ocr_latency_ms=round(ocr_latency_ms, 1),
         degraded=degraded,
         observation=observation,
+        normalization=normalization,
         recognized_fields=recognized_fields,
         reason=scan_reason or _resolve_scan_reason(not_found, confident, recognized_fields, len(top5)),
         card=build_card(store, best.slug, (official_index or {}).get(best.slug)),

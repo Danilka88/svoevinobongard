@@ -89,6 +89,8 @@ class ScanResponse(BaseModel):
     p_correct: float | None = None
     # C-062: наблюдение модели-наблюдателя (пусто, если режим выключен).
     observation: dict = Field(default_factory=dict)
+    # C-077: результат LLM-нормализации чтения под каталог (пусто, если режим выключен).
+    normalization: dict = Field(default_factory=dict)
     f1_top1: float | None = None
     f1_top5: float | None = None
     margin: float = 0.0

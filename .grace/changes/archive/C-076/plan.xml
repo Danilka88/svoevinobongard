@@ -1,0 +1,96 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-076>
+    <IntentSummary>Упаковать результат: README и ARCHITECTURE описывают гибридный LLM-конвейер (чтение 26b →
+      нормализация e4b → матчер 12b → flywheel) с реальными числами и примерами; контракт ScanResponse и UI
+      показывают прочитанное LLM и нормализацию под каталог (аддитивно). Поведение распознавания и метрики
+      гейта не меняются; коммит не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-076/spec.xml</Value></MustExist>
+      <MustExist><Value>README.md</Value></MustExist>
+      <MustExist><Value>ARCHITECTURE.md</Value></MustExist>
+      <MustExist><Value>packages/contracts/schemas.py</Value></MustExist>
+      <MustExist><Value>apps/web/composables/useGateway.ts</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-CONTRACTS</Module></MustVerify>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>grep -q "LLM-ядро" README.md &amp;&amp; grep -q "normalize-reading" ARCHITECTURE.md</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "normalization" packages/contracts/schemas.py</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-CONTRACTS</Module></MustVerify>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-CONTRACTS</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-VLM</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/>
+      <M-CONTRACTS/>
+      <M-VLM/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>README.md</Path>
+      <Path>ARCHITECTURE.md</Path>
+      <Path>docs/METRICS.md</Path>
+      <Path>packages/contracts/schemas.py</Path>
+      <Path>services/gateway/app/pipeline.py</Path>
+      <Path>apps/web/composables/useGateway.ts</Path>
+      <Path>apps/web/components/NotFoundBlock.vue</Path>
+      <Path>tests/test_c076_contract.py</Path>
+      <Path>.grace/graph/modules.xml</Path>
+      <Path>.grace/verification/VD-M0-CODE.xml</Path>
+      <Path>.grace/verification/VD-SHARED.xml</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>README и ARCHITECTURE: гибридный LLM-конвейер и числа (M-GATEWAY, M-VLM)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>README: раздел LLM-ядра, обновлённая схема работы, таблица возможностей, раздел с
+            реальными числами и примерами, ссылки на reports.</Criterion>
+          <Criterion>ARCHITECTURE: конвейер включает /observe, /normalize-reading, /match и деградацию.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "LLM-ядро" README.md &amp;&amp; grep -q "normalize-reading" ARCHITECTURE.md</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Контракт normalization и UI-отображение (M-CONTRACTS, M-GATEWAY)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>ScanResponse.normalization (аддитивно); pipeline заполняет поле; useGateway его
+            описывает; NotFoundBlock/карточка показывают наблюдение и нормализацию.</Criterion>
+          <Criterion>Тест tests/test_c076_contract.py проверяет наличие поля и его дефолт.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c076_contract.py -q</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Граф, verification, финальные гейты и архив (M-GATEWAY, M-CONTRACTS, M-VLM)</Title>
+        <DependsOn>T-001, T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>graph и verification (V-M-GATEWAY/V-M-CONTRACTS/V-M-VLM) отражают C-076; AGENTS.md
+            roadmap дополняется строкой C-076.</Criterion>
+          <Criterion>grace lint 0/0, полный pytest, make gate без изменений, бандл в archive/C-076 applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-076>
+</GraceChangePlan>

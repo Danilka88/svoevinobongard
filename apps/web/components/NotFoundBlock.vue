@@ -8,6 +8,8 @@ const props = defineProps<{
   candidates: TopKItem[];
   alternatives?: TopKItem[];
   recognizedFields?: Record<string, string | number | null> | null;
+  // C-076: результат LLM-нормализации чтения под каталог (винодельня/бренд/название/параметры).
+  normalization?: Record<string, string | number | null> | null;
   reason?: string;
   degraded?: boolean;
   notFound?: boolean;
@@ -81,6 +83,17 @@ const query = computed(() => {
   return name || winery;
 });
 
+// C-076: что LLM-нормализатор свёл к каталогу (винодельня/бренд). Показываем только заполненное,
+// чтобы объяснить пользователю ход мысли системы, а не сыпать внутренними полями.
+const normalizedFields = computed(() => {
+  const labels: Record<string, string> = {
+    winery: 'Винодельня в каталоге', brand: 'Бренд с этикетки', wine_name: 'Название в каталоге',
+  };
+  return Object.entries(props.normalization || {})
+    .filter(([key, value]) => labels[key] && value !== null && value !== undefined && String(value).trim() !== '')
+    .map(([key, value]) => ({ label: labels[key], value: String(value) }));
+});
+
 const portalUrl = computed(() =>
   query.value ? `${PORTAL_SEARCH}?search=${encodeURIComponent(query.value)}` : PORTAL_SEARCH);
 
@@ -110,6 +123,16 @@ function width(score: number) {
       <h3 id="nf-read" class="recognized-title">Мы прочитали с этикетки</h3>
       <ul class="recognized-list">
         <li v-for="field in readFields" :key="field.label">
+          <span class="recognized-label">{{ field.label }}</span>
+          <span class="recognized-value">{{ field.value }}</span>
+        </li>
+      </ul>
+    </section>
+
+    <section v-if="normalizedFields.length" class="recognized" aria-labelledby="nf-normalized">
+      <h3 id="nf-normalized" class="recognized-title">Сверили с каталогом</h3>
+      <ul class="recognized-list">
+        <li v-for="field in normalizedFields" :key="field.label">
           <span class="recognized-label">{{ field.label }}</span>
           <span class="recognized-value">{{ field.value }}</span>
         </li>

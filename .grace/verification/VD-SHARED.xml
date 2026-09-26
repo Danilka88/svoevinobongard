@@ -91,6 +91,11 @@
         gemma4:e4b: «CHATEAU TAMAGNE → winery Кубань-Вино, brand Шато Тамань»; «ABRAU-DURSO → Абрау-Дюрсо»;
         «CECCHI (нет в каталоге) → winery пусто» (честный отказ, не выдумал). Нативный Ollama принимает только
         format=json или пусто — свободный текст идёт без поля format.</Evidence>
+      <Scenario id="S-COMMON-11">C-076: контракт витрины — ScanResponse.normalization аддитивно
+        присутствует в схеме и по умолчанию пуст; поведение распознавания не меняется.</Scenario>
+      <Evidence note="C076-normalization-contract">C-076: tests/test_c076_contract.py (3 теста) —
+        поле normalization в ScanResponse, пустой дефолт, приём результата нормализации; полный pytest
+        зелёный, UI собирается (nuxt build), grace lint 0/0.</Evidence>
     </V-M-COMMON>
   </VD-SHARED>
 </GraceVerificationDocument>

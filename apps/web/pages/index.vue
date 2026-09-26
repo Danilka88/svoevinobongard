@@ -105,6 +105,7 @@ async function pick(slug: string) {
           :candidates="candidates"
           :alternatives="current.alternatives || []"
           :recognized-fields="current.recognized_fields || {}"
+          :normalization="current.normalization || {}"
           :reason="current.reason || ''"
           :degraded="current.degraded"
           :not-found="current.not_found"
