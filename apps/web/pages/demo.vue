@@ -160,6 +160,16 @@ onMounted(async () => {
           <p class="demo-result" :class="{ ok: !sample.not_found }">
             Итог: <strong>{{ sample.not_found ? 'вино не найдено (честный отказ)' : (sample.top1 || '—') }}</strong>
           </p>
+          <div class="row" style="margin-top: 10px">
+            <NuxtLink v-if="!sample.not_found && sample.top1" class="secondary"
+                      :to="`/catalog?slug=${encodeURIComponent(sample.top1)}`">
+              Открыть карточку в каталоге
+            </NuxtLink>
+            <NuxtLink v-else-if="sample.human_label" class="ghost"
+                      :to="`/catalog?q=${encodeURIComponent(sample.human_label)}`">
+              Найти похожее в каталоге
+            </NuxtLink>
+          </div>
         </details>
       </section>
     </template>

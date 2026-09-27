@@ -34,6 +34,8 @@ const sheetSlug = ref('');
 const sheetEnotourism = ref<EnotourismResponse | null>(null);
 
 const hasFilters = computed(() => Boolean(query.value || region.value || category.value || grape.value || winery.value));
+const activeFilters = computed(() => [query.value, region.value, category.value, grape.value, winery.value]
+  .filter(Boolean).length);
 const canLoadMore = computed(() => page.value < pages.value);
 
 async function load(nextPage = 1) {
@@ -111,7 +113,16 @@ function closeCard() {
   sheetEnotourism.value = null;
 }
 
-onMounted(() => { void load(1); });
+// C-093: ссылки из демо-стенда и других экранов — /catalog?slug=... открывает карточку,
+// /catalog?q=... заполняет поиск. Так стенд «Примеры работы» ведёт прямо в каталог.
+onMounted(() => {
+  const route = useRoute();
+  const slugParam = String(route.query.slug || '');
+  const queryParam = String(route.query.q || '');
+  if (queryParam) query.value = queryParam;
+  void load(1);
+  if (slugParam) void openCard(slugParam);
+});
 </script>
 
 <template>
@@ -160,10 +171,21 @@ onMounted(() => { void load(1); });
             <option v-for="facet in (facets.winery || []).slice(0, 80)" :key="facet.value" :value="facet.value">{{ facet.value }} ({{ facet.count }})</option>
           </select>
         </div>
+        <div class="field">
+          <label class="field-label" for="f-sort">Сортировка</label>
+          <select id="f-sort" v-model="sort" class="select">
+            <option value="name">По названию</option>
+            <option value="winery">По винодельне</option>
+            <option value="year">По году (сначала новые)</option>
+            <option value="slug">По порядку каталога</option>
+          </select>
+        </div>
       </div>
 
       <div class="row" style="margin-top: 8px">
-        <span class="badge badge-gold" aria-live="polite">Найдено: {{ total }}</span>
+        <span class="badge badge-gold" aria-live="polite">
+          Найдено: {{ total }}<template v-if="activeFilters"> · фильтров: {{ activeFilters }}</template>
+        </span>
         <button v-if="hasFilters" class="ghost" type="button" @click="reset">Сбросить</button>
         <button class="ghost" type="button" @click="load(1)">Обновить</button>
       </div>

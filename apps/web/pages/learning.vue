@@ -107,6 +107,18 @@ onMounted(load);
         <div class="toast">{{ error }}</div>
       </div>
 
+      <!-- C-093: понятный цикл обратной связи — что происходит с голосом пользователя. -->
+      <section class="card" aria-labelledby="l-cycle">
+        <h2 id="l-cycle">Как голос превращается в качество</h2>
+        <ol class="cycle">
+          <li class="cycle-step"><span class="cycle-num">1</span><div><b>Голос пользователя.</b> После скана можно отметить «верно» или «не то вино» с причиной.</div></li>
+          <li class="cycle-step"><span class="cycle-num">2</span><div><b>Проверка консенсусом.</b> Одиночный голос ничего не меняет: нужно ≥{{ rules.min_sessions || 3 }} независимых сессий и согласие с агентами (ридеры и каталог).</div></li>
+          <li class="cycle-step"><span class="cycle-num">3</span><div><b>Модерация спорного.</b> Что не получило доверия — уходит модератору, автоматически ни на что не влияет.</div></li>
+          <li class="cycle-step"><span class="cycle-num">4</span><div><b>Рост датасета.</b> Подтверждённые пары «фото → вино» пополняют датасет для дообучения — качество растёт со временем.</div></li>
+        </ol>
+        <p class="muted small">Разделы ниже показывают состояние этого цикла в реальном времени.</p>
+      </section>
+
       <section v-if="loading" class="card" aria-busy="true">
         <div class="skeleton skeleton-line" style="width: 40%" />
         <div class="skeleton skeleton-line" />
@@ -213,4 +225,7 @@ onMounted(load);
 .bars li { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
 .bars-value { font-weight: 700; }
 .moderator-flag { margin: var(--space-3) 0 0; padding: 6px 10px; border-radius: 999px; display: inline-block; background: var(--gold-soft); color: var(--gold-on-soft); font-size: .78rem; font-weight: 600; }
+.cycle { list-style: none; padding: 0; margin: var(--space-3) 0 0; display: grid; gap: var(--space-3); }
+.cycle-step { display: flex; gap: var(--space-3); align-items: flex-start; }
+.cycle-num { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: .82rem; }
 </style>

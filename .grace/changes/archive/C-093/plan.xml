@@ -1,0 +1,89 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-093>
+    <IntentSummary>Довести каталог (селект сортировки, счётчик фильтров), «Обучение» (понятный цикл обратной
+      связи) и демо-стенд (ссылки на карточки). Backend и метрики не меняются; коммит не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-093/spec.xml</Value></MustExist>
+      <MustExist><Value>apps/web/pages/catalog.vue</Value></MustExist>
+      <MustExist><Value>apps/web/pages/learning.vue</Value></MustExist>
+      <MustExist><Value>apps/web/pages/demo.vue</Value></MustExist>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>grep -q "sort" apps/web/pages/catalog.vue &amp;&amp; grep -qi "сортиров" apps/web/pages/catalog.vue</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "/catalog" apps/web/pages/demo.vue</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-WEB</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-WEB/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>apps/web/pages/catalog.vue</Path>
+      <Path>apps/web/pages/learning.vue</Path>
+      <Path>apps/web/pages/demo.vue</Path>
+      <Path>apps/web/composables/useGateway.ts</Path>
+      <Path>.grace/verification/VD-M5-WEB.xml</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Каталог: сортировка, счётчик фильтров, выдача (M-WEB)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Селект сортировки (название/винодельня/год) реально меняет порядок выдачи; счётчик
+            активных фильтров; понятная подпись «Найдено N».</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -qi "сортиров" apps/web/pages/catalog.vue</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Обучение: понятный цикл и заголовки (M-WEB)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Блок объясняет цикл: голос → консенсус агентов → модерация → датасет; разделы
+            подписаны понятно.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "цикл" apps/web/pages/learning.vue</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Демо-стенд: ссылки на карточки (M-WEB)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>У найденных вин в стенде — ссылка «Открыть карточку» на каталог; у отказа — ссылка на
+            поиск по прочитанному названию.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "/catalog" apps/web/pages/demo.vue</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Сборка, verification, гейты и архив (M-WEB)</Title>
+        <DependsOn>T-001, T-002, T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>nuxt build без ошибок; verification/AGENTS.md отражают C-093; grace lint 0/0; полный
+            pytest; make gate без изменений; бандл в archive/C-093 applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>cd apps/web &amp;&amp; npm run build</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-093>
+</GraceChangePlan>
