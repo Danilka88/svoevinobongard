@@ -53,7 +53,7 @@ if str(_ROOT) not in sys.path:
 
 from packages.common.catalog import load_catalog  # noqa: E402
 from packages.common.config import settings  # noqa: E402
-from packages.common.images import flatten_alpha  # noqa: E402
+from packages.common.images import read_bgr  # noqa: E402
 from packages.common.logging import log_marker  # noqa: E402
 from packages.common.ocr import parse_fields, run_ocr  # noqa: E402
 from packages.common.preprocess import PreprocessConfig  # noqa: E402
@@ -104,19 +104,11 @@ def load_done(labels_path: Path) -> dict[str, dict]:
     return done
 
 
-def _read_image(path: Path) -> np.ndarray | None:
-    """Читает фото как BGR-кадр целиком."""
-    try:
-        with Image.open(path) as raw:
-            rgba = np.asarray(raw.convert("RGBA"))
-    except Exception:  # noqa: BLE001
-        return None
-    return flatten_alpha(rgba[:, :, [2, 1, 0, 3]])
 
 
 def label_one(path: Path, orig_name: str, model: str, timeout: float) -> dict:
     """Размечает одно фото: 26b по полному кадру и OCR fusion."""
-    image = _read_image(path)
+    image = read_bgr(path)
     if image is None:
         return {"file": path.name, "orig_name": orig_name, "ok": False, "reason": "unreadable"}
     record: dict = {"file": path.name, "orig_name": orig_name, "ok": True,

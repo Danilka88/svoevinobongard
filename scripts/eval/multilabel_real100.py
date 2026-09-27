@@ -61,7 +61,7 @@ if str(_ROOT) not in sys.path:
 from packages.common.annotation import adjudicate, assign_split, judge_payload, split_policy  # noqa: E402
 from packages.common.catalog import load_catalog  # noqa: E402
 from packages.common.config import settings  # noqa: E402
-from packages.common.images import flatten_alpha  # noqa: E402
+from packages.common.images import read_bgr  # noqa: E402
 from packages.common.llm.structured import parse_structured  # noqa: E402
 from packages.common.logging import log_marker  # noqa: E402
 from packages.common.ocr import run_ocr  # noqa: E402
@@ -113,14 +113,6 @@ def available_models() -> set[str]:
         return set()
 
 
-def _read_image(path: Path) -> np.ndarray | None:
-    """Читает фото как BGR-кадр."""
-    try:
-        with Image.open(path) as raw:
-            rgba = np.asarray(raw.convert("RGBA"))
-    except Exception:  # noqa: BLE001
-        return None
-    return flatten_alpha(rgba[:, :, [2, 1, 0, 3]])
 
 
 def _read_rgba(path: Path) -> np.ndarray | None:
@@ -269,7 +261,7 @@ def run(args: argparse.Namespace) -> int:
             if time.perf_counter() - started > budget_s:
                 print(f"TIME-BOX {args.time_budget_min} мин: обработано {processed}")
                 break
-            image = _read_image(path)
+            image = read_bgr(path)
             if image is None:
                 continue
             photo_started = time.perf_counter()

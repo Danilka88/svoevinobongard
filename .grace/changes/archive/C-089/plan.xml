@@ -1,0 +1,73 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-089>
+    <IntentSummary>Вынести идентичную `_read_image` из трёх eval-скриптов в общий
+      packages/common/images.read_bgr; скрипты переключаются на неё. Поведение нейтрально, метрики гейта
+      не меняются; коммит не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-089/spec.xml</Value></MustExist>
+      <MustExist><Value>packages/common/images.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/real_field_label.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/multilabel_real100.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/label_real_photos.py</Value></MustExist>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -c "from packages.common.images import read_bgr; print('ok')"</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c089_refactor.py -q</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-COMMON</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-COMMON/>
+      <M-EVAL/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/images.py</Path>
+      <Path>scripts/eval/real_field_label.py</Path>
+      <Path>scripts/eval/multilabel_real100.py</Path>
+      <Path>scripts/eval/label_real_photos.py</Path>
+      <Path>tests/test_c089_refactor.py</Path>
+      <Path>.grace/graph/modules.xml</Path>
+      <Path>.grace/verification/VD-SHARED.xml</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>read_bgr в images и переключение скриптов (M-COMMON, M-EVAL)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>images.read_bgr добавлен в SCOPE/MODULE_MAP/`__all__`; поведение совпадает с прежней
+            `_read_image` (BGR-кадр целиком, None при ошибке).</Criterion>
+          <Criterion>Три eval-скрипта импортируют read_bgr; локальные `_read_image` удалены.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c089_refactor.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Граф, verification, гейты и архив (M-COMMON, M-EVAL)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>graph/verification отражают C-089; AGENTS.md roadmap дополняется строкой C-089.</Criterion>
+          <Criterion>grace lint 0/0, полный pytest, make gate без изменений, бандл в archive/C-089 applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-089>
+</GraceChangePlan>

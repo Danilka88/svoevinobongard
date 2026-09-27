@@ -1,0 +1,31 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-089>
+    <Summary>Устранение дублирования чтения фото в BGR-кадр: идентичная `_read_image` (PIL→RGBA→
+      flatten_alpha→BGR) определена в трёх eval-скриптах. Функция выносится в общий
+      `packages/common/images.read_bgr(path)`, а скрипты начинают её использовать. Это тот же класс
+      рефакторинга, что C-082/C-084: поведение не меняется, меняется место определения. Семантически
+      иные функции (`_clean`, `_percentile`, `load_cases`) не трогаются.</Summary>
+    <Goals>(1) Убрать тройное дублирование чтения BGR-кадра без изменения поведения. (2) Дать общий
+      именованный хелпер рядом с `load_bgr`/`flatten_alpha`. (3) Не менять онлайн-путь и метрики гейта.</Goals>
+    <Constraints>Поведение не меняется: то же декодирование (PIL → RGBA → flatten_alpha → канал-порядок
+      BGR), `None` при ошибке. Метрики make gate не меняются. Новый символ получает запись в MODULE_MAP/
+      SCOPE/`__all__`. Коммит не создаётся.</Constraints>
+    <NonGoals>Не трогать `_clean`/`_percentile`/`load_cases` (иная семантика/крупнее). Не менять логику
+      eval-скриптов. Не менять модели и конвейер.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>packages/common/images.py экспортирует `read_bgr(path) -> np.ndarray | None`
+        (чтение файла-фото в BGR-кадр целиком, None при ошибке).</Criterion>
+      <Criterion>real_field_label.py, multilabel_real100.py, label_real_photos.py используют `read_bgr`;
+        локальные `_read_image` удалены.</Criterion>
+      <Criterion>Поведение не изменилось: существующие тесты зелёные без правок; pytest полный зелёный;
+        grace lint 0/0; метрики make gate не изменились.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-COMMON/>
+      <M-EVAL/>
+    </AffectedAreas>
+    <VerificationIntent>Рефакторинг проверяется существующими тестами (поведение не должно измениться) и
+      тестом эквивалентности через tmp-изображение; отсутствие регрессий — полный pytest, lint 0/0,
+      неизменные метрики гейта.</VerificationIntent>
+  </C-089>
+</GraceChangeSpec>

@@ -1,6 +1,6 @@
 # START_MODULE_CONTRACT
 # PURPOSE: Работа с изображениями: EXIF-декодирование, flatten alpha на фон, ресайз, PNG-кодирование
-# SCOPE: apply_exif, load_bgr, decode_image, flatten_alpha, resize_max_side, encode_png, to_pil_rgb
+# SCOPE: apply_exif, load_bgr, decode_image, flatten_alpha, read_bgr, resize_max_side, encode_png, to_pil_rgb
 # DEPENDS: numpy, cv2, PIL
 # LINKS: M-COMMON
 # ROLE: RUNTIME
@@ -11,6 +11,7 @@
 # load_bgr - байты изображения в BGR ndarray с учетом EXIF
 # decode_image - байты изображения в BGR ndarray без применения EXIF
 # flatten_alpha - композиция прозрачности на однотонный фон
+# read_bgr - файл-фото в BGR ndarray целиком, None, если не декодируется
 # resize_max_side - пропорциональное уменьшение по длинной стороне
 # encode_png - ndarray в PNG-байты
 # to_pil_rgb - ndarray в PIL RGB
@@ -34,6 +35,7 @@ __all__ = [
     "load_bgr",
     "decode_image",
     "flatten_alpha",
+    "read_bgr",
     "resize_max_side",
     "encode_png",
     "to_pil_rgb",
@@ -85,6 +87,20 @@ def flatten_alpha(image: np.ndarray, background: int = 255) -> np.ndarray:
         composited = bgr * alpha + background_arr * (1.0 - alpha)
         return composited.astype(np.uint8)
     raise ValueError(f"unsupported channel count: {image.shape[2]}")
+
+
+def read_bgr(path: "Path | str") -> np.ndarray | None:
+    """Читает файл-фото в BGR-кадр целиком (PIL → RGBA → flatten_alpha).
+
+    Возвращает BGR-массив или None, если файл не декодируется. Общий хелпер для eval-скриптов (C-089),
+    чтобы декодирование фото было единым и не дублировалось.
+    """
+    try:
+        with Image.open(path) as raw:
+            rgba = np.asarray(raw.convert("RGBA"))
+    except Exception:  # noqa: BLE001 - некодируемый файл не должен ронять вызывающего
+        return None
+    return flatten_alpha(rgba[:, :, [2, 1, 0, 3]])
 
 
 def resize_max_side(image: np.ndarray, max_side: int) -> np.ndarray:

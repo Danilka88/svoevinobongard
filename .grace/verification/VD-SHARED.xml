@@ -156,6 +156,14 @@
         (VLM_PROVIDER/BASE_URL/API_KEY/MODEL/FAST) заменён на LLM Router с providers.yaml и LLM_*-env;
         блок testing обновлён с «tests/ пока только README» на факт (pytest 580+, governor, assertion-гейты).
         Сверено с config/providers.yaml и .env.example. Код и метрики гейта не менялись; grace lint 0/0.</Evidence>
+      <Scenario id="S-COMMON-18">C-089: общий read_bgr в images читает файл-фото в BGR-кадр целиком
+        (PIL→RGBA→flatten_alpha), None при ошибке; три eval-скрипта используют его вместо локальных копий.
+        Поведение не изменилось.</Scenario>
+      <Evidence note="C089-read-bgr">C-089: packages/common/images.py — read_bgr в SCOPE/MODULE_MAP/__all__;
+        scripts/eval/{real_field_label,multilabel_real100,label_real_photos}.py переведены на него, локальные
+        _read_image удалены. tests/test_c089_refactor.py (4 теста): эквивалентность прежнему декодированию,
+        None на битом файле, RGBA-композит, отсутствие дублей. Полный pytest зелёный, lint 0/0, метрики
+        гейта не изменились.</Evidence>
     </V-M-COMMON>
   </VD-SHARED>
 </GraceVerificationDocument>
