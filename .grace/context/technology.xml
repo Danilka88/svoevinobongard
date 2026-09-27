@@ -60,7 +60,7 @@
     </infra>
   </ml>
 
-  <vlmConnector>
+  <llmConnector>
     <pattern>Единый LLM Router (C-008, ADR-003): роли vision_model / text_model / embedding_model,
       цепочка провайдеров из config/providers.yaml (ollama | lmstudio | openrouter | yandex | custom),
       подмена провайдера только через YAML/env, без правок кода</pattern>
@@ -74,10 +74,10 @@
       подключения провайдеров</serviceEnv>
     <requirement>temperature=0, строгая JSON-схема, constrained decoding + fallback-парсер/ремонт JSON
       (packages/common/llm/structured.py)</requirement>
-  </vlmConnector>
+  </llmConnector>
 
   <testing>
-    <runner>pytest (580+ тестов в tests/, запуск make test)</runner>
+    <runner>pytest (583 теста в tests/, запуск make test)</runner>
     <assertion>pytest-assert / plain asserts; GRACE assertion-гейты (grace lint --change C-XXX --assertions
       target --run-commands); финальный quality/SLA-гейт make gate</assertion>
     <governance>обязательная семантическая разметка MODULE_CONTRACT/MODULE_MAP у каждого исходника,

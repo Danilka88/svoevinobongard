@@ -1,0 +1,25 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-094>
+    <Summary>Гигиена context-артефакта technology.xml по итогам dd_grace-status: элемент vlmConnector
+      переименован в llmConnector (содержимое описывает LLM Router C-008, а не только VLM-коннектор —
+      имя отставало от смысла), а число тестов приведено к факту (580+ → 583). Правки только в контекст-
+      артефакте; поведение кода и метрики не меняются.</Summary>
+    <Goals>(1) Привести имя элемента к его содержанию (LLM Router, а не VLM-коннектор). (2) Синхронизировать
+      число тестов с фактом (583). (3) Не менять код и метрики. (4) Подтвердить grace lint 0/0.</Goals>
+    <Constraints>Только .grace/context/technology.xml. Код и метрики не меняются. Грамматика GRACE
+      сохраняется (проверено: CLI принимает llmConnector). Коммит не создаётся.</Constraints>
+    <NonGoals>Не менять другие context-артефакты. Не менять код. Не менять router/providers.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>technology.xml: элемент llmConnector (бывш. vlmConnector); содержимое сохранено.</Criterion>
+      <Criterion>technology.xml: число тестов 583 (по факту pytest --collect-only).</Criterion>
+      <Criterion>grace lint --path . 0 errors / 0 warnings; полный pytest зелёный; метрики make gate не
+        изменились.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-COMMON/>
+      <M-DEPLOY/>
+    </AffectedAreas>
+    <VerificationIntent>Синхронизация проверяется grace lint (грамматика) и наличием llmConnector/583;
+      регрессии — полный pytest и неизменные метрики гейта.</VerificationIntent>
+  </C-094>
+</GraceChangeSpec>

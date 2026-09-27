@@ -1,0 +1,63 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-094>
+    <IntentSummary>Синхронизировать technology.xml: переименовать vlmConnector → llmConnector (содержимое —
+      LLM Router) и число тестов 580+ → 583. Только контекст-артефакт; код и метрики не меняются; коммит
+      не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-094/spec.xml</Value></MustExist>
+      <MustExist><Value>.grace/context/technology.xml</Value></MustExist>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-DEPLOY</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>grep -q "llmConnector" .grace/context/technology.xml &amp;&amp; ! grep -q "vlmConnector" .grace/context/technology.xml</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "583" .grace/context/technology.xml</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-DEPLOY</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-COMMON</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-DEPLOY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-COMMON/>
+      <M-DEPLOY/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>.grace/context/technology.xml</Path>
+      <Path>.grace/verification/VD-SHARED.xml</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Переименование и синхронизация числа (M-COMMON, M-DEPLOY)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>technology.xml содержит llmConnector (не vlmConnector) с сохранённым содержимым.</Criterion>
+          <Criterion>Число тестов — 583.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "llmConnector" .grace/context/technology.xml</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Verification, гейты и архив (M-COMMON, M-DEPLOY)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>verification/AGENTS.md отражают C-094; grace lint 0/0; полный pytest; make gate без
+            изменений; бандл в archive/C-094 applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-094>
+</GraceChangePlan>
