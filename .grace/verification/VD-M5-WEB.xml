@@ -210,6 +210,15 @@
         209/184/186→214/189/196, бандлы 83→88, прокси p50/p95 119.0/131.4 мс; LLM-путь acc@1 0.4545,
         acc@5 0.7273, not_found 0.0; near-dup 0.7619 сохранён отдельной метрикой. Добавлены winery_key
         (brands.py) и reader_cache (C-087). Только документация; код и метрики гейта не менялись.</Evidence>
+      <Scenario id="S-WEB-NAV-4">C-091: ползунки сомелье работают кросс-браузерно (webkit + moz),
+        значения показаны словами с aria-valuetext; понятные формулировки для «вне каталога (в т.ч.
+        новинка) / низкая уверенность / недоступность»; сканер показывает путь решения словами.</Scenario>
+      <Evidence note="C091-ui-polish">C-091: apps/web/components/RangeField.vue (единый ползунок с
+        градациями), main.css — добавлены ::-moz-range-track/::-moz-range-progress/::-moz-range-thumb
+        (Firefox-фикс) и заливка до бегунка; sommelier.vue использует RangeField (5 слайдеров);
+        index.vue — индикатор пути решения (retrieval/ocr/vlm/observer/llm_match) без изменения ответа;
+        NotFoundBlock — формулировка про новинку. nuxt build без ошибок; grace lint 0/0; полный pytest
+        зелёный; метрики гейта не менялись.</Evidence>
     </V-M-WEB>
   </VD-M5-WEB>
 </GraceVerificationDocument>

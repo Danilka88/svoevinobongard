@@ -75,6 +75,21 @@ async function pick(slug: string) {
   }
   await loadSimilar(slug);
 }
+
+// C-091: путь решения понятными словами — видно, каким способом получен ответ
+// (классическое зрение, OCR, режим наблюдателя или LLM-ядро), без изменения самого ответа.
+const PATH_LABELS: Record<string, string> = {
+  retrieval: 'классическое зрение',
+  text_first: 'текст этикетки + зрение',
+  ocr_fallback: 'OCR этикетки',
+  vlm_fallback: 'зрение LLM',
+  observer: 'LLM-наблюдатель',
+  llm_match: 'LLM-ядро: чтение → нормализация → выбор',
+  near_dup: 'различение серии',
+  ambiguous: 'серия: несколько кандидатов',
+};
+const pathLabel = computed(() => PATH_LABELS[current.value?.path || ''] || current.value?.path || '');
+
 </script>
 
 <template>
@@ -99,6 +114,10 @@ async function pick(slug: string) {
       </section>
 
       <template v-if="current">
+        <p v-if="pathLabel" class="path-hint muted small" role="status">
+          Как получен ответ: <strong>{{ pathLabel }}</strong>
+          <template v-if="current.latency_ms"> · {{ Math.round(current.latency_ms) }} мс</template>
+        </p>
         <WineCard v-if="current.card && !current.not_found" :card="current.card" :slug="current.slug || ''" />
         <NotFoundBlock
           v-else

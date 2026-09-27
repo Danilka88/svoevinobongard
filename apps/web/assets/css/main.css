@@ -304,18 +304,37 @@ a:hover { text-decoration: underline; }
 .slider { display: flex; flex-direction: column; gap: var(--space-2); }
 .slider input[type='range'] {
   -webkit-appearance: none; appearance: none; width: 100%; height: var(--tap);
-  background: transparent; margin: 0;
+  background: transparent; margin: 0; cursor: pointer;
 }
+/* Шкала min/max + подсказка под ползунком (C-091). */
+.slider-scale { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); color: var(--text-muted); font-size: .78rem; }
+.slider-scale .muted { flex: 1; text-align: center; }
+/* WebKit (Chrome/Safari): заливка до бегунка через --rf-fill. */
 .slider input[type='range']::-webkit-slider-runnable-track {
   height: 6px; border-radius: 999px;
-  background: linear-gradient(90deg, var(--accent), var(--gold));
+  background: linear-gradient(90deg, var(--accent) 0 var(--rf-fill, 50%), var(--border-strong) var(--rf-fill, 50%) 100%);
 }
 .slider input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none;
   width: 26px; height: 26px; margin-top: -10px;
   border-radius: 50%; background: var(--surface);
   border: 3px solid var(--accent); box-shadow: var(--shadow-sm);
+  transition: transform .12s ease;
 }
+.slider input[type='range']:hover::-webkit-slider-thumb { transform: scale(1.08); }
+.slider input[type='range']:focus-visible::-webkit-slider-thumb { outline: 3px solid var(--accent-soft); }
+/* Firefox: отдельные псевдоэлементы — без них трек и бегунок не отображаются (C-091). */
+.slider input[type='range']::-moz-range-track {
+  height: 6px; border-radius: 999px; background: var(--border-strong);
+}
+.slider input[type='range']::-moz-range-progress {
+  height: 6px; border-radius: 999px; background: var(--accent);
+}
+.slider input[type='range']::-moz-range-thumb {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--surface); border: 3px solid var(--accent); box-shadow: var(--shadow-sm);
+}
+.slider input[type='range']:focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 4px; border-radius: 999px; }
 .slider-value { font-variant-numeric: tabular-nums; font-weight: 600; }
 
 /* ---------- табы и сегменты ---------- */
@@ -336,6 +355,10 @@ a:hover { text-decoration: underline; }
 .skeleton-line { height: 14px; margin-bottom: var(--space-2); }
 .skeleton-photo { width: 84px; height: 84px; border-radius: var(--radius-sm); }
 @keyframes skeleton { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+
+/* ---------- подсказка пути решения (C-091) ---------- */
+.path-hint { display: inline-flex; align-items: center; gap: 6px; padding: 6px var(--space-3); margin: 0 0 var(--space-3); background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; }
+.path-hint strong { color: var(--accent); font-weight: 600; }
 
 /* ---------- тосты, модалка, шторка ---------- */
 .toast-stack { position: fixed; inset-inline: 0; bottom: 84px; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); pointer-events: none; z-index: 40; }

@@ -116,12 +116,18 @@ onMounted(() => { taste.load(); if (baseSlug.value) void submit(); });
             </button>
           </li>
         </ul>
-        <div class="slider" v-for="slider in ([
-          { key: 'spice', label: 'Острота' }, { key: 'fat', label: 'Жирность' },
-          { key: 'acidity', label: 'Кислотность' }, { key: 'sweetness', label: 'Сладость соуса' }])" :key="slider.key">
-          <label :for="`sl-${slider.key}`" class="field-label">{{ slider.label }}: <span class="slider-value">{{ answers[slider.key] }}</span></label>
-          <input :id="`sl-${slider.key}`" v-model="answers[slider.key]" type="range" min="0" max="3" step="1">
-        </div>
+        <RangeField v-model="answers.spice" label="Острота блюда"
+                    :grades="['нет', 'слабая', 'умеренная', 'острая']"
+                    min-label="не остро" max-label="очень остро" hint="как остро блюдо" />
+        <RangeField v-model="answers.fat" label="Жирность"
+                    :grades="['лёгкое', 'умеренное', 'жирное', 'очень жирное']"
+                    min-label="лёгкое" max-label="насыщенное" />
+        <RangeField v-model="answers.acidity" label="Кислотность блюда"
+                    :grades="['нет', 'слабая', 'умеренная', 'высокая']"
+                    min-label="нейтральное" max-label="кислое" />
+        <RangeField v-model="answers.sweetness" label="Сладость соуса"
+                    :grades="['нет', 'слегка', 'умеренно', 'сладко']"
+                    min-label="несладкое" max-label="сладкое" />
       </div>
 
       <!-- Шаг 2 -->
@@ -134,11 +140,11 @@ onMounted(() => { taste.load(); if (baseSlug.value) void submit(); });
             </button>
           </li>
         </ul>
-        <div class="slider">
-          <label for="adv" class="field-label">Смелость: <span class="slider-value">{{ answers.adventurousness }}</span></label>
-          <input id="adv" v-model="answers.adventurousness" type="range" min="0" max="1" step="0.1">
-          <p class="muted small" style="margin: 0">Слева — проверенное и знакомое, справа — необычные сорта и регионы.</p>
-        </div>
+        <RangeField v-model="answers.adventurousness" label="Смелость выбора"
+                    min="0" max="1" step="0.25"
+                    :grades="['знакомое', 'скорее знакомое', 'интересно', 'необычное', 'экспериментальное']"
+                    min-label="проверенное" max-label="необычное"
+                    hint="слева — проверенное, справа — редкие сорта и регионы" />
       </div>
 
       <!-- Шаг 3 -->

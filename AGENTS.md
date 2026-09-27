@@ -248,6 +248,7 @@ PYTHONPATH=. .venv/bin/python -c "from packages.common.logging import log_marker
 | C-071 | M4 | устойчивость сомелье: жёсткий бюджет LLM (SOMMELIER_LLM_TIMEOUT_S=4.0) + гарантированный детерминированный fallback (source/llm_degraded), UI-бюджет сомелье, e2e 31/31 |
 | C-072 | M6 | реальный стенд A(классика)/B(LLM-зрение)/C(каскад) на 21 проверенном полевом фото: эталон фото→slug, инвариант утечки тестовых фото, честные accuracy@1/@5 и latency, список моделей-читателей (задел C-073) |
 | C-073 | M3 | бенч читателей этикеток (gemma4:e4b/12b/26b, deepseek-ocr, PaddleOCR-VL, OCR кириллица/слияние): качество чтения и сквозной accuracy@1/@5, честный not_found, время на 21 и 100 фото; улучшение observer (структура, промпт под графичные шрифты, омоглифы, инвариант пустого наблюдения) |
+| C-091 | M4 | полировка UI: единый RangeField (кросс-браузерные ползунки, градации словами, aria-valuetext), понятные сценарии (вне каталога в т.ч. новинка), индикатор пути решения на сканере |
 | C-090 | M6 | актуализация README под факты C-073…C-089: числа (579 тестов, 88 бандлов, lint 214/189/196), LLM-путь acc@1 0.4545/acc@5 0.7273/not_found 0.0, hidden features winery_key и reader_cache |
 | C-089 | M3 | рефакторинг: идентичная `_read_image` (фото→BGR) из трёх eval-скриптов вынесена в `images.read_bgr`; поведение нейтрально |
 | C-088 | M6 | синхронизация context-артефакта technology.xml с фактом: vlmConnector → LLM Router (providers.yaml, LLM_*-env, breakers), testing → pytest 580+/governor/assertion-гейты |

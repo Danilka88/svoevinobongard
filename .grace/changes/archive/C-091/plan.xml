@@ -1,0 +1,80 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-091>
+    <IntentSummary>Исправить ползунки сомелье (кросс-браузерность + градации словами) через единый компонент
+      RangeField и отполировать UI: состояния, доступность, индикатор пути решения на сканере. Backend и
+      метрики не меняются; коммит не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-091/spec.xml</Value></MustExist>
+      <MustExist><Value>apps/web/pages/sommelier.vue</Value></MustExist>
+      <MustExist><Value>apps/web/assets/css/main.css</Value></MustExist>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>test -f apps/web/components/RangeField.vue</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "moz-range" apps/web/assets/css/main.css</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-WEB</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-WEB/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>apps/web/components/RangeField.vue</Path>
+      <Path>apps/web/pages/sommelier.vue</Path>
+      <Path>apps/web/pages/index.vue</Path>
+      <Path>apps/web/assets/css/main.css</Path>
+      <Path>.grace/verification/VD-M5-WEB.xml</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Компонент RangeField и фикс ползунков (M-WEB)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>RangeField.vue: v-model, min/max/step, подписи min/max, значение словами (grades),
+            aria-valuetext; кросс-браузерные стили (webkit + moz).</Criterion>
+          <Criterion>sommelier.vue использует RangeField для spice/fat/acidity/sweetness/adventurousness.</Criterion>
+          <Criterion>main.css: стили слайдера покрывают ::-moz-range-track/::-moz-range-thumb.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "moz-range" apps/web/assets/css/main.css</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Полировка состояний, доступности и путь решения (M-WEB)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Индикатор пути решения на сканере (классика/OCR/LLM-ядро) без изменения ответа.</Criterion>
+          <Criterion>Единые состояния и формулировки для «вне каталога / низкая уверенность / недоступность»;
+            touch-таргеты ≥44px, видимый фокус.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; npm run build</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Сборка UI, verification, гейты и архив (M-WEB)</Title>
+        <DependsOn>T-001, T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>nuxt build без ошибок; verification/AGENTS.md отражают C-091; grace lint 0/0; полный
+            pytest; make gate без изменений; бандл в archive/C-091 applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>cd apps/web &amp;&amp; npm run build</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-091>
+</GraceChangePlan>
