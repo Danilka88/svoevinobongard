@@ -140,6 +140,14 @@
         повреждённый файл = мисс, очистка, повторное чтение не вызывает модель. Живая проверка: первое
         чтение Bosca.jpg 10.1с, повторное 0.00с (from_cache, текст совпал). Кэш на диске data/cache/reader
         (data/ в .gitignore). grace lint 0/0, метрики гейта не менялись.</Evidence>
+      <Scenario id="S-COMMON-16">C-085: канонический ключ бренда winery_key из каталога (транслит
+        винодельни, согласованный со slug), сопоставление брендов по ключу/омоглифам, а не по буквам;
+        синхронизируется при росте каталога, официальный каталог не меняется.</Scenario>
+      <Evidence note="C085-brands">C-085: packages/common/brands.py — build_winery_index (135 брендов),
+        resolve_winery (кириллица, омоглифы «АБРАУ-ДЮРСO»→abraudyurso), winery_key_of.
+        tests/test_c085_brands.py (6 тестов). normalizer возвращает winery_key.
+        Гибкий матчер: бренд + признаки (сладость/тип/цвет), год не обязателен. Перезамер 21 фото:
+        acc@1 0.3636→0.4545, acc@5 0.6364→0.7273, not_found 0.76→0.0. grace lint 0/0.</Evidence>
     </V-M-COMMON>
   </VD-SHARED>
 </GraceVerificationDocument>

@@ -1,0 +1,155 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-085>
+    <IntentSummary>Сделать матчер гибким по бренду: ввести winery_key (транслит каталожной винодельни,
+      синхронизируемый из каталога), нормализатор возвращает ключ, матчер выбирает при «бренд совпал + ≥1
+      признак (сладость/тип/цвет)» без обязательного года. Пул кандидатов расширить. Результат — честный
+      перезамер на 21 фото с кэшем чтений C-087 (тяжёлую модель повторно не гоняем). Каталог конкурса не
+      меняется; онлайн-контракт и метрики гейта — тоже; коммит не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-085/spec.xml</Value></MustExist>
+      <MustExist><Value>packages/common/catalog.py</Value></MustExist>
+      <MustExist><Value>packages/common/llm/matcher.py</Value></MustExist>
+      <MustExist><Value>packages/common/llm/normalizer.py</Value></MustExist>
+      <MustExist><Value>scripts/eval/llm_match_eval.py</Value></MustExist>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>test -f packages/common/brands.py &amp;&amp; test -f tests/test_c085_brands.py</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c085_brands.py -q</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustVerify><Module>M-COMMON</Module></MustVerify>
+      <MustVerify><Module>M-VLM</Module></MustVerify>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-COMMON</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-COMMON/>
+      <M-VLM/>
+      <M-GATEWAY/>
+      <M-EVAL/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>packages/common/brands.py</Path>
+      <Path>packages/common/llm/normalizer.py</Path>
+      <Path>packages/common/llm/matcher.py</Path>
+      <Path>services/gateway/app/pipeline.py</Path>
+      <Path>scripts/eval/llm_match_eval.py</Path>
+      <Path>tests/test_c085_brands.py</Path>
+      <Path>reports/llm_match.json</Path>
+      <Path>reports/llm_match.md</Path>
+      <Path>docs/LIMITATIONS.md</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/graph/modules.xml</Path>
+      <Path>.grace/verification/VD-M0-CODE.xml</Path>
+      <Path>.grace/verification/VD-SHARED.xml</Path>
+      <Path>.grace/verification/VD-M3-VLM.xml</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Диагностика промахов (M-EVAL)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Для 6 проблемных фото сохранён reason матчера и факт «верное в пуле / не в пуле»;
+            вывод приведён как evidence в verification.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c085_brands.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Реестр брендов с winery_key (M-COMMON)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>brands.py: build_winery_index(catalog) строит {winery: key} и {key: [варианты]};
+            key = транслит каталожной винодельни, согласованный с началом slug её позиций; resolve_winery(text)
+            находит key по точному варианту, транслиту и омоглифам; устойчиво к пустому каталогу.</Criterion>
+          <Criterion>Синхронизация: индекс строится из каталога динамически (при росте каталога пополняется);
+            справочник не меняет официальный каталог.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c085_brands.py -q</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Нормализатор возвращает winery_key (M-COMMON)</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>normalize_reading возвращает winery_key (резолв по каталогу/бренду); омоглифы бренда
+            сводятся через homoglyphs_to_cyrillic до сверки; при неразрешимом бренде winery_key пуст.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c077_normalizer.py tests/test_c085_brands.py -q</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Гибкий матчер и расширенный пул (M-COMMON, M-VLM, M-GATEWAY)</Title>
+        <DependsOn>T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>MATCHER_INSTRUCTION: выбирать при совпадении бренда (winery_key/вариант) и ≥1 признака
+            (сладость/тип/цвет); год не обязателен; отказ только при полном несовпадении; slug из пула.</Criterion>
+          <Criterion>Пул кандидатов шире (визуальный Top-K и текстовый поиск по частям) в eval и в pipeline;
+            решение по-прежнему за матчером.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c074_matcher.py tests/test_c085_brands.py -q</Command>
+        </Verification>
+      </T-004>
+
+      <T-005>
+        <Title>Обогащение связки брендов (M-COMMON)</Title>
+        <DependsOn>T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Справочник брендов обогащается вариантами написания (лат/кир/омоглифы); при нехватке
+            данных — точечный прогон маленькой LLM по винодельням каталога; стандарт записи един для будущих
+            брендов.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c085_brands.py -q</Command>
+        </Verification>
+      </T-005>
+
+      <T-006>
+        <Title>Честный перезамер 21 фото (M-EVAL)</Title>
+        <DependsOn>T-004</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Перепрогон только матчера на 21 фото с кэшем чтений C-087 и кэшем нормализации
+            (26b не гоняется повторно); отчёты reports/llm_match.{json,md} обновлены.</Criterion>
+          <Criterion>Сравнение с прежними acc@1 0.3636 / acc@5 0.6364; прирост/отсутствие и остаточные
+            промахи зафиксированы честно.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/llm_match_eval.py --normalize --no-reader-cache=false --out reports/llm_match.json --md reports/llm_match.md</Command>
+        </Verification>
+      </T-006>
+
+      <T-007>
+        <Title>Документация, граф, verification, гейты и архив (M-COMMON, M-EVAL)</Title>
+        <DependsOn>T-001, T-002, T-003, T-004, T-005, T-006</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>docs/LIMITATIONS.md и AGENTS.md фиксируют гибкое правило по бренду и winery_key;
+            graph/verification обновлены.</Criterion>
+          <Criterion>grace lint 0/0, полный pytest, make gate без изменений, бандл в archive/C-085 applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-007>
+    </ImplementationPlan>
+  </C-085>
+</GraceChangePlan>

@@ -33,6 +33,7 @@
 """
 from __future__ import annotations
 
+from packages.common.brands import build_winery_index, resolve_winery
 from packages.common.llm.ollama_native import ollama_native_chat
 from packages.common.observer import ENUM_SYNONYMS
 from packages.common.text_norm import compact_text, fold, homoglyphs_to_cyrillic
@@ -234,6 +235,7 @@ def normalize_reading(observation: dict, catalog: dict, *, model: str | None = N
     if winery_answer is None:
         result = _fallback(observed)
         result["raw_text"] = _clean(observed.get("raw_text"))
+        result["winery_key"] = resolve_winery(result.get("winery"), build_winery_index(catalog))
         if use_cache and len(_CACHE) < _MAX_CACHE:
             _CACHE[cache_key] = dict(result)
         return result
@@ -253,6 +255,10 @@ def normalize_reading(observation: dict, catalog: dict, *, model: str | None = N
         result["brand"] = winery_part["brand"]
         result["source"] = "llm"
     result["raw_text"] = _clean(observed.get("raw_text")) or _clean(fields_answer)
+    # C-085: канонический ключ бренда для гибкого матчинга (по каталогу, а не по буквам).
+    index = build_winery_index(catalog)
+    result["winery_key"] = (resolve_winery(result.get("winery") or result.get("brand"), index)
+                            or resolve_winery(result.get("brand"), index))
     if use_cache and len(_CACHE) < _MAX_CACHE:
         _CACHE[cache_key] = dict(result)
     return result

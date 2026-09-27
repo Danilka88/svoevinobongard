@@ -30,6 +30,7 @@ import numpy as np
 
 from fastapi.concurrency import run_in_threadpool
 
+from packages.common.brands import winery_key_of
 from packages.common.catalog import CatalogStore
 from packages.common.text_rank import fields_from_ocr, rrf, text_index, text_search
 from packages.common.config import settings
@@ -521,7 +522,8 @@ async def run_scan(
         if normalized and normalized.get("source") != "degraded":
             normalization = dict(normalized)
             merged_observation = dict(observation)
-            for key in ("winery", "brand", "wine_name", "sweetness", "color", "wine_type", "region"):
+            for key in ("winery", "brand", "wine_name", "sweetness", "color", "wine_type", "region",
+                        "winery_key"):
                 value = normalized.get(key)
                 if value:
                     merged_observation[key] = value
@@ -557,10 +559,13 @@ async def run_scan(
         candidates = [
             {"slug": slug, "name": (records.get(slug) or {}).get("name"),
              "winery": (records.get(slug) or {}).get("winery"),
+             "winery_key": winery_key_of(str((records.get(slug) or {}).get("winery") or "")),
              "year": (records.get(slug) or {}).get("year"),
              "grape": (records.get(slug) or {}).get("grape"),
-             "sweetness": (records.get(slug) or {}).get("sweetness")}
-            for slug in pool[:20]
+             "sweetness": (records.get(slug) or {}).get("sweetness"),
+             "wine_type": (records.get(slug) or {}).get("category"),
+             "color": (records.get(slug) or {}).get("color")}
+            for slug in pool[:30]
         ]
         diagnostics.notes.append(f"llm matcher pool: {len(candidates)} "
                                  f"(text {len(observer_hits)}, visual {len(visual_pool)})")

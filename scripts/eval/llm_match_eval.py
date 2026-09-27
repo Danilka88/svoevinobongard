@@ -58,6 +58,7 @@ import sys
 import time
 from pathlib import Path
 
+from packages.common.brands import winery_key_of
 from packages.common.catalog import load_catalog
 from packages.common.llm.matcher import match_candidates
 from packages.common.llm.normalizer import normalize_reading
@@ -81,8 +82,9 @@ DEFAULT_MATCHER_MODEL = "gemma4:12b-mlx"
 DEFAULT_READER_TOKENS = 256
 DEFAULT_READER_TIMEOUT_S = 180.0
 DEFAULT_MATCHER_TIMEOUT_S = 180.0
-POOL_LIMIT = 20
-DEFAULT_VISUAL_K = 10
+# C-085: пул шире — верное вино чаще доходит до матчера (диагностика показала кейсы «верное вне пула»).
+POOL_LIMIT = 30
+DEFAULT_VISUAL_K = 15
 DEFAULT_NORMALIZER_MODEL = "gemma4:e4b-mlx"
 DEFAULT_NORMALIZER_TIMEOUT_S = 180.0
 
@@ -173,7 +175,8 @@ def decide(reading_text: str, catalog: dict, index: dict, records: dict, *, rout
             observation, catalog, model=normalizer_model, timeout_s=normalizer_timeout_s)
         if normalized.get("source") == "llm":
             merged = dict(observation)
-            for key in ("winery", "brand", "wine_name", "sweetness", "color", "wine_type", "region"):
+            for key in ("winery", "brand", "wine_name", "sweetness", "color", "wine_type", "region",
+                        "winery_key"):
                 if normalized.get(key):
                     merged[key] = normalized[key]
             if normalized.get("brand"):
@@ -190,9 +193,12 @@ def decide(reading_text: str, catalog: dict, index: dict, records: dict, *, rout
     candidates = [
         {"slug": slug, "name": (records.get(slug) or {}).get("name"),
          "winery": (records.get(slug) or {}).get("winery"),
+         "winery_key": winery_key_of(str((records.get(slug) or {}).get("winery") or "")),
          "year": (records.get(slug) or {}).get("year"),
          "grape": (records.get(slug) or {}).get("grape"),
-         "sweetness": (records.get(slug) or {}).get("sweetness")}
+         "sweetness": (records.get(slug) or {}).get("sweetness"),
+         "wine_type": (records.get(slug) or {}).get("category"),
+         "color": (records.get(slug) or {}).get("color")}
         for slug in pool[:pool_limit]
     ]
     matched = match_candidates(observation, candidates, router=router, model=matcher_model,
