@@ -1,0 +1,91 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-092>
+    <IntentSummary>Собрать статичный демо-стенд «Примеры работы»: генератор читает reports/llm_match.json и
+      field21_gold.json, копирует 21 фото в public/demo и пишет samples.json; страница /demo показывает
+      по каждому фото чтение → нормализацию → кандидатов → итог → путь/время с фильтром по сценариям.
+      Backend и метрики не меняются; коммит не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-092/spec.xml</Value></MustExist>
+      <MustExist><Value>reports/llm_match.json</Value></MustExist>
+      <MustExist><Value>reports/field21_gold.json</Value></MustExist>
+      <MustExist><Value>data/samples/real_field/manifest.tsv</Value></MustExist>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>test -f scripts/eval/build_demo_stand.py &amp;&amp; test -f tests/test_c092_demo_stand.py</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c092_demo_stand.py -q</Command></MustPassCommand>
+      <MustPassCommand><Command>test -f apps/web/public/demo/samples.json &amp;&amp; test -f apps/web/pages/demo.vue</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustVerify><Module>M-EVAL</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-WEB</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-EVAL</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-WEB/>
+      <M-EVAL/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>scripts/eval/build_demo_stand.py</Path>
+      <Path>tests/test_c092_demo_stand.py</Path>
+      <Path>apps/web/pages/demo.vue</Path>
+      <Path>apps/web/layouts/default.vue</Path>
+      <Path>apps/web/public/demo/samples.json</Path>
+      <Path>apps/web/public/demo/img/</Path>
+      <Path>.grace/graph/modules.xml</Path>
+      <Path>.grace/verification/VD-M5-WEB.xml</Path>
+      <Path>.grace/verification/VD-M0-CODE.xml</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Генератор демо-стенда (M-EVAL)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>build_demo_stand.py: build_samples (21 пример из отчёта+эталона), scenario_of
+            (matched/ambiguous/not_found), copy_photos (21 фото в public/demo/img), CLI пишет samples.json.</Criterion>
+          <Criterion>Пример содержит: фото, чтение, поля чтения, нормализацию (+source), кандидатов,
+            top1/not_found, path, latency.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c092_demo_stand.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Страница «Примеры работы» и навигация (M-WEB)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>demo.vue: загрузка samples.json, фильтр по сценариям, карточка с шагами (фото →
+            чтение → нормализация → кандидаты → итог → путь/время); понятные подписи, доступность.</Criterion>
+          <Criterion>Навигация: пункт «Примеры работы» в moreNav (вкладка «Ещё»).</Criterion>
+          <Criterion>nuxt build без ошибок.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; npm run build</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Реальная генерация, тесты, verification, гейты и архив (M-EVAL, M-WEB)</Title>
+        <DependsOn>T-001, T-002</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Прогон генератора: 21 пример, 21 фото в public/demo; samples.json валиден.</Criterion>
+          <Criterion>grace lint 0/0; полный pytest; make gate без изменений; бандл в archive/C-092 applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. .venv/bin/python scripts/eval/build_demo_stand.py</Command>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+        </Verification>
+      </T-003>
+    </ImplementationPlan>
+  </C-092>
+</GraceChangePlan>

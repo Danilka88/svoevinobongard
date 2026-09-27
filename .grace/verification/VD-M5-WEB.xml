@@ -219,6 +219,15 @@
         index.vue — индикатор пути решения (retrieval/ocr/vlm/observer/llm_match) без изменения ответа;
         NotFoundBlock — формулировка про новинку. nuxt build без ошибок; grace lint 0/0; полный pytest
         зелёный; метрики гейта не менялись.</Evidence>
+      <Scenario id="S-WEB-NAV-5">C-092: вкладка «Примеры работы» показывает на 21 проверенном полевом фото
+        весь путь системы (чтение → нормализация → кандидаты → итог), с фильтром по сценариям
+        (однозначное / серия / вне каталога); стенд статичный и работает без backend.</Scenario>
+      <Evidence note="C092-demo-stand">C-092: scripts/eval/build_demo_stand.py собирает
+        apps/web/public/demo/samples.json (21 пример: 4 matched, 7 ambiguous, 10 not_found) из
+        reports/llm_match.json и field21_gold.json и копирует 21 фото в public/demo/img (2.9 МБ).
+        apps/web/pages/demo.vue рендерит примеры с фильтром; навигация «Примеры работы» в «Ещё».
+        Живая проверка: /demo рендерится, samples.json доступен, фото 200. tests/test_c092_demo_stand.py
+        (4 теста); nuxt build без ошибок; grace lint 0/0; полный pytest зелёный.</Evidence>
     </V-M-WEB>
   </VD-M5-WEB>
 </GraceVerificationDocument>

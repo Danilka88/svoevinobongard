@@ -22,6 +22,7 @@ const primaryNav = [
   { to: '/learning', label: 'Обучение', icon: 'learning' },
 ];
 const moreNav = [
+  { to: '/demo', label: 'Примеры работы', icon: 'demo' },
   { to: '/how', label: 'Как это работает', icon: 'how' },
 ];
 const allNav = [...primaryNav, ...moreNav];

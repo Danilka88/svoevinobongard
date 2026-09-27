@@ -276,6 +276,11 @@
       <Evidence note="C084-eval-hygiene">C-084: tests/test_c084_refactor.py (4 теста) — эквивалентность
         group_key прежнему алгоритму, экспорт, общий хелпер в четырёх скриптах, отсутствие мёртвого кода.
         Все пять скриптов импортируются без ошибок; полный pytest зелёный, grace lint 0/0.</Evidence>
+      <Scenario id="S-EVAL-21">C-092: скрипт build_demo_stand.py собирает статичные демо-данные стенда
+        (21 пример) из отчётов LLM-пути и эталона, копируя фото в public/demo; запуск модели не требуется.</Scenario>
+      <Evidence note="C092-demo-generator">C-092: build_demo_stand.py — build_samples/scenario_of/
+        copy_photos; из reports/llm_match.json + field21_gold.json получил 21 пример (4 matched,
+        7 ambiguous, 10 not_found) и 21 фото (2.9 МБ). tests/test_c092_demo_stand.py (4).</Evidence>
     </V-M-EVAL>
 
     <V-M-GATEWAY>

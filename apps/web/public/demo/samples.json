@@ -1,0 +1,3950 @@
+{
+  "generated": true,
+  "total": 21,
+  "counts": {
+    "matched": 4,
+    "not_found": 10,
+    "ambiguous": 7
+  },
+  "metrics": {
+    "samples": 21,
+    "evaluable": 11,
+    "matched_only": 4,
+    "expected_absent": 10,
+    "accuracy_at_1": 0.4545,
+    "accuracy_at_5": 0.7273,
+    "strict_at_1": 0.75,
+    "not_found_rate": 0.0,
+    "refusal_correct_rate": 0.0,
+    "observations_nonempty": 21,
+    "fields_extracted": 21,
+    "latency_ms": {
+      "p50": 39768.9,
+      "p95": 51726.9
+    },
+    "paths": {
+      "llm_llm": 21
+    },
+    "rows": [
+      {
+        "file": "Abrau Durso Reserve брюд.jpg",
+        "top1": "abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115",
+        "top5": [
+          "abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115",
+          "abrau-dyurso-abrau-durso-brut-rose-reserve-pino-nuar-beloe-bryut-12",
+          "cantiani-cabernet-sauvignon-reserve-2024",
+          "abrau-dyurso-imperatorskoe-bryut-shardone-beloe-12",
+          "abrau-dyurso-spumante-bryut-roze-shardone-rozovoe-12"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 64739.9,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: ABRAU-DURSO\nwine_name: RESERVE\nvintage: 1870\nsweetness: БРЮТ\ncolor: игристое\nwine_type: игристое\nraw_text: SPARKLING WINE | 1870 | АБРАУ-ДЮРСО | RESERVE | БРЮТ",
+        "fields": {
+          "winery": "Абрау-Дюрсо",
+          "wine_name": "RESERVE",
+          "vintage": "1870",
+          "sweetness": "брют",
+          "color": "Бледно-соломенный",
+          "wine_type": "игристое",
+          "brand": "RESERVE",
+          "region": "Дагестан",
+          "winery_key": "abraudyurso"
+        },
+        "visual_candidates": [
+          "abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115",
+          "abrau-dyurso-abrau-durso-brut-rose-reserve-pino-nuar-beloe-bryut-12",
+          "abrau-dyurso-russkoe-igristoe-polusladkoe-shardone-beloe-12",
+          "abrau-dyurso-imperial-brut-lart-nouveau-shardone-beloe-bryut-105",
+          "abrau-dyurso-russkoe-igristoe-polusladkoe-krasnoe-kaberne-sovinon-12",
+          "abrau-dyurso-victor-dravigny-bryut",
+          "abrau-dyurso-russkoe-igristoe-koshernoe-polusladkoe-shardone-beloe-12",
+          "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13",
+          "abrau-dyurso-russkoe-igristoe-polusuhoe-shardone-beloe-12",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-rozovoe-novyy-svet-pino-nuar-135"
+        ],
+        "text_candidates": [
+          "abrau-dyurso-abrau-durso-brut-rose-reserve-pino-nuar-beloe-bryut-12",
+          "abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115",
+          "cantiani-cabernet-sauvignon-reserve-2024",
+          "abrau-dyurso-imperatorskoe-bryut-shardone-beloe-12",
+          "abrau-dyurso-spumante-bryut-roze-shardone-rozovoe-12",
+          "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13",
+          "abrau-dyurso-victor-dravigny-koshernoe-bryut-shardone-beloe-125",
+          "abrau-dyurso-fizz-beloe-bryut",
+          "chteau-le-grand-vostock-aligote-reserve-aligote-beloe-suhoe-13",
+          "chteau-le-grand-vostock-cabernet-franc-reserve-kaberne-fran-krasnoe-suhoe-14",
+          "chteau-le-grand-vostock-cabernet-sauvignon-reserve-kaberne-sovinon-krasnoe-suhoe-14",
+          "chteau-le-grand-vostock-chardonnay-reserve-shardone-beloe-suhoe-14",
+          "chteau-le-grand-vostock-cuvee-karsov-reserve-shardone-beloe-suhoe-14",
+          "chteau-le-grand-vostock-krasnostop-reserve-krasnostop-krasnoe-suhoe-14",
+          "chteau-le-grand-vostock-le-chene-royal-reserve-merlo-krasnoe-suhoe-145",
+          "chteau-le-grand-vostock-merlot-reserve-merlo-krasnoe-suhoe-145",
+          "chteau-le-grand-vostock-pinot-gris-reserve-pino-gri-beloe-suhoe-135",
+          "chteau-le-grand-vostock-pinot-gris-rose-reserve-pino-gri-rozovoe-suhoe-14",
+          "chteau-le-grand-vostock-pinot-noir-reserve-pino-nuar-krasnoe-suhoe-135",
+          "chteau-le-grand-vostock-sauvignon-blanc-reserve-sovinon-blan-beloe-suhoe-14",
+          "abrau-dyurso-abrau-estates-roze-kaberne-sovinon-rozovoe-suhoe-12",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut",
+          "golubitskoe-estate-tte-de-cheval-reserve-risling-beloe-bryut-125",
+          "abrau-dyurso-abrau-estates-krasnoe-kaberne-sovinon-suhoe-13",
+          "vinodelnya-myshako-pino-nuar-karmener-reserve-krasnoe-suhoe-138",
+          "vinodelnya-myshako-primitivo-blaufrankish-reserve-krasnoe-suhoe-142",
+          "vinodelnya-myshako-quintessence-reserve-pino-nuar-krasnoe-suhoe-148",
+          "vinodelnya-myshako-quintessence-reserve-risling-krasnoe-suhoe-131",
+          "vinodelnya-myshako-semilon-aligote-reserve-beloe-suhoe-126",
+          "evolution-reserve-pinot-noir"
+        ],
+        "normalized": {
+          "wine_name": "RESERVE",
+          "sweetness": "брют",
+          "color": "Бледно-соломенный",
+          "wine_type": "игристое",
+          "region": "Дагестан",
+          "winery": "Абрау-Дюрсо",
+          "brand": "RESERVE",
+          "source": "llm",
+          "raw_text": "SPARKLING WINE | 1870 | АБРАУ-ДЮРСО | RESERVE | БРЮТ",
+          "winery_key": "abraudyurso"
+        },
+        "status": "matched",
+        "acceptable": [
+          "abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115"
+        ],
+        "evaluable": true,
+        "hit1": true,
+        "hit5": true,
+        "strict": true,
+        "strict_hit": true,
+        "expected_absent": false,
+        "refusal_correct": false
+      },
+      {
+        "file": "Abrau Light.jpeg",
+        "top1": "abrau-dyurso-fizz-beloe-bryut",
+        "top5": [
+          "abrau-dyurso-fizz-beloe-bryut",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut",
+          "abrau-dyurso-victor-dravigny-bryut",
+          "abrau-dyurso-imperatorskoe-bryut-shardone-beloe-12",
+          "abrau-dyurso-spumante-bryut-roze-shardone-rozovoe-12"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 45039.4,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: ABRAU-DURSO\nwine_name: ABRAU | L'agile\ncolor: игристое\nwine_type: игристое\nraw_text: ABRAU-DURSO | ABRAU | L'agile",
+        "fields": {
+          "winery": "Абрау-Дюрсо",
+          "wine_name": "ABRAU L'agile",
+          "color": "Бледно-соломенный",
+          "wine_type": "игристое",
+          "brand": "ABRAU",
+          "sweetness": "брют",
+          "region": "Кубань",
+          "winery_key": "abraudyurso"
+        },
+        "visual_candidates": [
+          "abrau-dyurso-spumante-bryut-roze-shardone-rozovoe-12",
+          "abrau-dyurso-abrau-estates-roze-kaberne-sovinon-rozovoe-suhoe-12",
+          "abrau-dyurso-fizz-beloe-bryut",
+          "abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115",
+          "chateau-tamagne-grand-dessert-muscat",
+          "abrau-dyurso-fizz-beloe-polusladkoe",
+          "shato-taman-par-la-mer-pino-blan",
+          "kuban-vino-aristov-amata-roze-kaberne-sovinon-rozovoe-suhoe-13",
+          "zolotaya-balka-igristoe-krasnoe-polusladkoe",
+          "naomi-2022"
+        ],
+        "text_candidates": [
+          "abrau-dyurso-fizz-beloe-bryut",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut",
+          "abrau-dyurso-victor-dravigny-bryut",
+          "abrau-dyurso-imperatorskoe-bryut-shardone-beloe-12",
+          "abrau-dyurso-spumante-bryut-roze-shardone-rozovoe-12",
+          "abrau-dyurso-abrau-durso-brut-rose-reserve-pino-nuar-beloe-bryut-12",
+          "abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115",
+          "abrau-dyurso-abrau-dyurso-pino-nuar-krasnoe-suhoe-13",
+          "abrau-dyurso-abrau-estates-amurskiy-potapenko-krasnoe-suhoe-105",
+          "abrau-dyurso-abrau-estates-beloe-shardone-suhoe-12",
+          "abrau-dyurso-abrau-estates-dostoynyy-krasnoe-suhoe-135",
+          "abrau-dyurso-abrau-estates-kaberne-po-belomu-kaberne-sovinon-beloe-suhoe-105",
+          "abrau-dyurso-abrau-estates-krasnoe-kaberne-sovinon-suhoe-13",
+          "abrau-dyurso-abrau-estates-oranzh-tsitronnyy-magaracha-oranzhevoe-suhoe-105",
+          "abrau-dyurso-abrau-estates-roze-kaberne-sovinon-rozovoe-suhoe-12",
+          "abrau-dyurso-abrau-kupazh-krasnyy-polsusladkoe-kaberne-sovinon-krasnoe-polusladkoe-11",
+          "abrau-dyurso-abrau-kupazh-svetlyy-suhoe-shardone-beloe-125",
+          "abrau-dyurso-abrau-kupazh-tyomnyy-suhoe-kaberne-sovinon-krasnoe-13",
+          "abrau-dyurso-az-abrau-bayanshira-beloe-suhoe-12",
+          "abrau-dyurso-az-abrau-madrasa-krasnoe-suhoe-14",
+          "abrau-dyurso-fizz-beloe-polusladkoe",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-polusladkoe",
+          "abrau-dyurso-femme-dabrau-amurskiy-potapenko-krasnoe-suhoe-107",
+          "abrau-dyurso-victor-dravigny-koshernoe-bryut-shardone-beloe-125",
+          "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13",
+          "abrau-dyurso-imperial-brut-vintage-shardone-beloe-bryut-12",
+          "abrau-dyurso-imperial-brut-rose-pino-nuar-rozovoe-bryut-12",
+          "abrau-dyurso-victor-dravigny-brut-shardone-beloe-bryut-12",
+          "abrau-dyurso-brut-dor-riesling-risling-beloe-bryut-12",
+          "abrau-dyurso-brut-dor-rose-pino-nuar-rozovoe-bryut-12"
+        ],
+        "normalized": {
+          "wine_name": "ABRAU L'agile",
+          "sweetness": "брют",
+          "color": "Бледно-соломенный",
+          "wine_type": "игристое",
+          "region": "Кубань",
+          "winery": "Абрау-Дюрсо",
+          "brand": "ABRAU",
+          "source": "llm",
+          "raw_text": "ABRAU-DURSO | ABRAU | L'agile",
+          "winery_key": "abraudyurso"
+        },
+        "status": "not_found",
+        "acceptable": [],
+        "evaluable": false,
+        "hit1": false,
+        "hit5": false,
+        "strict": false,
+        "strict_hit": false,
+        "expected_absent": true,
+        "refusal_correct": false
+      },
+      {
+        "file": "Bosca.jpg",
+        "top1": "aristov-anima-millesimato-beloe-bryut",
+        "top5": [
+          "aristov-anima-millesimato-beloe-bryut",
+          "shato-pino-blan-de-blan-shardone-beloe-ekstra-bryut-12",
+          "lesnaya-proseka",
+          "abrau-dyurso-fizz-beloe-bryut",
+          "cloudy-winery-krash-super-bryut-shardone-beloe-ekstra-bryut-85"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 38769.5,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: BOSCA\nwine_name: ANNA FEDERICA\nraw_text: BOSCA | Heritage",
+        "fields": {
+          "winery": "пусто",
+          "wine_name": "ANNA FEDERICA",
+          "brand": "BOSCA",
+          "sweetness": "брют",
+          "color": "Бледно-соломенный",
+          "wine_type": "игристое",
+          "region": "Кубань"
+        },
+        "visual_candidates": [
+          "aristov-anima-millesimato",
+          "aristov-anima-millesimato-beloe-bryut",
+          "agora-rosa-viva-beloe-bryut",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-vyderzhannoe-bryut-beloe-novyy-svet-shardone-125",
+          "aristov-anima-pinot-grigio-blush",
+          "novyy-svet-dom-shampanskih-vin-igristoe-vino-vyderzhannoe-bryut-rozovoe-novyy-svet-pino-fran-135",
+          "alma-valley-kokur-beloe-suhoe-14",
+          "gunko-winery-bryut-roze-pino-nuar-rozovoe-12",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-polusuhoe-beloe-novyy-svet-risling-125",
+          "agora-rosa-viva-beloe-polusladkoe"
+        ],
+        "text_candidates": [
+          "shato-pino-blan-de-blan-shardone-beloe-ekstra-bryut-12",
+          "lesnaya-proseka",
+          "abrau-dyurso-fizz-beloe-bryut",
+          "cloudy-winery-krash-super-bryut-shardone-beloe-ekstra-bryut-85",
+          "abrau-dyurso-victor-dravigny-koshernoe-bryut-shardone-beloe-125",
+          "shato-pino-grand-reserve-chardonnay-shardone-beloe-suhoe-125",
+          "abrau-dyurso-victor-dravigny-bryut",
+          "shato-pino-kaberne-fran-kaberne-sovinon-krasnoe-suhoe-135",
+          "millstream-alamak-bryut-beloe",
+          "shato-pino-dichkaberne-fran-krasnoe-suhoe-14",
+          "shato-pino-petnat-oranzh-vione-beloe-ekstra-bryut-11",
+          "shato-pino-shary-koldunatroynichok-risling-beloe-suhoe-115",
+          "shato-pino-grand-reserve-cabernet-franc-kaberne-fran-krasnoe-suhoe-135",
+          "shato-pino-agpoezdnik-beloe-shardone-suhoe-13",
+          "shato-pino-pino-nuar-saperavi-krasnoe-suhoe-13",
+          "shato-pino-koldun-rezerv-kaberne-sovinon-krasnoe-suhoe-14",
+          "aristov-anima-millesimato-beloe-bryut",
+          "agora-rosa-viva-beloe-bryut",
+          "shato-pino-grand-reserve-pinot-noir-pino-nuar-krasnoe-suhoe-135",
+          "shato-pino-petnat-sovinon-blan-beloe-ekstra-bryut-11",
+          "abrau-dyurso-imperatorskoe-bryut-shardone-beloe-12",
+          "shato-pino-shantazh-sovinon-blan-shardone-beloe-suhoe-115",
+          "shato-pino-marselan-merlo-krasnoe-suhoe-13",
+          "katharon-brut",
+          "shato-pino-agpoezdnik-krasnoe-kaberne-fran-suhoe-14",
+          "shato-pino-pino-nuar-krasnoe-suhoe-135",
+          "shato-pino-shary-kolduna-topolek-rkatsiteli-beloe-suhoe-125",
+          "myshako-green-cape-shardone-beloe-bryut",
+          "vinodelnya-myshako-flute-bryut-beloe-shardone-11",
+          "mancopia-meritazh"
+        ],
+        "normalized": {
+          "wine_name": "ANNA FEDERICA",
+          "sweetness": "брют",
+          "color": "Бледно-соломенный",
+          "wine_type": "игристое",
+          "region": "Кубань",
+          "winery": "пусто",
+          "brand": "BOSCA",
+          "source": "llm",
+          "raw_text": "BOSCA | Heritage",
+          "winery_key": ""
+        },
+        "status": "not_found",
+        "acceptable": [],
+        "evaluable": false,
+        "hit1": false,
+        "hit5": false,
+        "strict": false,
+        "strict_hit": false,
+        "expected_absent": true,
+        "refusal_correct": false
+      },
+      {
+        "file": "DaschBosch sauvignon blank.jpg",
+        "top1": "vinodelnya-myshako-quintessence-sovinon-blan-bryut-beloe-115",
+        "top5": [
+          "vinodelnya-myshako-quintessence-sovinon-blan-bryut-beloe-115",
+          "lorio-sovinon-blan-2024",
+          "derbent-vino-desono-sovinon-ekstra-bryut-sovinon-blan-beloe-105-125",
+          "shato-pino-petnat-sovinon-blan-beloe-ekstra-bryut-11",
+          "shato-pino-shantazh-sovinon-blan-shardone-beloe-suhoe-115"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 41844.5,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: DASCHBOSCH\nwine_name: SAUVIGNON BLANC\nvintage: 2024\ngrape: SAUVIGNON BLANC\nraw_text: 35% GRAND INTERNATIONAL WINE AWARD MUNDUS VINI GOLD MEININGER 2024 | 1754 | B | DASCHBOSCH | SAUVIGNON BLANC | 2024",
+        "fields": {
+          "winery": "пусто",
+          "wine_name": "Совиньон Блан",
+          "vintage": "2024",
+          "grape": "SAUVIGNON BLANC",
+          "brand": "DASCHBOSCH",
+          "sweetness": "брют",
+          "color": "Бледно-золотистый",
+          "wine_type": "игристое",
+          "region": "Дальневосточная зона"
+        },
+        "visual_candidates": [
+          "kuban-vino-kaberne-de-tamane-kaberne-sovinon-krasnoe-suhoe-125",
+          "valeriy-zaharin-bakkal-su-muskat-ottonel-beloe-polusladkoe-115",
+          "valeriy-zaharin-avtohtonnoe-vino-kryma-ot-valeriya-zaharina-kokur-sary-pandas-kokur-belyy-beloe-suhoe-115",
+          "daniel-22",
+          "soyuz-vino-soyuz-vino-kaberne-sovinon-krasnoe-suhoe-12",
+          "valeriy-zaharin-saperavi-kaberne-sovinon-bakkal-su-krasnoe-suhoe-12",
+          "shato-pino-klassika-sauvignon-blanc",
+          "rozovoe-zoloto",
+          "chteau-le-grand-vostock-sauvignon-blanc-reserve-sovinon-blan-beloe-suhoe-14",
+          "valeriy-zaharin-bakkal-su-saperavi-kaberne-sovinon-krasnoe-suhoe-12"
+        ],
+        "text_candidates": [
+          "lorio-sovinon-blan-2024",
+          "vinodelnya-myshako-quintessence-sovinon-blan-bryut-beloe-115",
+          "derbent-vino-desono-sovinon-ekstra-bryut-sovinon-blan-beloe-105-125",
+          "shato-pino-petnat-sovinon-blan-beloe-ekstra-bryut-11",
+          "shato-pino-shantazh-sovinon-blan-shardone-beloe-suhoe-115",
+          "shato-pino-sovinon-blan-semilon-beloe-suhoe-115",
+          "shato-pino-gravitatsiya-kaberne-sovinon-merlo-krasnoe-suhoe-135",
+          "shato-pino-kaberne-sovinon-krasnoe-suhoe-14",
+          "shato-pino-kaberne-sovinon-merlo-krasnoe-suhoe-135",
+          "shato-pino-kaberne-fran-kaberne-sovinon-krasnoe-suhoe-135",
+          "tsimlyanskie-vina-tsimlyanskoe-kaberne-sovinon-ekstra-bryut-rozovoe-13",
+          "levokumskoe-sovinon-blan-beloe-suhoe-10",
+          "novyj-svet-kaberne-sovinon",
+          "novyy-svet-dom-shampanskih-vin-igristoe-vino-vyderzhannoe-bryut-krasnoe-novyy-svet-kaberne-sovinon-135",
+          "legato-legato-sovinon-blan-beloe-suhoe-125",
+          "legato-legato-sovinon-blan-mtsvane-beloe-suhoe-125",
+          "chateau-andre-sovinon-blan-beloe-suhoe-13",
+          "green-cape-sovinon-blan",
+          "vinodelnya-myshako-quintessence-new-generation-sovinon-blan-beloe-suhoe-122",
+          "vinodelnya-myshako-sesto-senso-tropicheskiy-vzryv-sovinon-blan-beloe-suhoe-12",
+          "vinodelnya-myshako-sovinon-blan-avtorskaya-tehnologiya-mono-beloe-suhoe-128",
+          "vinodelnya-myshako-sovinon-blan-beloe-suhoe-122",
+          "vinodelnya-myshako-sovinon-blan-blanc-out-beloe-suhoe-138",
+          "vinodelnya-myshako-sovinon-blan-kyuve-beloe-suhoe-134",
+          "vinodelnya-myshako-sovinon-blan-mode-cold-style-beloe-suhoe-122",
+          "vinodelnya-myshako-sovinon-blan-mode-petnat-beloe-bryut-12",
+          "vinodelnya-myshako-sovinon-blan-vione-kyuve-beloe-suhoe-125",
+          "vinodelnya-myshako-sovinon-semilon-kyuve-sovinon-blan-beloe-suhoe-132",
+          "mons-albus-kaberne-sovinon-krasnoe-suhoe-14",
+          "abrau-dyurso-kaberne-sovinon-krasnoe-suhoe-125"
+        ],
+        "normalized": {
+          "wine_name": "Совиньон Блан",
+          "sweetness": "брют",
+          "color": "Бледно-золотистый",
+          "wine_type": "игристое",
+          "region": "Дальневосточная зона",
+          "winery": "пусто",
+          "brand": "DASCHBOSCH",
+          "source": "llm",
+          "raw_text": "35% GRAND INTERNATIONAL WINE AWARD MUNDUS VINI GOLD MEININGER 2024 | 1754 | B | DASCHBOSCH | SAUVIGNON BLANC | 2024",
+          "winery_key": ""
+        },
+        "status": "not_found",
+        "acceptable": [],
+        "evaluable": false,
+        "hit1": false,
+        "hit5": false,
+        "strict": false,
+        "strict_hit": false,
+        "expected_absent": true,
+        "refusal_correct": false
+      },
+      {
+        "file": "Toskana Sangiovese.jpg",
+        "top1": "kuban-vino-aristov-sandzhoveze-krasnoe-suhoe-13",
+        "top5": [
+          "kuban-vino-aristov-sandzhoveze-krasnoe-suhoe-13",
+          "leto-shardone-2023-suhoe-beloe",
+          "leto-kollekcziya-leta-kupazh-2023-suhoe-krasnoe",
+          "cellar-master-sandzhoveze-krasnoe-suhoe-125",
+          "soyuz-vino-konfessa-sandzhoveze-krasnoe-suhoe-11"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 37308.9,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: CECCHI\nwine_name: TOSCANA SANGIOVESE\nvintage: 2023\ngrape: SANGIOVESE\ncolor: красное\nwine_type: тихое\nraw_text: 2023 TOSCANA INDICAZIONE GEOGRAFICA TIPICA SANGIOVESE ITALIA CECCHI",
+        "fields": {
+          "winery": "пусто",
+          "wine_name": "Тоскана Санджовезе",
+          "vintage": "2023",
+          "grape": "SANGIOVESE",
+          "color": "Uлубокий темно-рубиновый с фиолетовым отливом",
+          "wine_type": "тихое",
+          "brand": "CECCHI",
+          "sweetness": "сухое",
+          "region": "Кубань"
+        },
+        "visual_candidates": [
+          "soyuz-vino-lavetti-rozovoe-polusladkoe-krasnye-sorta-vinograda-11",
+          "soyuz-vino-zelyonaya-dolina-kaberne-merlo-kaberne-sovinon-krasnoe-polusladkoe-12",
+          "artvin-odesskiy-chernyy-rezerv-krasnoe-suhoe-13",
+          "massandra-bastardo-bastardo-magarachskiy-krasnoe-sladkoe-16",
+          "soyuz-vino-konfessa-sandzhoveze-polusladkoe-krasnoe-11",
+          "massandra-kokur-desertnyy-surozh-beloe-sladkoe-16",
+          "massandra-lakrima-kristi-aleatiko-krasnoe-sladkoe-16",
+          "massandra-muskatel-chernyy-krasnye-sorta-vinograda-krasnoe-sladkoe-16",
+          "soyuz-vino-konfessa-sandzhoveze-krasnoe-suhoe-11",
+          "massandra-muskatel-rozovyy-belye-sorta-vinograda-rozovoe-sladkoe-16"
+        ],
+        "text_candidates": [
+          "leto-shardone-2023-suhoe-beloe",
+          "leto-kollekcziya-leta-kupazh-2023-suhoe-krasnoe",
+          "cellar-master-sandzhoveze-krasnoe-suhoe-125",
+          "soyuz-vino-konfessa-sandzhoveze-krasnoe-suhoe-11",
+          "leto-kaberne-sovinon-2023-polusuhoe-krasnoe",
+          "soyuz-vino-konfessa-sandzhoveze-polusladkoe-krasnoe-11",
+          "kuban-vino-aristov-sandzhoveze-krasnoe-suhoe-13",
+          "sober-bash-dve-doliny-kaberne-fran-2023-krasnoe-polusuhoe-14",
+          "kuban-vino-shato-tamane-ruzh-2023-tsvaygelt-krasnoe-suhoe-12",
+          "shato-pino-aligote-rkatsiteli-beloe-suhoe-12",
+          "shato-pino-aligote-rkatsiteli-suhoe-beloe-12",
+          "sober-bash-dve-doliny-tsimlyanskiy-2023-tsimlyanskiy-chernyy-krasnoe-suhoe-13",
+          "belbek-sandzhoveze-krasnoe-suhoe-14",
+          "kuban-vino-aristov-anima-pino-nero-sandzhoveze-pino-nuar-krasnoe-suhoe-125",
+          "kuban-vino-shato-tamane-terruar-krasnostop-saperavi-2023-krasnoe-suhoe-125",
+          "tamara",
+          "shato-pino-petnat-oranzh-vione-beloe-ekstra-bryut-11",
+          "sober-bash-dve-doliny-liuri-2023-dostoynyy-rozovoe-suhoe-13",
+          "koldun-beloe-suhoe",
+          "leto-kaberne-fran-rezerv-2020-suhoe-krasnoe",
+          "leto-kaberne-fran-rezerv-2021-suhoe-krasnoe",
+          "sand-zh-oveze-rezerv",
+          "kuban-vino-aristov-anima-michela-2023-sandzhoveze-krasnoe-suhoe-115",
+          "soyuz-vino-soyuz-vino-shardone-suhoe-beloe-11",
+          "leto-vecrfn-2024-suhoe-vino",
+          "leto-kaberne-fran-2021-suhoe-krasnoe",
+          "sober-bash-dve-doliny-myuller-turgau-2023-beloe-suhoe-117",
+          "leto-muskat-oranzh-2024-suhoe-vino",
+          "shato-pino-grand-reserve-chardonnay-shardone-beloe-suhoe-125",
+          "leto-risling-2020"
+        ],
+        "normalized": {
+          "wine_name": "Тоскана Санджовезе",
+          "sweetness": "сухое",
+          "color": "Uлубокий темно-рубиновый с фиолетовым отливом",
+          "wine_type": "тихое",
+          "region": "Кубань",
+          "winery": "пусто",
+          "brand": "CECCHI",
+          "source": "llm",
+          "raw_text": "2023 TOSCANA INDICAZIONE GEOGRAFICA TIPICA SANGIOVESE ITALIA CECCHI",
+          "winery_key": ""
+        },
+        "status": "not_found",
+        "acceptable": [],
+        "evaluable": false,
+        "hit1": false,
+        "hit5": false,
+        "strict": false,
+        "strict_hit": false,
+        "expected_absent": true,
+        "refusal_correct": false
+      },
+      {
+        "file": "chateau tamagne reserve экстра брюд.jpg",
+        "top1": "shato-taman-bryut",
+        "top5": [
+          "shato-taman-bryut",
+          "kuban-vino-shato-tamane-rezerv-kaberne-limited-edishn-2015-kaberne-sovinon-krasnoe-suhoe-13",
+          "kuban-vino-shato-tamane-rezerv-kaberne-limited-edishn-2022-kaberne-sovinon-krasnoe-suhoe-14",
+          "kuban-vino-shato-tamane-rezerv-kollekshn-saperavi-2015-krasnoe-suhoe-13",
+          "kuban-vino-shato-tamane-rezerv-kollekshn-shardone-beloe-suhoe-125"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 39768.9,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: Château TAMAGNE\nwine_name: RESERVE\nvintage: 2023\nsweetness: брют\ncolor: игристое\nwine_type: игристое\nraw_text: ВЫДЕРЖАННОЕ\nЭКСТРА БРЮТ\n2023",
+        "fields": {
+          "winery": "Кубань-Вино",
+          "wine_name": "Резерв",
+          "vintage": "2023",
+          "sweetness": "брют",
+          "color": "Бледно-соломенный",
+          "wine_type": "игристое",
+          "brand": "Шато Тамань",
+          "region": "Крым",
+          "winery_key": "kubanvino"
+        },
+        "visual_candidates": [
+          "shato-taman-bryut-1",
+          "shato-taman-bryut",
+          "kuban-vino-kaberne-de-tamane-kaberne-sovinon-krasnoe-suhoe-125",
+          "kuban-vino-aristov-kyuve-aleksandr-rose-de-pinot-pino-nuar-rozovoe-ekstra-bryut-12",
+          "krasnostop-shato-taman",
+          "kuban-vino-shato-tamane-ruzh-2023-tsvaygelt-krasnoe-suhoe-12",
+          "shato-taman-kaberne",
+          "kuban-vino-shato-tamane-delikeyt-roze-2024-bianka-rozovoe-suhoe-95",
+          "solnechnaya-dolina-muskatnoe-festivalnoe-muskat-belyy-rozovoe-sladkoe-16",
+          "shato-taman-polusladkoe"
+        ],
+        "text_candidates": [
+          "kuban-vino-shato-tamane-rezerv-kaberne-limited-edishn-2015-kaberne-sovinon-krasnoe-suhoe-13",
+          "kuban-vino-shato-tamane-rezerv-kaberne-limited-edishn-2022-kaberne-sovinon-krasnoe-suhoe-14",
+          "kuban-vino-shato-tamane-rezerv-kollekshn-saperavi-2015-krasnoe-suhoe-13",
+          "kuban-vino-shato-tamane-rezerv-kollekshn-shardone-beloe-suhoe-125",
+          "kuban-vino-shato-tamane-rezerv-krasnostop-krasnostop-anapskiy-krasnoe-suhoe-135",
+          "kuban-vino-shato-tamane-rezerv-merlo-limited-edishn-2018-krasnoe-suhoe-125",
+          "kuban-vino-shato-tamane-rezerv-myuller-turgau-limited-edishn-2021-beloe-suhoe-12",
+          "kuban-vino-shato-tamane-rezerv-myuller-turgau-limited-edishn-beloe-suhoe-13",
+          "kuban-vino-shato-tamane-rezerv-premer-ruzh-kaberne-sovinon-krasnoe-suhoe-13",
+          "kuban-vino-shato-tamane-rezerv-red-blend-kaberne-sovinon-krasnoe-suhoe-125",
+          "balaklava-bryut-rezerv",
+          "wine",
+          "artvin-kaberne-sovinon-grand-rezerv-krasnoe-suhoe-13",
+          "artvin-odesskiy-chernyy-rezerv-krasnoe-suhoe-13",
+          "kuban-vino-aristov-anima-michela-2023-sandzhoveze-krasnoe-suhoe-115",
+          "perovskih_kaberne_fran_reserve",
+          "perovskih_semilion_reserv",
+          "shardone-rezerv",
+          "usadba-perovskih-pino-nuar-rezerv-krasnoe-suhoe-122",
+          "kuban-vino-shato-tamane-terruar-krasnostop-saperavi-2023-krasnoe-suhoe-125",
+          "kuban-vino-shato-tamane-ruzh-2023-tsvaygelt-krasnoe-suhoe-12",
+          "gunko-winery-risling-rezerv-beloe-suhoe-135",
+          "vinodelnya-uzunov-nrav-rezerv-krasnostop-zolotovskiy-krasnoe-suhoe-139",
+          "vinodelnya-uzunov-rash-rezerv-risling-reynskiy-beloe-suhoe-127",
+          "vinodelnya-uzunov-shardone-rezerv-beloe-suhoe-135",
+          "valeriy-zaharin-avtohtonnoe-vino-kryma-ot-valeriya-zaharina-kefesiya-rezerv-krasnoe-suhoe-13",
+          "valeriy-zaharin-avtohtonnoe-vino-kryma-sary-pandas-rezerv-beloe-suhoe-115",
+          "shato-pino-koldun-rezerv-kaberne-sovinon-krasnoe-suhoe-14",
+          "oxana-istratova-wine-saperavi-2023-krasnoe-suhoe-13",
+          "shato-ay-danil-presto-rezerv-kaberne-sovinon-krasnoe-suhoe-135"
+        ],
+        "normalized": {
+          "wine_name": "Резерв",
+          "sweetness": "брют",
+          "color": "Бледно-соломенный",
+          "wine_type": "игристое",
+          "region": "Крым",
+          "winery": "Кубань-Вино",
+          "brand": "Шато Тамань",
+          "source": "llm",
+          "raw_text": "ВЫДЕРЖАННОЕ",
+          "winery_key": "kubanvino"
+        },
+        "status": "not_found",
+        "acceptable": [],
+        "evaluable": false,
+        "hit1": false,
+        "hit5": false,
+        "strict": false,
+        "strict_hit": false,
+        "expected_absent": true,
+        "refusal_correct": false
+      },
+      {
+        "file": "chateau tamagne semi-sweet полусладкое.jpg",
+        "top1": "shato-taman-polusladkoe",
+        "top5": [
+          "shato-taman-polusladkoe",
+          "krasnostop-shato-taman",
+          "kuban-vino-shato-tamane-aligote-beloe-suhoe-13",
+          "kuban-vino-shato-tamane-delikeyt-roze-2024-bianka-rozovoe-suhoe-95",
+          "kuban-vino-shato-tamane-rezerv-kaberne-limited-edishn-2015-kaberne-sovinon-krasnoe-suhoe-13"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 37854.5,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: CHATEAU TAMAGNE\nsweetness: SEMI-SWEET\nraw_text: SEMI-SWEET | полусладкое",
+        "fields": {
+          "winery": "Кубань-Вино",
+          "sweetness": "полусладкое",
+          "brand": "Шато Тамань",
+          "wine_name": "Шато Тамань",
+          "wine_type": "тихое",
+          "region": "Крым",
+          "winery_key": "kubanvino"
+        },
+        "visual_candidates": [
+          "shato-taman-polusladkoe",
+          "zolotaya-balka-cuvee-de-vitmer-rose-pino-blan-rozovoe-bryut-12",
+          "shato-taman-bryut",
+          "shato-taman-bryut-1",
+          "valeriy-zaharin-aligote-avtorskoe-valeriy-zaharin-beloe-bryut-115",
+          "fanagoriya-fanagoriya-rose-de-noirs-roze-de-nuar-merlo-igristoe-bryut-rozovoe-11-13",
+          "pomeste-golubitskoe-tte-de-cheval-blanc-de-blancs-shardone-beloe-bryut-12",
+          "novyy-svet-dom-shampanskih-vin-novyy-svet-polusladkoe-roze-shardone-rozovoe-115",
+          "novyj-svet-polusladkoe",
+          "shato-taman-par-la-mer-pino-blan"
+        ],
+        "text_candidates": [
+          "shato-taman-polusladkoe",
+          "krasnostop-shato-taman",
+          "kuban-vino-shato-tamane-aligote-beloe-suhoe-13",
+          "kuban-vino-shato-tamane-delikeyt-roze-2024-bianka-rozovoe-suhoe-95",
+          "kuban-vino-shato-tamane-rezerv-kaberne-limited-edishn-2015-kaberne-sovinon-krasnoe-suhoe-13",
+          "kuban-vino-shato-tamane-rezerv-kaberne-limited-edishn-2022-kaberne-sovinon-krasnoe-suhoe-14",
+          "kuban-vino-shato-tamane-rezerv-kollekshn-saperavi-2015-krasnoe-suhoe-13",
+          "kuban-vino-shato-tamane-rezerv-kollekshn-shardone-beloe-suhoe-125",
+          "kuban-vino-shato-tamane-rezerv-krasnostop-krasnostop-anapskiy-krasnoe-suhoe-135",
+          "kuban-vino-shato-tamane-rezerv-merlo-limited-edishn-2018-krasnoe-suhoe-125",
+          "kuban-vino-shato-tamane-rezerv-myuller-turgau-limited-edishn-2021-beloe-suhoe-12",
+          "kuban-vino-shato-tamane-rezerv-myuller-turgau-limited-edishn-beloe-suhoe-13",
+          "kuban-vino-shato-tamane-rezerv-premer-ruzh-kaberne-sovinon-krasnoe-suhoe-13",
+          "kuban-vino-shato-tamane-rezerv-red-blend-kaberne-sovinon-krasnoe-suhoe-125",
+          "kuban-vino-shato-tamane-rkatsiteli-myuller-turgau-shardone-2025-beloe-suhoe-12",
+          "kuban-vino-shato-tamane-ruzh-2023-tsvaygelt-krasnoe-suhoe-12",
+          "kuban-vino-shato-tamane-selekt-oranzh-tsitronnyy-magaracha-oranzhevoe-suhoe-135",
+          "kuban-vino-shato-tamane-selekt-ruzh-saperavi-krasnoe-suhoe-125",
+          "kuban-vino-shato-tamane-shardone-beloe-suhoe-12",
+          "kuban-vino-shato-tamane-terruar-krasnostop-saperavi-2022-krasnoe-suhoe-125",
+          "kuban-vino-shato-tamane-terruar-krasnostop-saperavi-2023-krasnoe-suhoe-125",
+          "molodoe-shato-taman",
+          "molodoe-shato-taman-1",
+          "muskatnoe-shato-taman",
+          "risling-shato-taman",
+          "shato-taman-bryut",
+          "shato-taman-bryut-1",
+          "shato-taman-grape-dance",
+          "shato-taman-grape-dance-1",
+          "shato-taman-kaberne"
+        ],
+        "normalized": {
+          "wine_name": "Шато Тамань",
+          "sweetness": "полусладкое",
+          "color": "Не указан",
+          "wine_type": "тихое",
+          "region": "Крым",
+          "winery": "Кубань-Вино",
+          "brand": "Шато Тамань",
+          "source": "llm",
+          "raw_text": "SEMI-SWEET | полусладкое",
+          "winery_key": "kubanvino"
+        },
+        "status": "matched",
+        "acceptable": [
+          "shato-taman-polusladkoe"
+        ],
+        "evaluable": true,
+        "hit1": true,
+        "hit5": true,
+        "strict": true,
+        "strict_hit": true,
+        "expected_absent": false,
+        "refusal_correct": false
+      },
+      {
+        "file": "fanagory 5 element.jpg",
+        "top1": "fanagoriya-5-elements-bryut-beloe-pino-gri-igristoe-bryut-beloe-125",
+        "top5": [
+          "fanagoriya-5-elements-bryut-beloe-pino-gri-igristoe-bryut-beloe-125",
+          "fanagoriya-5-elements-bryut-rozovoe-saperavi-igristoe-bryut-rozovoe-125",
+          "fanagoriya-fanagoriya-bryut-beloe-sovinon-blan-igristoe-bryut-beloe-11-13",
+          "fanagoriya-alveus-ultra-cuvee-ekstra-bryut-beloe-risling-reynskiy-12",
+          "fanagoriya-primum-alveus-blanc-de-noirs-meunier-ekstra-bryut-2019-mene-beloe-11-13"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 38144.0,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: FANAGORIA\nwine_name: 5 ELEMENTS\nsweetness: БРЕЮЕ БРЮТ\nwine_type: игристое\nraw_text: 5 ELEMENTS | БРЕЮЕ БРЮТ",
+        "fields": {
+          "winery": "Фанагория",
+          "wine_name": "5 ELEMENTS",
+          "sweetness": "брют",
+          "wine_type": "игристое",
+          "brand": "5 ELEMENTS",
+          "color": "Бледно-соломенный",
+          "region": "Дагестан",
+          "winery_key": "fanagoriya"
+        },
+        "visual_candidates": [
+          "fanagoriya-5-elements-bryut-beloe-pino-gri-igristoe-bryut-beloe-125",
+          "fanagoriya-5-elements-bryut-rozovoe-saperavi-igristoe-bryut-rozovoe-125",
+          "fanagoriya-brule-frizzante-brut-rozovoe-merlo-igristoe-bryut-rozovoe-115",
+          "fanagoriya-brule-frizzante-brut-beloe-pino-nuar-bryut-115",
+          "fanagoriya-fanagoriya-bryut-rozovoe-sovinon-blan-igristoe-bryut-rozovoe-11-13",
+          "zolotaya-balka-zb-moscato-semi-sweet-rose-muskat-yantarnyy-rozovoe-polusladkoe-9",
+          "zb-wine-moscato-beloe-polusladkoe",
+          "fanagoriya-brule-frizzante-polusladkoe-beloe-pino-nuar-11",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-yubileynoe-risling-13",
+          "aristov-anima-millesimato"
+        ],
+        "text_candidates": [
+          "fanagoriya-5-elements-bryut-beloe-pino-gri-igristoe-bryut-beloe-125",
+          "fanagoriya-5-elements-bryut-rozovoe-saperavi-igristoe-bryut-rozovoe-125",
+          "fanagoriya-fanagoriya-bryut-beloe-sovinon-blan-igristoe-bryut-beloe-11-13",
+          "fanagoriya-alveus-ultra-cuvee-ekstra-bryut-beloe-risling-reynskiy-12",
+          "fanagoriya-primum-alveus-blanc-de-noirs-meunier-ekstra-bryut-2019-mene-beloe-11-13",
+          "fanagoriya-primum-alveus-ekstra-bryut-2017-pino-nuar-beloe-11-13",
+          "fanagoriya-primum-alveus-bryut-2019-pino-nuar-igristoe-bryut-rozovoe-11-13",
+          "fanagoriya-alveus-ultra-cuvee-bryut-rozovoe-merlo-igristoe-bryut-rozovoe-12",
+          "cru-lermont-risling",
+          "fanagoriya-ona-skazala-da-beloe-bryut",
+          "fanagoriya-cru-lermont-saperavi-saperavi-krasnoe-suhoe-135",
+          "fanagoriya-primum-alveus-blanc-de-blancs-ekstra-bryut-2019-shardone-beloe-11-13",
+          "fanagoriya-alveus-ultra-cuvee-ekstra-bryut-rozovoe-merlo-12",
+          "fanagoriya-velvet-season-muskat-ottonel-beloe-sladkoe-13",
+          "fanagoriya-velvet-season-risling-beloe-sladkoe-12",
+          "fanagoriya-cru-lermont-merlo-merlo-krasnoe-suhoe-14",
+          "fanagoriya-fanagoriya-bryut-rozovoe-sovinon-blan-igristoe-bryut-rozovoe-11-13",
+          "fanagoriya-blanc-de-noirs-mene-pino-mene-beloe-ekstra-bryut-12",
+          "fanagoriya-pelle-calda-saperavi-krasnoe-suhoe-155",
+          "fanagoriya-cru-lermont-cabernet-franc-kaberne-fran-krasnoe-suhoe-13",
+          "fanagoriya-cru-lermont-chardonnay-shardone-beloe-suhoe-14",
+          "fanagoriya-cru-lermont-pinot-noir-pino-nuar-krasnoe-suhoe-13",
+          "fanagoriya-dekanter-merlo-2018-krasnoe-suhoe-14",
+          "fanagoriya-cru-lermont-petit-verdot-pti-verdo-krasnoe-suhoe-13",
+          "fanagoriya-q-blanc-sovinon-blan-beloe-suhoe-14",
+          "fanagoriya-cru-lermont-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-13",
+          "fanagoriya-ledyanoe-vino-muskat-muskat-ottonel-beloe-sladkoe-11",
+          "fanagoriya-brule-frizzante-brut-beloe-pino-nuar-bryut-115",
+          "fanagoriya-brule-frizzante-polusladkoe-beloe-pino-nuar-11",
+          "fanagoriya-blanc-de-blancs-shardone-beloe-bryut-12"
+        ],
+        "normalized": {
+          "wine_name": "5 ELEMENTS",
+          "sweetness": "брют",
+          "color": "Бледно-соломенный",
+          "wine_type": "игристое",
+          "region": "Дагестан",
+          "winery": "Фанагория",
+          "brand": "5 ELEMENTS",
+          "source": "llm",
+          "raw_text": "5 ELEMENTS | БРЕЮЕ БРЮТ",
+          "winery_key": "fanagoriya"
+        },
+        "status": "matched",
+        "acceptable": [
+          "fanagoriya-5-elements-bryut-beloe-pino-gri-igristoe-bryut-beloe-125"
+        ],
+        "evaluable": true,
+        "hit1": true,
+        "hit5": true,
+        "strict": true,
+        "strict_hit": true,
+        "expected_absent": false,
+        "refusal_correct": false
+      },
+      {
+        "file": "Абрау дюрсо полусладкое. _1.jpeg",
+        "top1": "abrau-dyurso-imperial-brut-rose-pino-nuar-rozovoe-bryut-12",
+        "top5": [
+          "abrau-dyurso-imperial-brut-rose-pino-nuar-rozovoe-bryut-12",
+          "abrau-dyurso-abrau-dyurso-pino-nuar-krasnoe-suhoe-13",
+          "abrau-dyurso-fizz-beloe-bryut",
+          "abrau-dyurso-fizz-beloe-polusladkoe",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 39588.3,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: РУССКОЕ ШАМПАНСКОЕ\nwine_name: АБРАУ-ДЮРСО\nraw_text: РУССКОЕ ШАМПАНСКОЕ | 1870 | АБРАУ-ДЮРСО | - ДОЛЬЧЕССИМО -",
+        "fields": {
+          "winery": "Абрау-Дюрсо",
+          "wine_name": "Абрау-Дюрсо",
+          "brand": "АБРАУ-ДЮРСО",
+          "sweetness": "сладкое",
+          "color": "Бледно-лососевый",
+          "wine_type": "игристое",
+          "region": "Кубань",
+          "winery_key": "abraudyurso"
+        },
+        "visual_candidates": [
+          "abrau-dyurso-imperial-brut-rose-pino-nuar-rozovoe-bryut-12",
+          "abrau-dyurso-russkoe-igristoe-koshernoe-polusladkoe-shardone-beloe-12",
+          "zolotaya-balka-igristoe-krasnoe-polusladkoe",
+          "abrau-dyurso-imperial-brut-vintage-shardone-beloe-bryut-12",
+          "abrau-dyurso-victor-dravigny-krasnoe-polusladkoe-kaberne-sovinon-125",
+          "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13",
+          "abrau-dyurso-imperatorskoe-polusuhoe-shardone-beloe-12",
+          "abrau-dyurso-russkoe-igristoe-polusladkoe-krasnoe-kaberne-sovinon-12",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-polusladkoe",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut"
+        ],
+        "text_candidates": [
+          "abrau-dyurso-abrau-dyurso-pino-nuar-krasnoe-suhoe-13",
+          "abrau-dyurso-fizz-beloe-bryut",
+          "abrau-dyurso-fizz-beloe-polusladkoe",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-polusladkoe",
+          "abrau-dyurso-victor-dravigny-bryut",
+          "abrau-dyurso-abrau-kupazh-krasnyy-polsusladkoe-kaberne-sovinon-krasnoe-polusladkoe-11",
+          "abrau-dyurso-az-abrau-madrasa-krasnoe-suhoe-14",
+          "abrau-dyurso-abrau-durso-brut-rose-reserve-pino-nuar-beloe-bryut-12",
+          "abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115",
+          "abrau-dyurso-abrau-kupazh-svetlyy-suhoe-shardone-beloe-125",
+          "abrau-dyurso-abrau-kupazh-tyomnyy-suhoe-kaberne-sovinon-krasnoe-13",
+          "abrau-dyurso-abrau-estates-amurskiy-potapenko-krasnoe-suhoe-105",
+          "abrau-dyurso-abrau-estates-beloe-shardone-suhoe-12",
+          "abrau-dyurso-abrau-estates-dostoynyy-krasnoe-suhoe-135",
+          "abrau-dyurso-abrau-estates-kaberne-po-belomu-kaberne-sovinon-beloe-suhoe-105",
+          "abrau-dyurso-abrau-estates-krasnoe-kaberne-sovinon-suhoe-13",
+          "abrau-dyurso-abrau-estates-oranzh-tsitronnyy-magaracha-oranzhevoe-suhoe-105",
+          "abrau-dyurso-abrau-estates-roze-kaberne-sovinon-rozovoe-suhoe-12",
+          "abrau-dyurso-az-abrau-bayanshira-beloe-suhoe-12",
+          "abrau-dyurso-brut-dor-rose-pino-nuar-rozovoe-bryut-12",
+          "abrau-dyurso-femme-dabrau-amurskiy-potapenko-krasnoe-suhoe-107",
+          "abrau-dyurso-brut-dor-riesling-risling-beloe-bryut-12",
+          "abrau-dyurso-victor-dravigny-brut-rose-pino-nuar-rozovoe-bryut-12",
+          "abrau-dyurso-brut-dor-blanc-de-noirs-pino-nuar-beloe-bryut-115",
+          "abrau-dyurso-brut-dor-blanc-de-noirs-pino-nuar-beloe-bryut-125",
+          "abrau-dyurso-imperatorskoe-bryut-shardone-beloe-12",
+          "abrau-dyurso-kaberne-sovinon-krasnoe-suhoe-125",
+          "abrau-dyurso-shardone-beloe-suhoe-12",
+          "abrau-dyurso-shardone-beloe-suhoe-13"
+        ],
+        "normalized": {
+          "wine_name": "Абрау-Дюрсо",
+          "sweetness": "сладкое",
+          "color": "Бледно-лососевый",
+          "wine_type": "игристое",
+          "region": "Кубань",
+          "winery": "Абрау-Дюрсо",
+          "brand": "АБРАУ-ДЮРСО",
+          "source": "llm",
+          "raw_text": "РУССКОЕ ШАМПАНСКОЕ | 1870 | АБРАУ-ДЮРСО | - ДОЛЬЧЕССИМО",
+          "winery_key": "abraudyurso"
+        },
+        "status": "ambiguous",
+        "acceptable": [
+          "abrau-dyurso-fizz-beloe-polusladkoe",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-polusladkoe"
+        ],
+        "evaluable": true,
+        "hit1": false,
+        "hit5": true,
+        "strict": false,
+        "strict_hit": false,
+        "expected_absent": false,
+        "refusal_correct": false
+      },
+      {
+        "file": "Абрау дюрсо полусладкое.jpg",
+        "top1": "abrau-dyurso-fizz-beloe-bryut",
+        "top5": [
+          "abrau-dyurso-fizz-beloe-bryut",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut",
+          "abrau-dyurso-victor-dravigny-bryut",
+          "abrau-dyurso-abrau-dyurso-pino-nuar-krasnoe-suhoe-13",
+          "abrau-dyurso-fizz-beloe-polusladkoe"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 42953.1,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: АБРАУ-ДЮРСO\nwine_name: \nvintage: 1870\nwine_type: игристое\nraw_text: АБРАУ-ДЮРСO | 1870 | de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de ",
+        "fields": {
+          "winery": "Абрау-Дюрсо",
+          "vintage": "1870",
+          "wine_type": "игристое",
+          "brand": "АБРАУ-ДЮРСО",
+          "wine_name": "АБРАУ-ДЮРСО",
+          "sweetness": "брют",
+          "color": "Бледно-соломенный",
+          "region": "Дагестан",
+          "winery_key": "abraudyurso"
+        },
+        "visual_candidates": [
+          "abrau-dyurso-victor-dravigny-krasnoe-polusladkoe-kaberne-sovinon-125",
+          "inkermanskiy-zmv-inkerman-polusladkoe-roze-aligote-rozovoe-135",
+          "abrau-dyurso-victor-dravigny-brut-rose-pino-nuar-rozovoe-bryut-12",
+          "abrau-dyurso-imperial-brut-lart-nouveau-shardone-beloe-bryut-105",
+          "krasnostop-shato-taman",
+          "abrau-dyurso-imperial-brut-vintage-shardone-beloe-bryut-12",
+          "abrau-dyurso-imperial-brut-rose-pino-nuar-rozovoe-bryut-12",
+          "vinodelnya-vedernikov-tsimlyanskiy-chernyy-bryut-roze-rozovoe-14",
+          "balaklava-muskat",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-polusladkoe"
+        ],
+        "text_candidates": [
+          "abrau-dyurso-fizz-beloe-bryut",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut",
+          "abrau-dyurso-victor-dravigny-bryut",
+          "abrau-dyurso-abrau-dyurso-pino-nuar-krasnoe-suhoe-13",
+          "abrau-dyurso-fizz-beloe-polusladkoe",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-polusladkoe",
+          "abrau-dyurso-imperatorskoe-bryut-shardone-beloe-12",
+          "abrau-dyurso-spumante-bryut-roze-shardone-rozovoe-12",
+          "abrau-dyurso-az-abrau-madrasa-krasnoe-suhoe-14",
+          "abrau-dyurso-abrau-durso-brut-rose-reserve-pino-nuar-beloe-bryut-12",
+          "abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115",
+          "abrau-dyurso-abrau-kupazh-krasnyy-polsusladkoe-kaberne-sovinon-krasnoe-polusladkoe-11",
+          "abrau-dyurso-abrau-kupazh-svetlyy-suhoe-shardone-beloe-125",
+          "abrau-dyurso-abrau-kupazh-tyomnyy-suhoe-kaberne-sovinon-krasnoe-13",
+          "abrau-dyurso-victor-dravigny-koshernoe-bryut-shardone-beloe-125",
+          "abrau-dyurso-abrau-estates-amurskiy-potapenko-krasnoe-suhoe-105",
+          "abrau-dyurso-abrau-estates-beloe-shardone-suhoe-12",
+          "abrau-dyurso-abrau-estates-dostoynyy-krasnoe-suhoe-135",
+          "abrau-dyurso-abrau-estates-kaberne-po-belomu-kaberne-sovinon-beloe-suhoe-105",
+          "abrau-dyurso-abrau-estates-krasnoe-kaberne-sovinon-suhoe-13",
+          "abrau-dyurso-abrau-estates-oranzh-tsitronnyy-magaracha-oranzhevoe-suhoe-105",
+          "abrau-dyurso-abrau-estates-roze-kaberne-sovinon-rozovoe-suhoe-12",
+          "abrau-dyurso-az-abrau-bayanshira-beloe-suhoe-12",
+          "abrau-dyurso-brut-dor-rose-pino-nuar-rozovoe-bryut-12",
+          "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13",
+          "abrau-dyurso-femme-dabrau-amurskiy-potapenko-krasnoe-suhoe-107",
+          "abrau-dyurso-brut-dor-riesling-risling-beloe-bryut-12",
+          "abrau-dyurso-victor-dravigny-brut-rose-pino-nuar-rozovoe-bryut-12",
+          "abrau-dyurso-brut-dor-blanc-de-noirs-pino-nuar-beloe-bryut-115",
+          "abrau-dyurso-brut-dor-blanc-de-noirs-pino-nuar-beloe-bryut-125"
+        ],
+        "normalized": {
+          "wine_name": "АБРАУ-ДЮРСO",
+          "sweetness": "брют",
+          "color": "Бледно-соломенный",
+          "wine_type": "игристое",
+          "region": "Дагестан",
+          "winery": "Абрау-Дюрсо",
+          "brand": "АБРАУ-ДЮРСO",
+          "source": "llm",
+          "raw_text": "АБРАУ-ДЮРСO | 1870 | de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de",
+          "winery_key": "abraudyurso"
+        },
+        "status": "ambiguous",
+        "acceptable": [
+          "abrau-dyurso-fizz-beloe-polusladkoe",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-polusladkoe"
+        ],
+        "evaluable": true,
+        "hit1": false,
+        "hit5": true,
+        "strict": false,
+        "strict_hit": false,
+        "expected_absent": false,
+        "refusal_correct": false
+      },
+      {
+        "file": "Абрау дюрсо шардоне.jpeg",
+        "top1": "abrau-dyurso-victor-dravigny-bryut",
+        "top5": [
+          "abrau-dyurso-victor-dravigny-bryut",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut",
+          "abrau-dyurso-fizz-beloe-bryut",
+          "abrau-dyurso-abrau-dyurso-pino-nuar-krasnoe-suhoe-13",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-polusladkoe"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 40979.6,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: РУССКИЙ ВИННЫЙ ДОМ\nwine_name: Абрау-Дюрсо\nvintage: 1870\ngrape: ШАРДОН\nraw_text: РУССКИЙ ВИННЫЙ ДОМ\nот . 1870 года\nПОСТАВЩИК ИМПЕРАТОРСКОГО МАЙОРСКОГО ДВОРА\nАбрау-Дюрсо\nШАРДОН\nТорг . 10000 / С/ч . 07007\nВИНО СПОКОЙНЫХ БЕРЕГОВ\nот . 1870 года",
+        "fields": {
+          "winery": "Абрау-Дюрсо",
+          "wine_name": "Абрау-Дюрсо",
+          "vintage": "1870",
+          "grape": "ШАРДОН",
+          "brand": "РУССКИЙ ВИННЫЙ ДОМ",
+          "sweetness": "брют",
+          "color": "Бледно-соломенный",
+          "wine_type": "игристое",
+          "region": "Кубань",
+          "winery_key": "abraudyurso"
+        },
+        "visual_candidates": [
+          "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13",
+          "abrau-dyurso-victor-dravigny-krasnoe-polusladkoe-kaberne-sovinon-125",
+          "abrau-dyurso-russkoe-igristoe-polusladkoe-krasnoe-kaberne-sovinon-12",
+          "abrau-dyurso-russkoe-igristoe-koshernoe-polusladkoe-shardone-beloe-12",
+          "abrau-dyurso-imperatorskoe-polusuhoe-shardone-beloe-12",
+          "abrau-dyurso-russkoe-igristoe-polusuhoe-shardone-beloe-12",
+          "abrau-dyurso-imperial-brut-lart-nouveau-shardone-beloe-bryut-105",
+          "abrau-dyurso-russkoe-igristoe-polusladkoe-shardone-beloe-12",
+          "abrau-dyurso-imperial-brut-vintage-shardone-beloe-bryut-12",
+          "abrau-dyurso-imperatorskoe-bryut-shardone-beloe-12"
+        ],
+        "text_candidates": [
+          "abrau-dyurso-victor-dravigny-bryut",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut",
+          "abrau-dyurso-fizz-beloe-bryut",
+          "abrau-dyurso-abrau-dyurso-pino-nuar-krasnoe-suhoe-13",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-polusladkoe",
+          "abrau-dyurso-fizz-beloe-polusladkoe",
+          "abrau-dyurso-spumante-bryut-roze-shardone-rozovoe-12",
+          "abrau-dyurso-imperatorskoe-bryut-shardone-beloe-12",
+          "abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115",
+          "abrau-dyurso-shardone-beloe-suhoe-12",
+          "abrau-dyurso-shardone-beloe-suhoe-13",
+          "abrau-dyurso-victor-dravigny-koshernoe-bryut-shardone-beloe-125",
+          "abrau-dyurso-az-abrau-madrasa-krasnoe-suhoe-14",
+          "abrau-dyurso-abrau-kupazh-svetlyy-suhoe-shardone-beloe-125",
+          "abrau-dyurso-abrau-estates-beloe-shardone-suhoe-12",
+          "abrau-dyurso-abrau-estates-dostoynyy-krasnoe-suhoe-135",
+          "abrau-dyurso-brut-dor-blanc-de-blancs-shardone-beloe-bryut-12",
+          "abrau-dyurso-brut-dor-blanc-de-blancs-shardone-beloe-bryut-125",
+          "abrau-dyurso-abrau-kupazh-krasnyy-polsusladkoe-kaberne-sovinon-krasnoe-polusladkoe-11",
+          "abrau-dyurso-abrau-kupazh-tyomnyy-suhoe-kaberne-sovinon-krasnoe-13",
+          "abrau-dyurso-brut-dor-rose-pino-nuar-rozovoe-bryut-12",
+          "abrau-dyurso-abrau-estates-oranzh-tsitronnyy-magaracha-oranzhevoe-suhoe-105",
+          "abrau-dyurso-abrau-estates-kaberne-po-belomu-kaberne-sovinon-beloe-suhoe-105",
+          "abrau-dyurso-az-abrau-bayanshira-beloe-suhoe-12",
+          "abrau-dyurso-abrau-estates-amurskiy-potapenko-krasnoe-suhoe-105",
+          "abrau-dyurso-abrau-estates-roze-kaberne-sovinon-rozovoe-suhoe-12",
+          "abrau-dyurso-abrau-durso-brut-rose-reserve-pino-nuar-beloe-bryut-12",
+          "abrau-dyurso-abrau-estates-krasnoe-kaberne-sovinon-suhoe-13",
+          "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13",
+          "abrau-dyurso-victor-dravigny-brut-rose-pino-nuar-rozovoe-bryut-12"
+        ],
+        "normalized": {
+          "wine_name": "Абрау-Дюрсо",
+          "sweetness": "брют",
+          "color": "Бледно-соломенный",
+          "wine_type": "игристое",
+          "region": "Кубань",
+          "winery": "Абрау-Дюрсо",
+          "brand": "РУССКИЙ ВИННЫЙ ДОМ",
+          "source": "llm",
+          "raw_text": "РУССКИЙ ВИННЫЙ ДОМ",
+          "winery_key": "abraudyurso"
+        },
+        "status": "ambiguous",
+        "acceptable": [
+          "abrau-dyurso-shardone-beloe-suhoe-12",
+          "abrau-dyurso-shardone-beloe-suhoe-13"
+        ],
+        "evaluable": true,
+        "hit1": false,
+        "hit5": false,
+        "strict": false,
+        "strict_hit": false,
+        "expected_absent": false,
+        "refusal_correct": false
+      },
+      {
+        "file": "Амфитрион брюд.jpg",
+        "top1": "kuban-vino-aristov-anima-pino-gridzhio-beloe-suhoe-12",
+        "top5": [
+          "kuban-vino-aristov-anima-pino-gridzhio-beloe-suhoe-12",
+          "makitra-selection",
+          "kuban-vino-aristov-risling-beloe-suhoe-115",
+          "kuban-vino-shato-tamane-rezerv-myuller-turgau-limited-edishn-2021-beloe-suhoe-12",
+          "kuban-vino-aristov-amata-byanko-shardone-beloe-suhoe-125"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 37739.0,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: АМФИТРИОН\nwine_name: L'Amfitrion\ncolor: игристое\nwine_type: игристое\nraw_text: неразборчиво",
+        "fields": {
+          "winery": "Кубань-Вино",
+          "wine_name": "L'Amfitrion",
+          "color": "Бледно-соломенный",
+          "wine_type": "тихое",
+          "brand": "АМФИТРИОН",
+          "sweetness": "сухое",
+          "region": "Кубань",
+          "winery_key": "kubanvino"
+        },
+        "visual_candidates": [
+          "balaklava-pino-nuar",
+          "rem-akchurin-bryut-roze-pino-nuar-rozovoe-129",
+          "katharon-katharon-brut-blanc-de-blan",
+          "millstream-av-igristoe-molodoe-suhoe-beloe",
+          "abrau-dyurso-imperial-brut-lart-nouveau-shardone-beloe-bryut-105",
+          "alma-valley-pino-nuar-beloe-ekstra-bryut-115",
+          "millstream-alamak-bryut-beloe",
+          "vinodelnya-78-muskat-polusladkoe-muskat-ottonel-beloe-115",
+          "agora-vintage-blanc-de-noirs-extra-brut",
+          "wine"
+        ],
+        "text_candidates": [
+          "kuban-vino-aristov-anima-pino-gridzhio-beloe-suhoe-12",
+          "makitra-selection",
+          "kuban-vino-aristov-risling-beloe-suhoe-115",
+          "kuban-vino-shato-tamane-rezerv-myuller-turgau-limited-edishn-2021-beloe-suhoe-12",
+          "kuban-vino-aristov-amata-byanko-shardone-beloe-suhoe-125",
+          "chateau-tamagne-select-blanc",
+          "kuban-vino-aristov-amata-roze-kaberne-sovinon-rozovoe-suhoe-13",
+          "kuban-vino-aristov-kaberne-sovinon-krasnoe-suhoe-13",
+          "kuban-vino-aristov-8-roze-merlo-rozovoe-suhoe-8",
+          "kuban-vino-aristov-byanko-shardone-beloe-suhoe-13",
+          "kuban-vino-aristov-amata-rosso-kaberne-sovinon-krasnoe-suhoe-145",
+          "kuban-vino-aristov-shardone-318-beloe-suhoe-115",
+          "kuban-vino-aristov-anima-pino-gridzhio-blash-rozovoe-suhoe-125",
+          "kuban-vino-aristov-8-byanko-shardone-beloe-suhoe-8",
+          "aristov-anima-pinot-grigio-blush",
+          "kuban-vino-aristov-kaberne-sovinon-roze-rozovoe-suhoe-12",
+          "kuban-vino-aristov-anima-pino-nero-sandzhoveze-pino-nuar-krasnoe-suhoe-125",
+          "kuban-vino-aristov-8-roze-07-merlo-rozovoe-suhoe-8",
+          "kuban-vino-aristov-sandzhoveze-krasnoe-suhoe-13",
+          "shato-taman-par-la-mer-sovinon",
+          "kuban-vino-aristov-verde-muskat-beloe-polusuhoe-11",
+          "kuban-vino-shato-tamane-aligote-beloe-suhoe-13",
+          "kuban-vino-shato-tamane-shardone-beloe-suhoe-12",
+          "molodoe-shato-taman",
+          "molodoe-shato-taman-1",
+          "risling-shato-taman",
+          "shato-taman-shardone",
+          "aristov-anima-millesimato",
+          "kuban-vino-vysokiy-bereg-grafit-roze-kaberne-sovinon-rozovoe-suhoe-12",
+          "kuban-vino-aristov-8-byanko-07-shardone-beloe-suhoe-8"
+        ],
+        "normalized": {
+          "wine_name": "L'Amfitrion",
+          "sweetness": "сухое",
+          "color": "Бледно-соломенный",
+          "wine_type": "тихое",
+          "region": "Кубань",
+          "winery": "Кубань-Вино",
+          "brand": "АМФИТРИОН",
+          "source": "llm",
+          "raw_text": "wine_name: L'Amfitrion sweetness: сухое color: Бледно-соломенный wine_type: тихое region: Кубань",
+          "winery_key": "kubanvino"
+        },
+        "status": "not_found",
+        "acceptable": [],
+        "evaluable": false,
+        "hit1": false,
+        "hit5": false,
+        "strict": false,
+        "strict_hit": false,
+        "expected_absent": true,
+        "refusal_correct": false
+      },
+      {
+        "file": "Высокий берег графит розе 2024.jpg",
+        "top1": "orlov_sauvignon_blan",
+        "top5": [
+          "orlov_sauvignon_blan",
+          "kuban-vino-vysokiy-bereg-grafit-roze-kaberne-sovinon-rozovoe-suhoe-12",
+          "lorio-sovinon-blan-2024",
+          "risling-2024",
+          "vinodelnya-marchenko-rkatsiteli-beloe-suhoe-135"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 37304.9,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: ВЫСОКИЙ БЕРЕГ\nwine_name: ГРАФИТ\nvintage: 2024\ncolor: розовое\nraw_text: РОЗЕ 2024 | ГРАФИТ",
+        "fields": {
+          "winery": "Винодельня Орлова",
+          "wine_name": "Графит",
+          "vintage": "2024",
+          "color": "Бледно-розовый",
+          "brand": "ГРАФИТ",
+          "sweetness": "брют",
+          "wine_type": "игристое",
+          "region": "Кубань",
+          "winery_key": "vinodelnyaorlova"
+        },
+        "visual_candidates": [
+          "kuban-vino-vysokiy-bereg-grafit-roze-kaberne-sovinon-rozovoe-suhoe-12",
+          "belbek-pino-nuar-roze-rozovoe-suhoe-115",
+          "vinogradniki-gay-kodzora-rose-de-gai-kodzor-grenash-rozovoe-suhoe-125",
+          "sober-bash-avrora-2024-krasnostop-zolotovskiy-rozovoe-suhoe-14",
+          "belbek-belbek-roze-pino-nuar-rozovoe-suhoe-129",
+          "zakat-denisov-vajneri",
+          "aratti-kaberne-po-belomu",
+          "perovskih_polusladkoe_rosovoe",
+          "skalistyy-bereg-melodiya-leta-krasnostop-zolotovskiy-rozovoe-suhoe-126",
+          "zolotaya-balka-pink-sira-rozovoe-suhoe-13"
+        ],
+        "text_candidates": [
+          "kuban-vino-vysokiy-bereg-grafit-roze-kaberne-sovinon-rozovoe-suhoe-12",
+          "lorio-sovinon-blan-2024",
+          "risling-2024",
+          "vinodelnya-marchenko-rkatsiteli-beloe-suhoe-135",
+          "dva-brata-pet-nat-kokur-2024",
+          "lorio-bryut-belyj",
+          "oxana-istratova-wine-rkatsiteli-2024-oranzhevoe-suhoe-12",
+          "lorio-bryut-rozovoe-igristoe",
+          "vinodelnya-uzunov-aligote-beloe-suhoe-127",
+          "vinodelnya-uzunov-rash-risling-beloe-suhoe-127",
+          "vinodelnya-batrak-vitale-kraft-kaberne-sovinon-krasnoe-suhoe-14",
+          "vinodelnya-uzunov-roze-ekstra-bryut-kaberne-sovinon-rozovoe-127",
+          "orlov_sauvignon_blan",
+          "vinodelnya-konstantina-dzitoeva-kd-bryut-shardone-beloe-115",
+          "vinodelnya-78-saperavi-krasnoe-suhoe-135",
+          "vinodelnya-uzunov-glad-shardone-beloe-ekstra-bryut-127",
+          "vinodelnya-uzunov-nrav-krasnostop-zolotovskiy-krasnoe-suhoe-132",
+          "orlov_merlo",
+          "alma-valley-graviti-kaberne-sovinon-krasnoe-suhoe-15",
+          "alma-valley-graviti-pino-blan-beloe-suhoe-135",
+          "vinodelnya-uzunov-krasa-kaberne-sovinon-krasnoe-suhoe-125",
+          "kuban-vino-shato-tamane-delikeyt-roze-2024-bianka-rozovoe-suhoe-95",
+          "vinodelnya-marchenko-rubin-rubin-azos-krasnoe-suhoe-14",
+          "riesling",
+          "vinodelnya-zhakov-saperavi-krasnoe-suhoe-126",
+          "vinodelnya-berdyaeva-risling-beloe-polusuhoe-108",
+          "vinodelnya-berdyaeva-risling-risling-reynskiy-beloe-suhoe-121",
+          "vinodelnya-uzunov-mono-saperavi-krasnoe-suhoe-139",
+          "vinodelnya-marchenko-gechei-zamatosh-beloe-suhoe-135",
+          "sober-bash-avrora-2024-krasnostop-zolotovskiy-rozovoe-suhoe-14"
+        ],
+        "normalized": {
+          "wine_name": "Графит",
+          "sweetness": "брют",
+          "color": "Бледно-розовый",
+          "wine_type": "игристое",
+          "region": "Кубань",
+          "winery": "Винодельня Орлова",
+          "brand": "ГРАФИТ",
+          "source": "llm",
+          "raw_text": "РОЗЕ 2024 | ГРАФИТ",
+          "winery_key": "vinodelnyaorlova"
+        },
+        "status": "matched",
+        "acceptable": [
+          "kuban-vino-vysokiy-bereg-grafit-roze-kaberne-sovinon-rozovoe-suhoe-12"
+        ],
+        "evaluable": true,
+        "hit1": false,
+        "hit5": true,
+        "strict": true,
+        "strict_hit": false,
+        "expected_absent": false,
+        "refusal_correct": false
+      },
+      {
+        "file": "Лефкадия шардоне.jpg",
+        "top1": "avtorskij-gid-artura-sarkisyana",
+        "top5": [
+          "avtorskij-gid-artura-sarkisyana",
+          "denisov-winery-pino-nuar-shardone-ekstra-bryut-beloe-125",
+          "agora-winery-cuvee-pino-gridzhio-shardone-bryut-beloe-125",
+          "agora-winery-cuvee-pino-nuar-shardone-bryut-rozovoe-125",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-ekstra-bryut-beloe-novyy-svet-kyuve-de-prestizh-shardone-125"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 34624.2,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: ЛЕФКАДИЯ\nwine_name: ШАРДОНЕ\ncolor: белое\nvolume: 0.75 L\nraw_text: ЛЕФКАДИЯ | ШАРДОНЕ | 0.75 L",
+        "fields": {
+          "winery": "Долина Лефкадия",
+          "wine_name": "Шардоне",
+          "color": "Бледно-золотистый",
+          "volume": "0.75 L",
+          "brand": "ЛЕФКАДИЯ",
+          "sweetness": "брют",
+          "wine_type": "тихое",
+          "winery_key": "dolinalefkadiya"
+        },
+        "visual_candidates": [
+          "vinodelnya-vedernikov-gubernatorskoe-risling-beloe-suhoe-12",
+          "valeriy-zaharin-dom-zaharinyh-beloe-sary-pandas-suhoe-115",
+          "lefkadiya-beloe",
+          "esse-pino-gri-beloe-suhoe-12",
+          "v2r-sovinon-blan-beloe-suhoe-13",
+          "golubitskoe-estate-shardone-noble-selection-barrel-touch-beloe-suhoe-135",
+          "vinodelnya-krinitsa-azyur-vione-beloe-suhoe-12",
+          "belbek-rkatsiteli-barrik-beloe-suhoe-13",
+          "lefkadiya-krasnoe",
+          "abrau-dyurso-shardone-beloe-suhoe-12"
+        ],
+        "text_candidates": [
+          "denisov-winery-pino-nuar-shardone-ekstra-bryut-beloe-125",
+          "agora-winery-cuvee-pino-gridzhio-shardone-bryut-beloe-125",
+          "agora-winery-cuvee-pino-nuar-shardone-bryut-rozovoe-125",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-ekstra-bryut-beloe-novyy-svet-kyuve-de-prestizh-shardone-125",
+          "shardone-barrel-2023",
+          "sosedi-aligote-shardone-2025",
+          "myshako-green-cape-shardone-beloe-bryut",
+          "avtorskij-gid-artura-sarkisyana",
+          "shardone-balaklava",
+          "villa-sofiya-shardone-beloe-suhoe-14",
+          "alma-valley-shardone-beloe-suhoe-135",
+          "alma-valley-shardone-rezerv-beloe-suhoe-135",
+          "alma-valley-shardone-rezerv-beloe-suhoe-14",
+          "twopeters_shardone",
+          "jd_winery_shardone",
+          "temelion-bryut-roze",
+          "vinodelnya-berdyaeva-shardone-beloe-suhoe-125",
+          "vinodelnya-pokrovskaya-rkatsiteli-shardone-pokrovskoe-beloe-suhoe-13",
+          "chateau-tamagne-eno-traminer-i-shardone",
+          "chateau-tamagne-signature-shardone",
+          "fanagoriya-100-ottenkov-shardone-beloe-suhoe-14",
+          "fanagoriya-fanagoriya-hey-bey-shardone-beloe-suhoe-13",
+          "kuban-vino-aristov-shardone-318-beloe-suhoe-115",
+          "kuban-vino-shato-tamane-rezerv-kollekshn-shardone-beloe-suhoe-125",
+          "kuban-vino-shato-tamane-rkatsiteli-myuller-turgau-shardone-2025-beloe-suhoe-12",
+          "kuban-vino-shato-tamane-shardone-beloe-suhoe-12",
+          "shato-taman-shardone",
+          "vinodelnya-konstantina-dzitoeva-kd-shardone-beloe-suhoe-128",
+          "golubitskoe-estate-shardone-noble-selection-barrel-touch-beloe-suhoe-135",
+          "golubitskoe-estate-shardone-rezerv-beloe-suhoe-135"
+        ],
+        "normalized": {
+          "wine_name": "Шардоне",
+          "sweetness": "брют",
+          "color": "Бледно-золотистый",
+          "wine_type": "тихое",
+          "region": "не указан",
+          "winery": "Долина Лефкадия",
+          "brand": "ЛЕФКАДИЯ",
+          "source": "llm",
+          "raw_text": "ЛЕФКАДИЯ | ШАРДОНЕ | 0.75 L",
+          "winery_key": "dolinalefkadiya"
+        },
+        "status": "not_found",
+        "acceptable": [],
+        "evaluable": false,
+        "hit1": false,
+        "hit5": false,
+        "strict": false,
+        "strict_hit": false,
+        "expected_absent": true,
+        "refusal_correct": false
+      },
+      {
+        "file": "Новый Свет Рислинг.jpg",
+        "top1": "novyj-svet-risling-kyuve-de-prestizh",
+        "top5": [
+          "novyj-svet-risling-kyuve-de-prestizh",
+          "ferrum-winery-riesling-risling-reynskiy-beloe-suhoe-11",
+          "tempelhof-winery-risling-risling-reynskiy-beloe-suhoe-115",
+          "vinodelnya-marko-risling-beloe-suhoe-12",
+          "novyj-svet-kaberne-sovinon"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 42357.9,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: НОВЫЙ СВЕТ\nwine_name: Riesling\nraw_text: НОВЫЙ СВЕТ | Riesling | GUVEE DE PRESTIG | 07/17/1-06 | de prestige | de prestige | 0.75 L | 750 ml | 10.5% vol | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750",
+        "fields": {
+          "winery": "Новый Свет. Дом шампанских вин",
+          "wine_name": "Riesling",
+          "brand": "НОВЫЙ СВЕТ",
+          "sweetness": "брют",
+          "color": "Бледно-соломенный",
+          "wine_type": "тихое",
+          "region": "Ставрополье",
+          "winery_key": "novyysvetdomshampanskihvin"
+        },
+        "visual_candidates": [
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-ekstra-bryut-beloe-novyy-svet-risling-kyuve-de-prestizh-125",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-zolotoy-risling-suhoe-13",
+          "novyj-svet-risling-kyuve-de-prestizh",
+          "novyy-svet-dom-shampanskih-vin-igristoe-vino-vyderzhannoe-bryut-rozovoe-novyy-svet-pino-fran-135",
+          "novyy-svet-dom-shampanskih-vin-novyy-svet-polusladkoe-roze-shardone-rozovoe-115",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-ekstra-bryut-beloe-novyy-svet-kyuve-risling-125",
+          "vysokij-bereg-risling-zelenaya-seriya-1",
+          "novyj-svet-pino-gri-millezim",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-polusuhoe-beloe-novyy-svet-shardone-13",
+          "novyy-svet-dom-shampanskih-vin-novyy-svet-kyuve-ekstra-bryut-shardone-beloe-135"
+        ],
+        "text_candidates": [
+          "ferrum-winery-riesling-risling-reynskiy-beloe-suhoe-11",
+          "tempelhof-winery-risling-risling-reynskiy-beloe-suhoe-115",
+          "vinodelnya-marko-risling-beloe-suhoe-12",
+          "novyj-svet-kaberne-sovinon",
+          "novyj-svet-kollekczionnoe-bryut",
+          "olymp-winery-adagum-riesling-risling-beloe-suhoe-11",
+          "olymp-winery-adagum-valley-riesling-risling-reynskiy-beloe-suhoe-11",
+          "riesling",
+          "domaine-lipko-riesling-m-domaine-lipko-risling-beloe-suhoe-102",
+          "novyy-svet-dom-shampanskih-vin-novyy-svet-kyuve-ekstra-bryut-shardone-beloe-135",
+          "novyj-svet-paradizio",
+          "ivan-ksenia-kruz-argonne-riesling-risling-beloe-suhoe-119",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-zolotoy-risling-suhoe-13",
+          "domaine-de-la-vivandiere-risling-beloe-suhoe-122",
+          "denisov-winery-risling-beloe-suhoe-115",
+          "cantiani-aligote-riesling",
+          "cantiani-riesling",
+          "cantiani-riesling-1",
+          "cantiani-riesling-rkatsiteli",
+          "novyy-svet-dom-shampanskih-vin-igristoe-vino-vyderzhannoe-bryut-rozovoe-novyy-svet-pino-fran-135",
+          "novyy-svet-dom-shampanskih-vin-igristoe-vino-vyderzhannoe-bryut-rozovoe-novyy-svet-pino-nuar-125",
+          "novyj-svet-vyderzhannoe-bryut",
+          "riesling-dva-petra-2022",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-ekstra-bryut-beloe-novyy-svet-risling-kyuve-de-prestizh-125",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-ekstra-bryut-beloe-novyy-svet-shardone-125",
+          "novyy-svet-dom-shampanskih-vin-igristoe-vino-vyderzhannoe-bryut-krasnoe-novyy-svet-kaberne-sovinon-135",
+          "novyj-svet-zolotoj-risling",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-paradizio-shardone-125",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-yubileynoe-risling-13",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-vyderzhannoe-bryut-beloe-novyy-svet-shardone-125"
+        ],
+        "normalized": {
+          "wine_name": "Riesling",
+          "sweetness": "брют",
+          "color": "Бледно-соломенный",
+          "wine_type": "тихое",
+          "region": "Ставрополье",
+          "winery": "Новый Свет. Дом шампанских вин",
+          "brand": "НОВЫЙ СВЕТ",
+          "source": "llm",
+          "raw_text": "НОВЫЙ СВЕТ | Riesling | GUVEE DE PRESTIG | 07/17/1-06 | de prestige | de prestige | 0.75 L | 750 ml | 10.5% vol | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 7",
+          "winery_key": "novyysvetdomshampanskihvin"
+        },
+        "status": "ambiguous",
+        "acceptable": [
+          "novyj-svet-risling-kyuve-de-prestizh",
+          "novyj-svet-zolotoj-risling",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-zolotoy-risling-suhoe-13",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-ekstra-bryut-beloe-novyy-svet-risling-kyuve-de-prestizh-125"
+        ],
+        "evaluable": true,
+        "hit1": true,
+        "hit5": true,
+        "strict": false,
+        "strict_hit": false,
+        "expected_absent": false,
+        "refusal_correct": false
+      },
+      {
+        "file": "Фонагория белое.jpeg",
+        "top1": "fanagoriya-beloe-polusladkoe",
+        "top5": [
+          "fanagoriya-beloe-polusladkoe",
+          "fanagoriya-rs-noir-saperavi-krasnoe-polusladkoe-125",
+          "fanagoriya-fanagoriya-polusladkoe-rozovoe-sovinon-blan-krasnoe-11-13",
+          "fanagoriya-brule-frizzante-polusladkoe-beloe-pino-nuar-11",
+          "rozovoe-polusladkoe"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 38202.8,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: FANAGORIA\nwine_name: NR\nvintage: 2022\nsweetness: полусладкое\ncolor: белое\nraw_text: FANAGORIA | NR | 2022 | БЕЛОЕ | ПОЛУСЛАДКОЕ",
+        "fields": {
+          "winery": "Фанагория",
+          "wine_name": "NR",
+          "vintage": "2022",
+          "sweetness": "полусладкое",
+          "color": "Белого золота",
+          "brand": "NR",
+          "wine_type": "тихое",
+          "region": "Дагестан",
+          "winery_key": "fanagoriya"
+        },
+        "visual_candidates": [
+          "fanagoriya-solera-rkatsiteli-ambra-rkatsiteli-beloe-suhoe-15",
+          "zmv-koktebel-muskat-yantarnyy-desertnyy-beloe-sladkoe-16",
+          "soyuz-vino-sheremetevskie-pogreba-beloe-polusladkoe-belye-sorta-vinograda-11",
+          "soyuz-vino-sheremetevskie-pogreba-shardone-beloe-suhoe-11",
+          "sober-bash-dve-doliny-liuri-2023-dostoynyy-rozovoe-suhoe-13",
+          "zmv-koktebel-traminer-desertnoe-beloe-sladkoe-16",
+          "rozovoe-zoloto",
+          "zmv-koktebel-muskat-desertnyy-rozovoe-sladkoe-16",
+          "czitronnyj-magaracha",
+          "vinodelnya-vedernikov-krasnostop-zolotovskiy-roze-rozovoe-suhoe-12"
+        ],
+        "text_candidates": [
+          "fanagoriya-rs-noir-saperavi-krasnoe-polusladkoe-125",
+          "fanagoriya-beloe-polusladkoe",
+          "fanagoriya-fanagoriya-polusladkoe-rozovoe-sovinon-blan-krasnoe-11-13",
+          "fanagoriya-brule-frizzante-polusladkoe-beloe-pino-nuar-11",
+          "rozovoe-polusladkoe",
+          "fanagoriya-ona-skazala-da-beloe-polusladkoe",
+          "fanagoriya-brule-cabernet-sauvignon-polusladkoe-krasnoe-kaberne-sovinon-125",
+          "fanagoriya-brule-muscat-ottonel-polusladkoe-muskat-ottonel-beloe-115",
+          "fanagoriya-saqra-saperavi-krasnoe-suhoe-135",
+          "fanagoriya-q-blanc-sovinon-blan-beloe-suhoe-14",
+          "fanagoriya-q-bordeaux-blend-kaberne-sovinon-krasnoe-suhoe-135",
+          "fanagoriya-cru-lermont-merlo-merlo-krasnoe-suhoe-14",
+          "fanagoriya-rose-kaberne-fran-rozovoe-suhoe-13",
+          "fanagoriya-dekanter-formula-q-kaberne-sovinon-krasnoe-suhoe-135",
+          "fanagoriya-solera-porto-negro-saperavi-krasnoe-suhoe-15",
+          "fanagoriya-sur-lie-chardonnay-shardone-beloe-suhoe-135",
+          "cru-lermont-risling",
+          "fanagoriya-blanc-de-noirs-mene-pino-mene-beloe-ekstra-bryut-12",
+          "fanagoriya-dekanter-merlo-2018-krasnoe-suhoe-14",
+          "fanagoriya-100-ottenkov-shardone-beloe-suhoe-14",
+          "fanagoriya-cru-lermont-saperavi-saperavi-krasnoe-suhoe-135",
+          "fanagoriya-fanagoriya-bryut-beloe-sovinon-blan-igristoe-bryut-beloe-11-13",
+          "fanagoriya-formula-q-kaberne-sovinon-krasnoe-suhoe-135",
+          "fanagoriya-formula-q-saperavi-krasnoe-suhoe-135",
+          "fanagoriya-par-amour-pervenets-magaracha-beloe-polusladkoe-105-125",
+          "fanagoriya-par-amour-pervenets-magaracha-beloe-polusuhoe-105-125",
+          "fanagoriya-par-amour-pervenets-magaracha-rozovoe-polusuhoe-105-125",
+          "fanagoriya-par-amour-rubin-golodrigi-krasnoe-polusladkoe-105-125",
+          "fanagoriya-rose-kaberne-sovinon-rozovoe-polusuhoe-13",
+          "fanagoriya-cru-lermont-chardonnay-shardone-beloe-suhoe-14"
+        ],
+        "normalized": {
+          "wine_name": "NR",
+          "sweetness": "полусладкое",
+          "color": "Белого золота",
+          "wine_type": "тихое",
+          "region": "Дагестан",
+          "winery": "Фанагория",
+          "brand": "NR",
+          "source": "llm",
+          "raw_text": "FANAGORIA | NR | 2022 | БЕЛОЕ | ПОЛУСЛАДКОЕ",
+          "winery_key": "fanagoriya"
+        },
+        "status": "ambiguous",
+        "acceptable": [
+          "fanagoriya-beloe-polusladkoe",
+          "fanagoriya-fanagoriya-blanc-de-blancs-beloe-iz-belogo-shardone-igristoe-bryut-beloe-11-13",
+          "fanagoriya-fanagoriya-blanc-de-noirs-beloe-iz-chyornogo-merlo-igristoe-bryut-beloe-11-13",
+          "fanagoriya-fanagoriya-bryut-beloe-sovinon-blan-igristoe-bryut-beloe-11-13",
+          "fanagoriya-ona-skazala-da-beloe-bryut",
+          "fanagoriya-ona-skazala-da-beloe-polusladkoe"
+        ],
+        "evaluable": true,
+        "hit1": true,
+        "hit5": true,
+        "strict": false,
+        "strict_hit": false,
+        "expected_absent": false,
+        "refusal_correct": false
+      },
+      {
+        "file": "Шампанское российское kursavskoe.jpeg",
+        "top1": "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-paradizio-shardone-125",
+        "top5": [
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-paradizio-shardone-125",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-kyuve-de-prestizh-pino-gri-millezim-rozovoe-125",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-yubileynoe-risling-13",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-zolotoy-risling-suhoe-13",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-rozovoe-novyy-svet-pino-nuar-135"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 51726.9,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: Курсавское\nwine_name: ШАМПАНСКОЕ\nsweetness: полусладкое\ncolor: белое\nwine_type: игристое\nvolume: 0.75 L\nraw_text: ШАМПАНСКОЕ\nКурсавское\nПОЛУСЛАДКОЕ\nБЕЛОЕ\n0.75 Л ОБЪЕМ • СПИРТ 10.5-11.0%",
+        "fields": {
+          "winery": "Новый Свет. Дом шампанских вин",
+          "wine_name": "ШАМПАНСКОЕ",
+          "sweetness": "брют",
+          "color": "Белый жемчуг с лимонным отливом",
+          "wine_type": "игристое",
+          "volume": "0.75 L",
+          "brand": "ШАМПАНСКОЕ",
+          "region": "Дагестан",
+          "winery_key": "novyysvetdomshampanskihvin"
+        },
+        "visual_candidates": [
+          "fiori-di-mare-krasnoe-polusuhoe",
+          "soyuz-vino-kanonicheskie-traditsii-krasnoe-sladkoe-kaberne-sovinon-115",
+          "soyuz-vino-kanonicheskie-traditsii-krasnoe-polusladkoe-kaberne-sovinon-115",
+          "tsimlyanskie-vina-tsimlyanskoe-kaberne-sovinon-ekstra-bryut-rozovoe-13",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-yubileynoe-risling-13",
+          "semeynaya-vinodelnya-mihaila-kolesnikova-ispanets-kaberne-sovinon-krasnoe-suhoe-148",
+          "vinodelnya-vedernikov-krasnostop-zolotovskiy-krasnoe-suhoe-13",
+          "di-caspico-rozovoe-bryut",
+          "massandra-rozovoe-suhoe",
+          "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13"
+        ],
+        "text_candidates": [
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-kyuve-de-prestizh-pino-gri-millezim-rozovoe-125",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-paradizio-shardone-125",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-yubileynoe-risling-13",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-zolotoy-risling-suhoe-13",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-rozovoe-novyy-svet-pino-nuar-135",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-ekstra-bryut-beloe-novyy-svet-blan-de-nuar-pino-nuar-13",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-ekstra-bryut-beloe-novyy-svet-kyuve-de-prestizh-shardone-125",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-ekstra-bryut-beloe-novyy-svet-kyuve-risling-125",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-ekstra-bryut-beloe-novyy-svet-risling-kyuve-de-prestizh-125",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-ekstra-bryut-beloe-novyy-svet-shardone-125",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-vyderzhannoe-bryut-beloe-novyy-svet-shardone-125",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-vyderzhannoe-bryut-rozovoe-novyy-svet-kaberne-kaberne-sovinon-11",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-vyderzhannoe-ekstra-bryut-beloe-novyy-svet-aligote-13",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-vyderzhannoe-ekstra-bryut-beloe-novyy-svet-kokur-11",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-polusuhoe-beloe-novyy-svet-risling-125",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-polusuhoe-beloe-novyy-svet-shardone-13",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-polusuhoe-rozovoe-novyy-svet-pino-nuar-125",
+          "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-vyderzhannoe-polusladkoe-rozovoe-novyy-svet-shardone-125",
+          "novyj-svet-vyderzhannoe-bryut",
+          "novyj-svet-kaberne-sovinon",
+          "novyj-svet-paradizio",
+          "novyy-svet-dom-shampanskih-vin-novyy-svet-kyuve-ekstra-bryut-shardone-beloe-135",
+          "novyj-svet-kollekczionnoe-bryut",
+          "novyy-svet-dom-shampanskih-vin-igristoe-vino-vyderzhannoe-bryut-rozovoe-novyy-svet-pino-nuar-125",
+          "novyy-svet-dom-shampanskih-vin-igristoe-vino-vyderzhannoe-bryut-krasnoe-novyy-svet-kaberne-sovinon-135",
+          "novyy-svet-dom-shampanskih-vin-igristoe-vino-vyderzhannoe-bryut-rozovoe-novyy-svet-pino-fran-135",
+          "novyy-svet-dom-shampanskih-vin-pino-nuar-polusuhoe-rozovoe-135",
+          "novyj-svet-shardone",
+          "czimlyanskoe-beloe-bryut",
+          "novyy-svet-dom-shampanskih-vin-novyy-svet-pino-nuar-rozovoe-bryut-13"
+        ],
+        "normalized": {
+          "wine_name": "ШАМПАНСКОЕ",
+          "sweetness": "брют",
+          "color": "Белый жемчуг с лимонным отливом",
+          "wine_type": "игристое",
+          "region": "Дагестан",
+          "winery": "Новый Свет. Дом шампанских вин",
+          "brand": "ШАМПАНСКОЕ",
+          "source": "llm",
+          "raw_text": "ШАМПАНСКОЕ",
+          "winery_key": "novyysvetdomshampanskihvin"
+        },
+        "status": "not_found",
+        "acceptable": [],
+        "evaluable": false,
+        "hit1": false,
+        "hit5": false,
+        "strict": false,
+        "strict_hit": false,
+        "expected_absent": true,
+        "refusal_correct": false
+      },
+      {
+        "file": "абрау дюрсо брюд.jpeg",
+        "top1": "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13",
+        "top5": [
+          "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13",
+          "abrau-dyurso-russkoe-igristoe-koshernoe-polusladkoe-shardone-beloe-12",
+          "abrau-dyurso-russkoe-igristoe-polusladkoe-krasnoe-kaberne-sovinon-12",
+          "abrau-dyurso-russkoe-igristoe-polusladkoe-shardone-beloe-12",
+          "abrau-dyurso-russkoe-igristoe-polusuhoe-rozovoe-pino-nuar-12"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 43036.4,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: АВРАЙ-ДЮРСО\nwine_name: \nvintage: 1870\nsweetness: брют\ncolor: игристое\nwine_type: игристое\nraw_text: РУССКОЕ ИГРИСТОЕ | БРЮТ",
+        "fields": {
+          "winery": "Абрау-Дюрсо",
+          "vintage": "1870",
+          "sweetness": "брют",
+          "color": "Бледно-золотистый",
+          "wine_type": "игристое",
+          "brand": "РУССКОЕ ИГРИСТОЕ | БРЮТ",
+          "wine_name": "Русское игристое",
+          "region": "Дагестан",
+          "winery_key": "abraudyurso"
+        },
+        "visual_candidates": [
+          "abrau-dyurso-russkoe-igristoe-polusladkoe-shardone-beloe-12",
+          "abrau-dyurso-russkoe-igristoe-polusuhoe-shardone-beloe-12",
+          "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13",
+          "abrau-dyurso-russkoe-igristoe-koshernoe-polusladkoe-shardone-beloe-12",
+          "abrau-dyurso-russkoe-igristoe-polusladkoe-krasnoe-kaberne-sovinon-12",
+          "abrau-dyurso-imperatorskoe-polusuhoe-shardone-beloe-12",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut",
+          "abrau-dyurso-victor-dravigny-extra-brut-shardone-beloe-bryut-125",
+          "abrau-dyurso-victor-dravigny-krasnoe-polusladkoe-kaberne-sovinon-125",
+          "abrau-dyurso-imperatorskoe-bryut-shardone-beloe-12"
+        ],
+        "text_candidates": [
+          "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13",
+          "abrau-dyurso-russkoe-igristoe-koshernoe-polusladkoe-shardone-beloe-12",
+          "abrau-dyurso-russkoe-igristoe-polusladkoe-krasnoe-kaberne-sovinon-12",
+          "abrau-dyurso-russkoe-igristoe-polusladkoe-shardone-beloe-12",
+          "abrau-dyurso-russkoe-igristoe-polusuhoe-rozovoe-pino-nuar-12",
+          "abrau-dyurso-russkoe-igristoe-polusuhoe-shardone-beloe-12",
+          "abrau-dyurso-imperatorskoe-bryut-shardone-beloe-12",
+          "abrau-dyurso-spumante-bryut-roze-shardone-rozovoe-12",
+          "abrau-dyurso-fizz-beloe-bryut",
+          "abrau-dyurso-victor-dravigny-koshernoe-bryut-shardone-beloe-125",
+          "abrau-dyurso-victor-dravigny-bryut",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut",
+          "abrau-dyurso-imperatorskoe-polusladkoe-shardone-beloe-12",
+          "abrau-dyurso-imperatorskoe-polusuhoe-shardone-beloe-12",
+          "abrau-dyurso-abrau-estates-krasnoe-kaberne-sovinon-suhoe-13",
+          "abrau-dyurso-brut-dor-rose-pino-nuar-rozovoe-bryut-12",
+          "abrau-dyurso-abrau-estates-roze-kaberne-sovinon-rozovoe-suhoe-12",
+          "abrau-dyurso-imperial-brut-rose-pino-nuar-rozovoe-bryut-12",
+          "abrau-dyurso-victor-dravigny-krasnoe-polusladkoe-kaberne-sovinon-125",
+          "abrau-dyurso-abrau-dyurso-pino-nuar-krasnoe-suhoe-13",
+          "abrau-dyurso-victor-dravigny-polusladkoe-sovinon-blan-beloe-12",
+          "abrau-dyurso-imperial-kyuve-pino-nuar-rozovoe-bryut-125",
+          "abrau-dyurso-abrau-estates-dostoynyy-krasnoe-suhoe-135",
+          "abrau-dyurso-abrau-estates-beloe-shardone-suhoe-12",
+          "abrau-dyurso-fizz-beloe-polusladkoe",
+          "rozovoe-polusladkoe-2",
+          "igristoe-vino-bryut-beloe-di-caspico",
+          "igristoe-vino-ekstra-bryut-beloe-di-caspico",
+          "abrau-dyurso-abrau-kupazh-tyomnyy-suhoe-kaberne-sovinon-krasnoe-13",
+          "abrau-dyurso-victor-dravigny-brut-rose-pino-nuar-rozovoe-bryut-12"
+        ],
+        "normalized": {
+          "wine_name": "Русское игристое",
+          "sweetness": "брют",
+          "color": "Бледно-золотистый",
+          "wine_type": "игристое",
+          "region": "Дагестан",
+          "winery": "Абрау-Дюрсо",
+          "brand": "РУССКОЕ ИГРИСТОЕ | БРЮТ",
+          "source": "llm",
+          "raw_text": "РУССКОЕ ИГРИСТОЕ | БРЮТ",
+          "winery_key": "abraudyurso"
+        },
+        "status": "ambiguous",
+        "acceptable": [
+          "abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115",
+          "abrau-dyurso-abrau-dyurso-pino-nuar-krasnoe-suhoe-13",
+          "abrau-dyurso-fizz-beloe-bryut",
+          "abrau-dyurso-fizz-beloe-polusladkoe",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-polusladkoe",
+          "abrau-dyurso-victor-dravigny-bryut"
+        ],
+        "evaluable": true,
+        "hit1": false,
+        "hit5": false,
+        "strict": false,
+        "strict_hit": false,
+        "expected_absent": false,
+        "refusal_correct": false
+      },
+      {
+        "file": "абрау дюрсо полусладкое.jpeg",
+        "top1": "abrau-dyurso-fizz-beloe-bryut",
+        "top5": [
+          "abrau-dyurso-fizz-beloe-bryut",
+          "abrau-dyurso-imperatorskoe-bryut-shardone-beloe-12",
+          "abrau-dyurso-victor-dravigny-bryut",
+          "abrau-dyurso-spumante-bryut-roze-shardone-rozovoe-12",
+          "abrau-dyurso-az-abrau-madrasa-krasnoe-suhoe-14"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 39821.3,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: ABRACH-D'ORSAY\nwine_name: \ncolor: игристое\nwine_type: игристое\nraw_text: ABRACH-D'ORSAY | de la maison",
+        "fields": {
+          "winery": "Абрау-Дюрсо",
+          "color": "Бледно-соломенный",
+          "wine_type": "игристое",
+          "brand": "ABRACH-D'ORSAY",
+          "wine_name": "ABRACH-D'ORSAY",
+          "sweetness": "брют",
+          "region": "Дагестан",
+          "winery_key": "abraudyurso"
+        },
+        "visual_candidates": [
+          "abrau-dyurso-victor-dravigny-brut-rose-pino-nuar-rozovoe-bryut-12",
+          "abrau-dyurso-russkoe-igristoe-koshernoe-polusladkoe-shardone-beloe-12",
+          "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13",
+          "abrau-dyurso-victor-dravigny-polusuhoe-pino-blan-beloe-12",
+          "abrau-dyurso-russkoe-igristoe-polusladkoe-shardone-beloe-12",
+          "abrau-dyurso-victor-dravigny-krasnoe-polusladkoe-kaberne-sovinon-125",
+          "zolotaya-balka-igristoe-krasnoe-polusladkoe",
+          "novyy-svet-dom-shampanskih-vin-igristoe-vino-vyderzhannoe-bryut-rozovoe-novyy-svet-pino-fran-135",
+          "abrau-dyurso-russkoe-igristoe-polusladkoe-krasnoe-kaberne-sovinon-12",
+          "bryut-rozovoe-zolotaya-balka"
+        ],
+        "text_candidates": [
+          "abrau-dyurso-fizz-beloe-bryut",
+          "abrau-dyurso-imperatorskoe-bryut-shardone-beloe-12",
+          "abrau-dyurso-victor-dravigny-bryut",
+          "abrau-dyurso-spumante-bryut-roze-shardone-rozovoe-12",
+          "abrau-dyurso-az-abrau-madrasa-krasnoe-suhoe-14",
+          "abrau-dyurso-victor-dravigny-koshernoe-bryut-shardone-beloe-125",
+          "abrau-dyurso-brut-dor-rose-pino-nuar-rozovoe-bryut-12",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut",
+          "abrau-dyurso-abrau-dyurso-pino-nuar-krasnoe-suhoe-13",
+          "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13",
+          "abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115",
+          "abrau-dyurso-abrau-estates-beloe-shardone-suhoe-12",
+          "abrau-dyurso-abrau-estates-dostoynyy-krasnoe-suhoe-135",
+          "abrau-dyurso-abrau-estates-oranzh-tsitronnyy-magaracha-oranzhevoe-suhoe-105",
+          "abrau-dyurso-brut-dor-riesling-risling-beloe-bryut-12",
+          "abrau-dyurso-az-abrau-bayanshira-beloe-suhoe-12",
+          "abrau-dyurso-abrau-kupazh-svetlyy-suhoe-shardone-beloe-125",
+          "abrau-dyurso-brut-dor-blanc-de-noirs-pino-nuar-beloe-bryut-115",
+          "abrau-dyurso-brut-dor-blanc-de-noirs-pino-nuar-beloe-bryut-125",
+          "abrau-dyurso-abrau-estates-roze-kaberne-sovinon-rozovoe-suhoe-12",
+          "abrau-dyurso-abrau-durso-brut-rose-reserve-pino-nuar-beloe-bryut-12",
+          "abrau-dyurso-victor-dravigny-brut-shardone-beloe-bryut-12",
+          "abrau-dyurso-brut-dor-blanc-de-blancs-shardone-beloe-bryut-12",
+          "abrau-dyurso-brut-dor-blanc-de-blancs-shardone-beloe-bryut-125",
+          "abrau-dyurso-abrau-kupazh-tyomnyy-suhoe-kaberne-sovinon-krasnoe-13",
+          "abrau-dyurso-shardone-beloe-suhoe-12",
+          "abrau-dyurso-shardone-beloe-suhoe-13",
+          "abrau-dyurso-femme-dabrau-amurskiy-potapenko-krasnoe-suhoe-107",
+          "abrau-dyurso-abrau-estates-krasnoe-kaberne-sovinon-suhoe-13",
+          "abrau-dyurso-victor-dravigny-extra-brut-shardone-beloe-bryut-125"
+        ],
+        "normalized": {
+          "wine_name": "ABRACH-D'ORSAY",
+          "sweetness": "брют",
+          "color": "Бледно-соломенный",
+          "wine_type": "игристое",
+          "region": "Дагестан",
+          "winery": "Абрау-Дюрсо",
+          "brand": "ABRACH-D'ORSAY",
+          "source": "llm",
+          "raw_text": "ABRACH-D'ORSAY | de la maison",
+          "winery_key": "abraudyurso"
+        },
+        "status": "ambiguous",
+        "acceptable": [
+          "abrau-dyurso-fizz-beloe-polusladkoe",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-polusladkoe"
+        ],
+        "evaluable": true,
+        "hit1": false,
+        "hit5": false,
+        "strict": false,
+        "strict_hit": false,
+        "expected_absent": false,
+        "refusal_correct": false
+      },
+      {
+        "file": "абрау дюрсо премиум.jpg",
+        "top1": "abrau-dyurso-abrau-kupazh-svetlyy-suhoe-shardone-beloe-125",
+        "top5": [
+          "abrau-dyurso-abrau-kupazh-svetlyy-suhoe-shardone-beloe-125",
+          "abrau-dyurso-abrau-dyurso-pino-nuar-krasnoe-suhoe-13",
+          "abrau-dyurso-fizz-beloe-bryut",
+          "abrau-dyurso-fizz-beloe-polusladkoe",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 41110.3,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: 1870\nwine_name: АБРАУ-ДЮРСО\nvintage: 1870\ncolor: игристое\nwine_type: игристое\nraw_text: 1870 | АБРАУ-ДЮРСО | ПРЕМИУМ | de la collection | 2018",
+        "fields": {
+          "winery": "Абрау-Дюрсо",
+          "wine_name": "АБРАУ-ДЮРСО",
+          "vintage": "1870",
+          "color": "Бледно-соломенный",
+          "wine_type": "тихое",
+          "brand": "АБРАУ-ДЮРСО",
+          "sweetness": "сухое",
+          "region": "Дагестан",
+          "winery_key": "abraudyurso"
+        },
+        "visual_candidates": [
+          "abrau-dyurso-victor-dravigny-krasnoe-polusladkoe-kaberne-sovinon-125",
+          "abrau-dyurso-victor-dravigny-brut-rose-pino-nuar-rozovoe-bryut-12",
+          "abrau-dyurso-russkoe-igristoe-polusladkoe-shardone-beloe-12",
+          "abrau-dyurso-victor-dravigny-extra-brut-shardone-beloe-bryut-125",
+          "abrau-dyurso-russkoe-igristoe-polusladkoe-krasnoe-kaberne-sovinon-12",
+          "abrau-dyurso-victor-dravigny-bryut",
+          "abrau-dyurso-russkoe-igristoe-koshernoe-polusladkoe-shardone-beloe-12",
+          "abrau-dyurso-russkoe-igristoe-polusuhoe-shardone-beloe-12",
+          "novyy-svet-dom-shampanskih-vin-igristoe-vino-vyderzhannoe-bryut-krasnoe-novyy-svet-kaberne-sovinon-135",
+          "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13"
+        ],
+        "text_candidates": [
+          "abrau-dyurso-abrau-dyurso-pino-nuar-krasnoe-suhoe-13",
+          "abrau-dyurso-fizz-beloe-bryut",
+          "abrau-dyurso-fizz-beloe-polusladkoe",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut",
+          "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-polusladkoe",
+          "abrau-dyurso-victor-dravigny-bryut",
+          "abrau-dyurso-abrau-kupazh-svetlyy-suhoe-shardone-beloe-125",
+          "abrau-dyurso-abrau-kupazh-tyomnyy-suhoe-kaberne-sovinon-krasnoe-13",
+          "abrau-dyurso-az-abrau-madrasa-krasnoe-suhoe-14",
+          "abrau-dyurso-abrau-durso-brut-rose-reserve-pino-nuar-beloe-bryut-12",
+          "abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115",
+          "abrau-dyurso-abrau-kupazh-krasnyy-polsusladkoe-kaberne-sovinon-krasnoe-polusladkoe-11",
+          "abrau-dyurso-abrau-estates-amurskiy-potapenko-krasnoe-suhoe-105",
+          "abrau-dyurso-abrau-estates-beloe-shardone-suhoe-12",
+          "abrau-dyurso-abrau-estates-dostoynyy-krasnoe-suhoe-135",
+          "abrau-dyurso-abrau-estates-kaberne-po-belomu-kaberne-sovinon-beloe-suhoe-105",
+          "abrau-dyurso-abrau-estates-krasnoe-kaberne-sovinon-suhoe-13",
+          "abrau-dyurso-abrau-estates-oranzh-tsitronnyy-magaracha-oranzhevoe-suhoe-105",
+          "abrau-dyurso-abrau-estates-roze-kaberne-sovinon-rozovoe-suhoe-12",
+          "abrau-dyurso-az-abrau-bayanshira-beloe-suhoe-12",
+          "abrau-dyurso-brut-dor-rose-pino-nuar-rozovoe-bryut-12",
+          "abrau-dyurso-femme-dabrau-amurskiy-potapenko-krasnoe-suhoe-107",
+          "abrau-dyurso-brut-dor-riesling-risling-beloe-bryut-12",
+          "abrau-dyurso-victor-dravigny-brut-rose-pino-nuar-rozovoe-bryut-12",
+          "abrau-dyurso-brut-dor-blanc-de-noirs-pino-nuar-beloe-bryut-115",
+          "abrau-dyurso-brut-dor-blanc-de-noirs-pino-nuar-beloe-bryut-125",
+          "abrau-dyurso-imperatorskoe-bryut-shardone-beloe-12",
+          "abrau-dyurso-kaberne-sovinon-krasnoe-suhoe-125",
+          "abrau-dyurso-shardone-beloe-suhoe-12",
+          "abrau-dyurso-shardone-beloe-suhoe-13"
+        ],
+        "normalized": {
+          "wine_name": "АБРАУ-ДЮРСО",
+          "sweetness": "сухое",
+          "color": "Бледно-соломенный",
+          "wine_type": "тихое",
+          "region": "Дагестан",
+          "winery": "Абрау-Дюрсо",
+          "brand": "АБРАУ-ДЮРСО",
+          "source": "llm",
+          "raw_text": "1870 | АБРАУ-ДЮРСО | ПРЕМИУМ | de la collection | 2018",
+          "winery_key": "abraudyurso"
+        },
+        "status": "not_found",
+        "acceptable": [],
+        "evaluable": false,
+        "hit1": false,
+        "hit5": false,
+        "strict": false,
+        "strict_hit": false,
+        "expected_absent": true,
+        "refusal_correct": false
+      },
+      {
+        "file": "казахстан бахус.jpeg",
+        "top1": "agrolayn-mountain-eagle-pedro-ximenez-pedro-himenes-beloe-suhoe-11",
+        "top5": [
+          "agrolayn-mountain-eagle-pedro-ximenez-pedro-himenes-beloe-suhoe-11",
+          "agrolayn-mountain-eagle-aleatico-rose-aleatiko-rozovoe-suhoe-125",
+          "agrolayn-mountain-eagle-muscat-muskat-beloe-suhoe-125",
+          "agrolayn-mountain-eagle-sauvignon-blanc-sovinon-blan-beloe-suhoe-125",
+          "agrolayn-mountain-eagle-marselan-marselan-krasnoe-suhoe-13"
+        ],
+        "not_found": false,
+        "confident": true,
+        "latency_ms": 36180.4,
+        "reader_ms": 0.0,
+        "path": "llm_llm",
+        "scores": [],
+        "observation": "winery: БАХУС\nwine_name: КАЗАКСТАН\nvolume: 0.5 L\nraw_text: БАХУС | КАЗАКСТАН | 40% | 0.5 L | 3",
+        "fields": {
+          "winery": "Агролайн",
+          "wine_name": "Казакан",
+          "volume": "0.5 L",
+          "brand": "БАХУС",
+          "sweetness": "сухое",
+          "color": "Бледно-соломенный",
+          "wine_type": "тихое",
+          "region": "Кубань",
+          "winery_key": "agrolayn"
+        },
+        "visual_candidates": [
+          "valeriy-zaharin-bakkal-su-saperavi-bastardo-kaberne-sovinon-krasnoe-polusladkoe-11",
+          "valeriy-zaharin-bakkal-su-kaberne-kaberne-sovinon-krasnoe-suhoe-125",
+          "massandra-kokur-desertnyy-surozh-beloe-sladkoe-16",
+          "massandra-muskat-pozdnego-sbora-muskat-belyy-beloe-sladkoe-16",
+          "valeriy-zaharin-saperavi-kaberne-sovinon-bakkal-su-krasnoe-suhoe-12",
+          "imenie-sikory-krasnostop-zolotovskiy-pozdniy-sbor-rozovoe-sladkoe-13",
+          "valeriy-zaharin-bakkal-su-saperavi-kaberne-sovinon-krasnoe-suhoe-12",
+          "massandra-muskat-belyy-pozdnego-sbora-beloe-sladkoe-10",
+          "soyuz-vino-kanonicheskie-traditsii-krasnoe-sladkoe-kaberne-sovinon-115",
+          "massandra-heres"
+        ],
+        "text_candidates": [
+          "agrolayn-mountain-eagle-aleatico-rose-aleatiko-rozovoe-suhoe-125",
+          "agrolayn-mountain-eagle-muscat-muskat-beloe-suhoe-125",
+          "agrolayn-mountain-eagle-sauvignon-blanc-sovinon-blan-beloe-suhoe-125",
+          "agrolayn-mountain-eagle-marselan-marselan-krasnoe-suhoe-13",
+          "agrolayn-mountain-eagle-traminer-traminer-beloe-suhoe-12",
+          "agrolayn-mountain-eagle-chardonnay-shardone-beloe-suhoe-12",
+          "agrolayn-mountain-eagle-cabernet-sauvignon-kaberne-sovinon-krasnoe-suhoe-135",
+          "agrolayn-vexillum-blanc-de-blancs-shardone-beloe-bryut-115",
+          "agrolayn-heritage-dg-skin-contact-rkatsiteli-rkatsiteli-beloe-suhoe-12",
+          "agrolayn-heritage-dg-skin-contact-rkatsiteli-rkatsiteli-krasnoe-suhoe-12",
+          "agrolayn-heritage-dg-skin-contact-red-saperavi-krasnoe-suhoe-13",
+          "agrolayn-lame-du-vin-saperavi-krasnoe-suhoe-13",
+          "agrolayn-mountain-eagle-pedro-ximenez-pedro-himenes-beloe-suhoe-11",
+          "katharon-mezenka-risling-suhoe",
+          "katharon-katharon-risling-suhoe",
+          "agrolayn-mountain-eagle-saperavi-saperavi-krasnoe-suhoe-135",
+          "agrolayn-mountain-eagle-semillon-semilon-beloe-suhoe-11",
+          "agrolayn-mountain-eagle-viognier-vione-beloe-suhoe-115",
+          "agrolayn-vexillum-blanc-de-noirs-pino-nuar-beloe-bryut-12",
+          "agrolayn-mountain-eagle-white-blend-vione-beloe-suhoe-115",
+          "abrau-dyurso-abrau-kupazh-tyomnyy-suhoe-kaberne-sovinon-krasnoe-13",
+          "fanagoriya-saqra-saperavi-krasnoe-suhoe-135",
+          "katharon-mezenka-kaberne-fran",
+          "aratti-muskat-belyj-suhoe",
+          "katharon-katharon-shardone",
+          "aratti-shardone-beloe-suhoe",
+          "ona-skazala-da",
+          "abrau-dyurso-abrau-kupazh-svetlyy-suhoe-shardone-beloe-125",
+          "aratti-risling-suhoe",
+          "katharon-brut"
+        ],
+        "normalized": {
+          "wine_name": "Казакан",
+          "sweetness": "сухое",
+          "color": "Бледно-соломенный",
+          "wine_type": "тихое",
+          "region": "Кубань",
+          "winery": "Агролайн",
+          "brand": "БАХУС",
+          "source": "llm",
+          "raw_text": "БАХУС | КАЗАКСТАН | 40% | 0.5 L | 3",
+          "winery_key": "agrolayn"
+        },
+        "status": "not_found",
+        "acceptable": [],
+        "evaluable": false,
+        "hit1": false,
+        "hit5": false,
+        "strict": false,
+        "strict_hit": false,
+        "expected_absent": true,
+        "refusal_correct": false
+      }
+    ]
+  },
+  "samples": [
+    {
+      "file": "Abrau Durso Reserve брюд.jpg",
+      "photo": "img/01.jpg",
+      "scenario": "matched",
+      "status": "matched",
+      "human_label": "Abrau Durso Reserve брюд",
+      "expected_slug": "abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115",
+      "reading": "winery: ABRAU-DURSO\nwine_name: RESERVE\nvintage: 1870\nsweetness: БРЮТ\ncolor: игристое\nwine_type: игристое\nraw_text: SPARKLING WINE | 1870 | АБРАУ-ДЮРСО | RESERVE | БРЮТ",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Бренд",
+          "value": "RESERVE"
+        },
+        {
+          "label": "Название",
+          "value": "RESERVE"
+        },
+        {
+          "label": "Год",
+          "value": "1870"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Дагестан"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Бренд",
+          "value": "RESERVE"
+        },
+        {
+          "label": "Название",
+          "value": "RESERVE"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Дагестан"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115",
+        "abrau-dyurso-abrau-durso-brut-rose-reserve-pino-nuar-beloe-bryut-12",
+        "abrau-dyurso-russkoe-igristoe-polusladkoe-shardone-beloe-12",
+        "abrau-dyurso-imperial-brut-lart-nouveau-shardone-beloe-bryut-105",
+        "abrau-dyurso-russkoe-igristoe-polusladkoe-krasnoe-kaberne-sovinon-12"
+      ],
+      "text_candidates": [
+        "abrau-dyurso-abrau-durso-brut-rose-reserve-pino-nuar-beloe-bryut-12",
+        "abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115",
+        "cantiani-cabernet-sauvignon-reserve-2024",
+        "abrau-dyurso-imperatorskoe-bryut-shardone-beloe-12",
+        "abrau-dyurso-spumante-bryut-roze-shardone-rozovoe-12"
+      ],
+      "top1": "abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 64739.9,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "Abrau Light.jpeg",
+      "photo": "img/02.jpeg",
+      "scenario": "not_found",
+      "status": "not_found",
+      "human_label": "Abrau Light",
+      "expected_slug": "abrau-dyurso-abrau-durso-brut-rose-reserve-pino-nuar-beloe-bryut-12",
+      "reading": "winery: ABRAU-DURSO\nwine_name: ABRAU | L'agile\ncolor: игристое\nwine_type: игристое\nraw_text: ABRAU-DURSO | ABRAU | L'agile",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Бренд",
+          "value": "ABRAU"
+        },
+        {
+          "label": "Название",
+          "value": "ABRAU L'agile"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Кубань"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Бренд",
+          "value": "ABRAU"
+        },
+        {
+          "label": "Название",
+          "value": "ABRAU L'agile"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Кубань"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "abrau-dyurso-spumante-bryut-roze-shardone-rozovoe-12",
+        "abrau-dyurso-abrau-estates-roze-kaberne-sovinon-rozovoe-suhoe-12",
+        "abrau-dyurso-fizz-beloe-bryut",
+        "abrau-dyurso-abrau-durso-reserve-brut-shardone-beloe-bryut-115",
+        "chateau-tamagne-grand-dessert-muscat"
+      ],
+      "text_candidates": [
+        "abrau-dyurso-fizz-beloe-bryut",
+        "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut",
+        "abrau-dyurso-victor-dravigny-bryut",
+        "abrau-dyurso-imperatorskoe-bryut-shardone-beloe-12",
+        "abrau-dyurso-spumante-bryut-roze-shardone-rozovoe-12"
+      ],
+      "top1": "abrau-dyurso-fizz-beloe-bryut",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 45039.4,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "Bosca.jpg",
+      "photo": "img/03.jpg",
+      "scenario": "not_found",
+      "status": "not_found",
+      "human_label": "Bosca",
+      "expected_slug": "dva-serdtsa-muskat-muskat-belyy-beloe-polusuhoe-12",
+      "reading": "winery: BOSCA\nwine_name: ANNA FEDERICA\nraw_text: BOSCA | Heritage",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "пусто"
+        },
+        {
+          "label": "Бренд",
+          "value": "BOSCA"
+        },
+        {
+          "label": "Название",
+          "value": "ANNA FEDERICA"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Кубань"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "пусто"
+        },
+        {
+          "label": "Бренд",
+          "value": "BOSCA"
+        },
+        {
+          "label": "Название",
+          "value": "ANNA FEDERICA"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Кубань"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "aristov-anima-millesimato",
+        "aristov-anima-millesimato-beloe-bryut",
+        "agora-rosa-viva-beloe-bryut",
+        "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-vyderzhannoe-bryut-beloe-novyy-svet-shardone-125",
+        "aristov-anima-pinot-grigio-blush"
+      ],
+      "text_candidates": [
+        "shato-pino-blan-de-blan-shardone-beloe-ekstra-bryut-12",
+        "lesnaya-proseka",
+        "abrau-dyurso-fizz-beloe-bryut",
+        "cloudy-winery-krash-super-bryut-shardone-beloe-ekstra-bryut-85",
+        "abrau-dyurso-victor-dravigny-koshernoe-bryut-shardone-beloe-125"
+      ],
+      "top1": "aristov-anima-millesimato-beloe-bryut",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 38769.5,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "DaschBosch sauvignon blank.jpg",
+      "photo": "img/04.jpg",
+      "scenario": "not_found",
+      "status": "not_found",
+      "human_label": "DaschBosch sauvignon blank",
+      "expected_slug": "chteau-le-grand-vostock-sauvignon-blanc-sovinon-blan-beloe-suhoe-14",
+      "reading": "winery: DASCHBOSCH\nwine_name: SAUVIGNON BLANC\nvintage: 2024\ngrape: SAUVIGNON BLANC\nraw_text: 35% GRAND INTERNATIONAL WINE AWARD MUNDUS VINI GOLD MEININGER 2024 | 1754 | B | DASCHBOSCH | SAUVIGNON BLANC | 2024",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "пусто"
+        },
+        {
+          "label": "Бренд",
+          "value": "DASCHBOSCH"
+        },
+        {
+          "label": "Название",
+          "value": "Совиньон Блан"
+        },
+        {
+          "label": "Год",
+          "value": "2024"
+        },
+        {
+          "label": "Сорт",
+          "value": "SAUVIGNON BLANC"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-золотистый"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Дальневосточная зона"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "пусто"
+        },
+        {
+          "label": "Бренд",
+          "value": "DASCHBOSCH"
+        },
+        {
+          "label": "Название",
+          "value": "Совиньон Блан"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-золотистый"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Дальневосточная зона"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "kuban-vino-kaberne-de-tamane-kaberne-sovinon-krasnoe-suhoe-125",
+        "valeriy-zaharin-bakkal-su-muskat-ottonel-beloe-polusladkoe-115",
+        "valeriy-zaharin-avtohtonnoe-vino-kryma-ot-valeriya-zaharina-kokur-sary-pandas-kokur-belyy-beloe-suhoe-115",
+        "daniel-22",
+        "soyuz-vino-soyuz-vino-kaberne-sovinon-krasnoe-suhoe-12"
+      ],
+      "text_candidates": [
+        "lorio-sovinon-blan-2024",
+        "vinodelnya-myshako-quintessence-sovinon-blan-bryut-beloe-115",
+        "derbent-vino-desono-sovinon-ekstra-bryut-sovinon-blan-beloe-105-125",
+        "shato-pino-petnat-sovinon-blan-beloe-ekstra-bryut-11",
+        "shato-pino-shantazh-sovinon-blan-shardone-beloe-suhoe-115"
+      ],
+      "top1": "vinodelnya-myshako-quintessence-sovinon-blan-bryut-beloe-115",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 41844.5,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "Toskana Sangiovese.jpg",
+      "photo": "img/05.jpg",
+      "scenario": "not_found",
+      "status": "not_found",
+      "human_label": "Toskana Sangiovese",
+      "expected_slug": "esse-sangiovese-sandzhoveze-krasnoe-suhoe-135",
+      "reading": "winery: CECCHI\nwine_name: TOSCANA SANGIOVESE\nvintage: 2023\ngrape: SANGIOVESE\ncolor: красное\nwine_type: тихое\nraw_text: 2023 TOSCANA INDICAZIONE GEOGRAFICA TIPICA SANGIOVESE ITALIA CECCHI",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "пусто"
+        },
+        {
+          "label": "Бренд",
+          "value": "CECCHI"
+        },
+        {
+          "label": "Название",
+          "value": "Тоскана Санджовезе"
+        },
+        {
+          "label": "Год",
+          "value": "2023"
+        },
+        {
+          "label": "Сорт",
+          "value": "SANGIOVESE"
+        },
+        {
+          "label": "Сладость",
+          "value": "сухое"
+        },
+        {
+          "label": "Цвет",
+          "value": "Uлубокий темно-рубиновый с фиолетовым отливом"
+        },
+        {
+          "label": "Тип",
+          "value": "тихое"
+        },
+        {
+          "label": "Регион",
+          "value": "Кубань"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "пусто"
+        },
+        {
+          "label": "Бренд",
+          "value": "CECCHI"
+        },
+        {
+          "label": "Название",
+          "value": "Тоскана Санджовезе"
+        },
+        {
+          "label": "Сладость",
+          "value": "сухое"
+        },
+        {
+          "label": "Цвет",
+          "value": "Uлубокий темно-рубиновый с фиолетовым отливом"
+        },
+        {
+          "label": "Тип",
+          "value": "тихое"
+        },
+        {
+          "label": "Регион",
+          "value": "Кубань"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "soyuz-vino-lavetti-rozovoe-polusladkoe-krasnye-sorta-vinograda-11",
+        "soyuz-vino-zelyonaya-dolina-kaberne-merlo-kaberne-sovinon-krasnoe-polusladkoe-12",
+        "artvin-odesskiy-chernyy-rezerv-krasnoe-suhoe-13",
+        "massandra-bastardo-bastardo-magarachskiy-krasnoe-sladkoe-16",
+        "soyuz-vino-konfessa-sandzhoveze-polusladkoe-krasnoe-11"
+      ],
+      "text_candidates": [
+        "leto-shardone-2023-suhoe-beloe",
+        "leto-kollekcziya-leta-kupazh-2023-suhoe-krasnoe",
+        "cellar-master-sandzhoveze-krasnoe-suhoe-125",
+        "soyuz-vino-konfessa-sandzhoveze-krasnoe-suhoe-11",
+        "leto-kaberne-sovinon-2023-polusuhoe-krasnoe"
+      ],
+      "top1": "kuban-vino-aristov-sandzhoveze-krasnoe-suhoe-13",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 37308.9,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "chateau tamagne reserve экстра брюд.jpg",
+      "photo": "img/06.jpg",
+      "scenario": "not_found",
+      "status": "not_found",
+      "human_label": "chateau tamagne reserve экстра брюд",
+      "expected_slug": "chateau-tamagne-eno-amber",
+      "reading": "winery: Château TAMAGNE\nwine_name: RESERVE\nvintage: 2023\nsweetness: брют\ncolor: игристое\nwine_type: игристое\nraw_text: ВЫДЕРЖАННОЕ\nЭКСТРА БРЮТ\n2023",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "Кубань-Вино"
+        },
+        {
+          "label": "Бренд",
+          "value": "Шато Тамань"
+        },
+        {
+          "label": "Название",
+          "value": "Резерв"
+        },
+        {
+          "label": "Год",
+          "value": "2023"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Крым"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "Кубань-Вино"
+        },
+        {
+          "label": "Бренд",
+          "value": "Шато Тамань"
+        },
+        {
+          "label": "Название",
+          "value": "Резерв"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Крым"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "shato-taman-bryut-1",
+        "shato-taman-bryut",
+        "kuban-vino-kaberne-de-tamane-kaberne-sovinon-krasnoe-suhoe-125",
+        "kuban-vino-aristov-kyuve-aleksandr-rose-de-pinot-pino-nuar-rozovoe-ekstra-bryut-12",
+        "krasnostop-shato-taman"
+      ],
+      "text_candidates": [
+        "kuban-vino-shato-tamane-rezerv-kaberne-limited-edishn-2015-kaberne-sovinon-krasnoe-suhoe-13",
+        "kuban-vino-shato-tamane-rezerv-kaberne-limited-edishn-2022-kaberne-sovinon-krasnoe-suhoe-14",
+        "kuban-vino-shato-tamane-rezerv-kollekshn-saperavi-2015-krasnoe-suhoe-13",
+        "kuban-vino-shato-tamane-rezerv-kollekshn-shardone-beloe-suhoe-125",
+        "kuban-vino-shato-tamane-rezerv-krasnostop-krasnostop-anapskiy-krasnoe-suhoe-135"
+      ],
+      "top1": "shato-taman-bryut",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 39768.9,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "chateau tamagne semi-sweet полусладкое.jpg",
+      "photo": "img/07.jpg",
+      "scenario": "matched",
+      "status": "matched",
+      "human_label": "chateau tamagne semi-sweet полусладкое",
+      "expected_slug": "shato-taman-polusladkoe",
+      "reading": "winery: CHATEAU TAMAGNE\nsweetness: SEMI-SWEET\nraw_text: SEMI-SWEET | полусладкое",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "Кубань-Вино"
+        },
+        {
+          "label": "Бренд",
+          "value": "Шато Тамань"
+        },
+        {
+          "label": "Название",
+          "value": "Шато Тамань"
+        },
+        {
+          "label": "Сладость",
+          "value": "полусладкое"
+        },
+        {
+          "label": "Тип",
+          "value": "тихое"
+        },
+        {
+          "label": "Регион",
+          "value": "Крым"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "Кубань-Вино"
+        },
+        {
+          "label": "Бренд",
+          "value": "Шато Тамань"
+        },
+        {
+          "label": "Название",
+          "value": "Шато Тамань"
+        },
+        {
+          "label": "Сладость",
+          "value": "полусладкое"
+        },
+        {
+          "label": "Цвет",
+          "value": "Не указан"
+        },
+        {
+          "label": "Тип",
+          "value": "тихое"
+        },
+        {
+          "label": "Регион",
+          "value": "Крым"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "shato-taman-polusladkoe",
+        "zolotaya-balka-cuvee-de-vitmer-rose-pino-blan-rozovoe-bryut-12",
+        "shato-taman-bryut",
+        "shato-taman-bryut-1",
+        "valeriy-zaharin-aligote-avtorskoe-valeriy-zaharin-beloe-bryut-115"
+      ],
+      "text_candidates": [
+        "shato-taman-polusladkoe",
+        "krasnostop-shato-taman",
+        "kuban-vino-shato-tamane-aligote-beloe-suhoe-13",
+        "kuban-vino-shato-tamane-delikeyt-roze-2024-bianka-rozovoe-suhoe-95",
+        "kuban-vino-shato-tamane-rezerv-kaberne-limited-edishn-2015-kaberne-sovinon-krasnoe-suhoe-13"
+      ],
+      "top1": "shato-taman-polusladkoe",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 37854.5,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "fanagory 5 element.jpg",
+      "photo": "img/08.jpg",
+      "scenario": "matched",
+      "status": "matched",
+      "human_label": "fanagory 5 element",
+      "expected_slug": "fanagoriya-5-elements-bryut-beloe-pino-gri-igristoe-bryut-beloe-125",
+      "reading": "winery: FANAGORIA\nwine_name: 5 ELEMENTS\nsweetness: БРЕЮЕ БРЮТ\nwine_type: игристое\nraw_text: 5 ELEMENTS | БРЕЮЕ БРЮТ",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "Фанагория"
+        },
+        {
+          "label": "Бренд",
+          "value": "5 ELEMENTS"
+        },
+        {
+          "label": "Название",
+          "value": "5 ELEMENTS"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Дагестан"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "Фанагория"
+        },
+        {
+          "label": "Бренд",
+          "value": "5 ELEMENTS"
+        },
+        {
+          "label": "Название",
+          "value": "5 ELEMENTS"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Дагестан"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "fanagoriya-5-elements-bryut-beloe-pino-gri-igristoe-bryut-beloe-125",
+        "fanagoriya-5-elements-bryut-rozovoe-saperavi-igristoe-bryut-rozovoe-125",
+        "fanagoriya-brule-frizzante-brut-rozovoe-merlo-igristoe-bryut-rozovoe-115",
+        "fanagoriya-brule-frizzante-brut-beloe-pino-nuar-bryut-115",
+        "fanagoriya-fanagoriya-bryut-rozovoe-sovinon-blan-igristoe-bryut-rozovoe-11-13"
+      ],
+      "text_candidates": [
+        "fanagoriya-5-elements-bryut-beloe-pino-gri-igristoe-bryut-beloe-125",
+        "fanagoriya-5-elements-bryut-rozovoe-saperavi-igristoe-bryut-rozovoe-125",
+        "fanagoriya-fanagoriya-bryut-beloe-sovinon-blan-igristoe-bryut-beloe-11-13",
+        "fanagoriya-alveus-ultra-cuvee-ekstra-bryut-beloe-risling-reynskiy-12",
+        "fanagoriya-primum-alveus-blanc-de-noirs-meunier-ekstra-bryut-2019-mene-beloe-11-13"
+      ],
+      "top1": "fanagoriya-5-elements-bryut-beloe-pino-gri-igristoe-bryut-beloe-125",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 38144.0,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "Абрау дюрсо полусладкое. _1.jpeg",
+      "photo": "img/09.jpeg",
+      "scenario": "ambiguous",
+      "status": "ambiguous",
+      "human_label": "Абрау дюрсо полусладкое.  1",
+      "expected_slug": "abrau-dyurso-fizz-beloe-polusladkoe",
+      "reading": "winery: РУССКОЕ ШАМПАНСКОЕ\nwine_name: АБРАУ-ДЮРСО\nraw_text: РУССКОЕ ШАМПАНСКОЕ | 1870 | АБРАУ-ДЮРСО | - ДОЛЬЧЕССИМО -",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Бренд",
+          "value": "АБРАУ-ДЮРСО"
+        },
+        {
+          "label": "Название",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Сладость",
+          "value": "сладкое"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-лососевый"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Кубань"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Бренд",
+          "value": "АБРАУ-ДЮРСО"
+        },
+        {
+          "label": "Название",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Сладость",
+          "value": "сладкое"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-лососевый"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Кубань"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "abrau-dyurso-imperial-brut-rose-pino-nuar-rozovoe-bryut-12",
+        "abrau-dyurso-russkoe-igristoe-koshernoe-polusladkoe-shardone-beloe-12",
+        "zolotaya-balka-igristoe-krasnoe-polusladkoe",
+        "abrau-dyurso-imperial-brut-vintage-shardone-beloe-bryut-12",
+        "abrau-dyurso-victor-dravigny-krasnoe-polusladkoe-kaberne-sovinon-125"
+      ],
+      "text_candidates": [
+        "abrau-dyurso-abrau-dyurso-pino-nuar-krasnoe-suhoe-13",
+        "abrau-dyurso-fizz-beloe-bryut",
+        "abrau-dyurso-fizz-beloe-polusladkoe",
+        "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut",
+        "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-polusladkoe"
+      ],
+      "top1": "abrau-dyurso-imperial-brut-rose-pino-nuar-rozovoe-bryut-12",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 39588.3,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "Абрау дюрсо полусладкое.jpg",
+      "photo": "img/10.jpg",
+      "scenario": "ambiguous",
+      "status": "ambiguous",
+      "human_label": "Абрау дюрсо полусладкое",
+      "expected_slug": "abrau-dyurso-fizz-beloe-polusladkoe",
+      "reading": "winery: АБРАУ-ДЮРСO\nwine_name: \nvintage: 1870\nwine_type: игристое\nraw_text: АБРАУ-ДЮРСO | 1870 | de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de la de ",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Бренд",
+          "value": "АБРАУ-ДЮРСО"
+        },
+        {
+          "label": "Название",
+          "value": "АБРАУ-ДЮРСО"
+        },
+        {
+          "label": "Год",
+          "value": "1870"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Дагестан"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Бренд",
+          "value": "АБРАУ-ДЮРСO"
+        },
+        {
+          "label": "Название",
+          "value": "АБРАУ-ДЮРСO"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Дагестан"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "abrau-dyurso-victor-dravigny-krasnoe-polusladkoe-kaberne-sovinon-125",
+        "inkermanskiy-zmv-inkerman-polusladkoe-roze-aligote-rozovoe-135",
+        "abrau-dyurso-victor-dravigny-brut-rose-pino-nuar-rozovoe-bryut-12",
+        "abrau-dyurso-imperial-brut-lart-nouveau-shardone-beloe-bryut-105",
+        "krasnostop-shato-taman"
+      ],
+      "text_candidates": [
+        "abrau-dyurso-fizz-beloe-bryut",
+        "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut",
+        "abrau-dyurso-victor-dravigny-bryut",
+        "abrau-dyurso-abrau-dyurso-pino-nuar-krasnoe-suhoe-13",
+        "abrau-dyurso-fizz-beloe-polusladkoe"
+      ],
+      "top1": "abrau-dyurso-fizz-beloe-bryut",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 42953.1,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "Абрау дюрсо шардоне.jpeg",
+      "photo": "img/11.jpeg",
+      "scenario": "ambiguous",
+      "status": "ambiguous",
+      "human_label": "Абрау дюрсо шардоне",
+      "expected_slug": "abrau-dyurso-shardone-beloe-suhoe-12",
+      "reading": "winery: РУССКИЙ ВИННЫЙ ДОМ\nwine_name: Абрау-Дюрсо\nvintage: 1870\ngrape: ШАРДОН\nraw_text: РУССКИЙ ВИННЫЙ ДОМ\nот . 1870 года\nПОСТАВЩИК ИМПЕРАТОРСКОГО МАЙОРСКОГО ДВОРА\nАбрау-Дюрсо\nШАРДОН\nТорг . 10000 / С/ч . 07007\nВИНО СПОКОЙНЫХ БЕРЕГОВ\nот . 1870 года",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Бренд",
+          "value": "РУССКИЙ ВИННЫЙ ДОМ"
+        },
+        {
+          "label": "Название",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Год",
+          "value": "1870"
+        },
+        {
+          "label": "Сорт",
+          "value": "ШАРДОН"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Кубань"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Бренд",
+          "value": "РУССКИЙ ВИННЫЙ ДОМ"
+        },
+        {
+          "label": "Название",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Кубань"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13",
+        "abrau-dyurso-victor-dravigny-krasnoe-polusladkoe-kaberne-sovinon-125",
+        "abrau-dyurso-russkoe-igristoe-polusladkoe-krasnoe-kaberne-sovinon-12",
+        "abrau-dyurso-russkoe-igristoe-koshernoe-polusladkoe-shardone-beloe-12",
+        "abrau-dyurso-imperatorskoe-polusuhoe-shardone-beloe-12"
+      ],
+      "text_candidates": [
+        "abrau-dyurso-victor-dravigny-bryut",
+        "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut",
+        "abrau-dyurso-fizz-beloe-bryut",
+        "abrau-dyurso-abrau-dyurso-pino-nuar-krasnoe-suhoe-13",
+        "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-polusladkoe"
+      ],
+      "top1": "abrau-dyurso-victor-dravigny-bryut",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 40979.6,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "Амфитрион брюд.jpg",
+      "photo": "img/12.jpg",
+      "scenario": "not_found",
+      "status": "not_found",
+      "human_label": "Амфитрион брюд",
+      "expected_slug": null,
+      "reading": "winery: АМФИТРИОН\nwine_name: L'Amfitrion\ncolor: игристое\nwine_type: игристое\nraw_text: неразборчиво",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "Кубань-Вино"
+        },
+        {
+          "label": "Бренд",
+          "value": "АМФИТРИОН"
+        },
+        {
+          "label": "Название",
+          "value": "L'Amfitrion"
+        },
+        {
+          "label": "Сладость",
+          "value": "сухое"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "тихое"
+        },
+        {
+          "label": "Регион",
+          "value": "Кубань"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "Кубань-Вино"
+        },
+        {
+          "label": "Бренд",
+          "value": "АМФИТРИОН"
+        },
+        {
+          "label": "Название",
+          "value": "L'Amfitrion"
+        },
+        {
+          "label": "Сладость",
+          "value": "сухое"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "тихое"
+        },
+        {
+          "label": "Регион",
+          "value": "Кубань"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "balaklava-pino-nuar",
+        "rem-akchurin-bryut-roze-pino-nuar-rozovoe-129",
+        "katharon-katharon-brut-blanc-de-blan",
+        "millstream-av-igristoe-molodoe-suhoe-beloe",
+        "abrau-dyurso-imperial-brut-lart-nouveau-shardone-beloe-bryut-105"
+      ],
+      "text_candidates": [
+        "kuban-vino-aristov-anima-pino-gridzhio-beloe-suhoe-12",
+        "makitra-selection",
+        "kuban-vino-aristov-risling-beloe-suhoe-115",
+        "kuban-vino-shato-tamane-rezerv-myuller-turgau-limited-edishn-2021-beloe-suhoe-12",
+        "kuban-vino-aristov-amata-byanko-shardone-beloe-suhoe-125"
+      ],
+      "top1": "kuban-vino-aristov-anima-pino-gridzhio-beloe-suhoe-12",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 37739.0,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "Высокий берег графит розе 2024.jpg",
+      "photo": "img/13.jpg",
+      "scenario": "matched",
+      "status": "matched",
+      "human_label": "Высокий берег графит розе 2024",
+      "expected_slug": "kuban-vino-vysokiy-bereg-grafit-roze-kaberne-sovinon-rozovoe-suhoe-12",
+      "reading": "winery: ВЫСОКИЙ БЕРЕГ\nwine_name: ГРАФИТ\nvintage: 2024\ncolor: розовое\nraw_text: РОЗЕ 2024 | ГРАФИТ",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "Винодельня Орлова"
+        },
+        {
+          "label": "Бренд",
+          "value": "ГРАФИТ"
+        },
+        {
+          "label": "Название",
+          "value": "Графит"
+        },
+        {
+          "label": "Год",
+          "value": "2024"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-розовый"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Кубань"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "Винодельня Орлова"
+        },
+        {
+          "label": "Бренд",
+          "value": "ГРАФИТ"
+        },
+        {
+          "label": "Название",
+          "value": "Графит"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-розовый"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Кубань"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "kuban-vino-vysokiy-bereg-grafit-roze-kaberne-sovinon-rozovoe-suhoe-12",
+        "belbek-pino-nuar-roze-rozovoe-suhoe-115",
+        "vinogradniki-gay-kodzora-rose-de-gai-kodzor-grenash-rozovoe-suhoe-125",
+        "sober-bash-avrora-2024-krasnostop-zolotovskiy-rozovoe-suhoe-14",
+        "belbek-belbek-roze-pino-nuar-rozovoe-suhoe-129"
+      ],
+      "text_candidates": [
+        "kuban-vino-vysokiy-bereg-grafit-roze-kaberne-sovinon-rozovoe-suhoe-12",
+        "lorio-sovinon-blan-2024",
+        "risling-2024",
+        "vinodelnya-marchenko-rkatsiteli-beloe-suhoe-135",
+        "dva-brata-pet-nat-kokur-2024"
+      ],
+      "top1": "orlov_sauvignon_blan",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 37304.9,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "Лефкадия шардоне.jpg",
+      "photo": "img/14.jpg",
+      "scenario": "not_found",
+      "status": "not_found",
+      "human_label": "Лефкадия шардоне",
+      "expected_slug": "lefkadiya-krasnoe",
+      "reading": "winery: ЛЕФКАДИЯ\nwine_name: ШАРДОНЕ\ncolor: белое\nvolume: 0.75 L\nraw_text: ЛЕФКАДИЯ | ШАРДОНЕ | 0.75 L",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "Долина Лефкадия"
+        },
+        {
+          "label": "Бренд",
+          "value": "ЛЕФКАДИЯ"
+        },
+        {
+          "label": "Название",
+          "value": "Шардоне"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-золотистый"
+        },
+        {
+          "label": "Тип",
+          "value": "тихое"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "Долина Лефкадия"
+        },
+        {
+          "label": "Бренд",
+          "value": "ЛЕФКАДИЯ"
+        },
+        {
+          "label": "Название",
+          "value": "Шардоне"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-золотистый"
+        },
+        {
+          "label": "Тип",
+          "value": "тихое"
+        },
+        {
+          "label": "Регион",
+          "value": "не указан"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "vinodelnya-vedernikov-gubernatorskoe-risling-beloe-suhoe-12",
+        "valeriy-zaharin-dom-zaharinyh-beloe-sary-pandas-suhoe-115",
+        "lefkadiya-beloe",
+        "esse-pino-gri-beloe-suhoe-12",
+        "v2r-sovinon-blan-beloe-suhoe-13"
+      ],
+      "text_candidates": [
+        "denisov-winery-pino-nuar-shardone-ekstra-bryut-beloe-125",
+        "agora-winery-cuvee-pino-gridzhio-shardone-bryut-beloe-125",
+        "agora-winery-cuvee-pino-nuar-shardone-bryut-rozovoe-125",
+        "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-ekstra-bryut-beloe-novyy-svet-kyuve-de-prestizh-shardone-125",
+        "shardone-barrel-2023"
+      ],
+      "top1": "avtorskij-gid-artura-sarkisyana",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 34624.2,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "Новый Свет Рислинг.jpg",
+      "photo": "img/15.jpg",
+      "scenario": "ambiguous",
+      "status": "ambiguous",
+      "human_label": "Новый Свет Рислинг",
+      "expected_slug": "novyj-svet-risling-kyuve-de-prestizh",
+      "reading": "winery: НОВЫЙ СВЕТ\nwine_name: Riesling\nraw_text: НОВЫЙ СВЕТ | Riesling | GUVEE DE PRESTIG | 07/17/1-06 | de prestige | de prestige | 0.75 L | 750 ml | 10.5% vol | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750 ml | 750",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "Новый Свет. Дом шампанских вин"
+        },
+        {
+          "label": "Бренд",
+          "value": "НОВЫЙ СВЕТ"
+        },
+        {
+          "label": "Название",
+          "value": "Riesling"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "тихое"
+        },
+        {
+          "label": "Регион",
+          "value": "Ставрополье"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "Новый Свет. Дом шампанских вин"
+        },
+        {
+          "label": "Бренд",
+          "value": "НОВЫЙ СВЕТ"
+        },
+        {
+          "label": "Название",
+          "value": "Riesling"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "тихое"
+        },
+        {
+          "label": "Регион",
+          "value": "Ставрополье"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-ekstra-bryut-beloe-novyy-svet-risling-kyuve-de-prestizh-125",
+        "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-zolotoy-risling-suhoe-13",
+        "novyj-svet-risling-kyuve-de-prestizh",
+        "novyy-svet-dom-shampanskih-vin-igristoe-vino-vyderzhannoe-bryut-rozovoe-novyy-svet-pino-fran-135",
+        "novyy-svet-dom-shampanskih-vin-novyy-svet-polusladkoe-roze-shardone-rozovoe-115"
+      ],
+      "text_candidates": [
+        "ferrum-winery-riesling-risling-reynskiy-beloe-suhoe-11",
+        "tempelhof-winery-risling-risling-reynskiy-beloe-suhoe-115",
+        "vinodelnya-marko-risling-beloe-suhoe-12",
+        "novyj-svet-kaberne-sovinon",
+        "novyj-svet-kollekczionnoe-bryut"
+      ],
+      "top1": "novyj-svet-risling-kyuve-de-prestizh",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 42357.9,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "Фонагория белое.jpeg",
+      "photo": "img/16.jpeg",
+      "scenario": "ambiguous",
+      "status": "ambiguous",
+      "human_label": "Фонагория белое",
+      "expected_slug": "fanagoriya-beloe-polusladkoe",
+      "reading": "winery: FANAGORIA\nwine_name: NR\nvintage: 2022\nsweetness: полусладкое\ncolor: белое\nraw_text: FANAGORIA | NR | 2022 | БЕЛОЕ | ПОЛУСЛАДКОЕ",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "Фанагория"
+        },
+        {
+          "label": "Бренд",
+          "value": "NR"
+        },
+        {
+          "label": "Название",
+          "value": "NR"
+        },
+        {
+          "label": "Год",
+          "value": "2022"
+        },
+        {
+          "label": "Сладость",
+          "value": "полусладкое"
+        },
+        {
+          "label": "Цвет",
+          "value": "Белого золота"
+        },
+        {
+          "label": "Тип",
+          "value": "тихое"
+        },
+        {
+          "label": "Регион",
+          "value": "Дагестан"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "Фанагория"
+        },
+        {
+          "label": "Бренд",
+          "value": "NR"
+        },
+        {
+          "label": "Название",
+          "value": "NR"
+        },
+        {
+          "label": "Сладость",
+          "value": "полусладкое"
+        },
+        {
+          "label": "Цвет",
+          "value": "Белого золота"
+        },
+        {
+          "label": "Тип",
+          "value": "тихое"
+        },
+        {
+          "label": "Регион",
+          "value": "Дагестан"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "fanagoriya-solera-rkatsiteli-ambra-rkatsiteli-beloe-suhoe-15",
+        "zmv-koktebel-muskat-yantarnyy-desertnyy-beloe-sladkoe-16",
+        "soyuz-vino-sheremetevskie-pogreba-beloe-polusladkoe-belye-sorta-vinograda-11",
+        "soyuz-vino-sheremetevskie-pogreba-shardone-beloe-suhoe-11",
+        "sober-bash-dve-doliny-liuri-2023-dostoynyy-rozovoe-suhoe-13"
+      ],
+      "text_candidates": [
+        "fanagoriya-rs-noir-saperavi-krasnoe-polusladkoe-125",
+        "fanagoriya-beloe-polusladkoe",
+        "fanagoriya-fanagoriya-polusladkoe-rozovoe-sovinon-blan-krasnoe-11-13",
+        "fanagoriya-brule-frizzante-polusladkoe-beloe-pino-nuar-11",
+        "rozovoe-polusladkoe"
+      ],
+      "top1": "fanagoriya-beloe-polusladkoe",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 38202.8,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "Шампанское российское kursavskoe.jpeg",
+      "photo": "img/17.jpeg",
+      "scenario": "not_found",
+      "status": "not_found",
+      "human_label": "Шампанское российское kursavskoe",
+      "expected_slug": "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-kyuve-de-prestizh-pino-gri-millezim-rozovoe-125",
+      "reading": "winery: Курсавское\nwine_name: ШАМПАНСКОЕ\nsweetness: полусладкое\ncolor: белое\nwine_type: игристое\nvolume: 0.75 L\nraw_text: ШАМПАНСКОЕ\nКурсавское\nПОЛУСЛАДКОЕ\nБЕЛОЕ\n0.75 Л ОБЪЕМ • СПИРТ 10.5-11.0%",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "Новый Свет. Дом шампанских вин"
+        },
+        {
+          "label": "Бренд",
+          "value": "ШАМПАНСКОЕ"
+        },
+        {
+          "label": "Название",
+          "value": "ШАМПАНСКОЕ"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Белый жемчуг с лимонным отливом"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Дагестан"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "Новый Свет. Дом шампанских вин"
+        },
+        {
+          "label": "Бренд",
+          "value": "ШАМПАНСКОЕ"
+        },
+        {
+          "label": "Название",
+          "value": "ШАМПАНСКОЕ"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Белый жемчуг с лимонным отливом"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Дагестан"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "fiori-di-mare-krasnoe-polusuhoe",
+        "soyuz-vino-kanonicheskie-traditsii-krasnoe-sladkoe-kaberne-sovinon-115",
+        "soyuz-vino-kanonicheskie-traditsii-krasnoe-polusladkoe-kaberne-sovinon-115",
+        "tsimlyanskie-vina-tsimlyanskoe-kaberne-sovinon-ekstra-bryut-rozovoe-13",
+        "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-yubileynoe-risling-13"
+      ],
+      "text_candidates": [
+        "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-kyuve-de-prestizh-pino-gri-millezim-rozovoe-125",
+        "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-paradizio-shardone-125",
+        "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-yubileynoe-risling-13",
+        "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-zolotoy-risling-suhoe-13",
+        "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-rozovoe-novyy-svet-pino-nuar-135"
+      ],
+      "top1": "novyy-svet-dom-shampanskih-vin-rossiyskoe-shampanskoe-kollektsionnoe-bryut-beloe-novyy-svet-paradizio-shardone-125",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 51726.9,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "абрау дюрсо брюд.jpeg",
+      "photo": "img/18.jpeg",
+      "scenario": "ambiguous",
+      "status": "ambiguous",
+      "human_label": "абрау дюрсо брюд",
+      "expected_slug": "abrau-dyurso-abrau-dyurso-pino-nuar-krasnoe-suhoe-13",
+      "reading": "winery: АВРАЙ-ДЮРСО\nwine_name: \nvintage: 1870\nsweetness: брют\ncolor: игристое\nwine_type: игристое\nraw_text: РУССКОЕ ИГРИСТОЕ | БРЮТ",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Бренд",
+          "value": "РУССКОЕ ИГРИСТОЕ | БРЮТ"
+        },
+        {
+          "label": "Название",
+          "value": "Русское игристое"
+        },
+        {
+          "label": "Год",
+          "value": "1870"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-золотистый"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Дагестан"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Бренд",
+          "value": "РУССКОЕ ИГРИСТОЕ | БРЮТ"
+        },
+        {
+          "label": "Название",
+          "value": "Русское игристое"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-золотистый"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Дагестан"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "abrau-dyurso-russkoe-igristoe-polusladkoe-shardone-beloe-12",
+        "abrau-dyurso-russkoe-igristoe-polusuhoe-shardone-beloe-12",
+        "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13",
+        "abrau-dyurso-russkoe-igristoe-koshernoe-polusladkoe-shardone-beloe-12",
+        "abrau-dyurso-russkoe-igristoe-polusladkoe-krasnoe-kaberne-sovinon-12"
+      ],
+      "text_candidates": [
+        "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13",
+        "abrau-dyurso-russkoe-igristoe-koshernoe-polusladkoe-shardone-beloe-12",
+        "abrau-dyurso-russkoe-igristoe-polusladkoe-krasnoe-kaberne-sovinon-12",
+        "abrau-dyurso-russkoe-igristoe-polusladkoe-shardone-beloe-12",
+        "abrau-dyurso-russkoe-igristoe-polusuhoe-rozovoe-pino-nuar-12"
+      ],
+      "top1": "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 43036.4,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "абрау дюрсо полусладкое.jpeg",
+      "photo": "img/19.jpeg",
+      "scenario": "ambiguous",
+      "status": "ambiguous",
+      "human_label": "абрау дюрсо полусладкое",
+      "expected_slug": "abrau-dyurso-fizz-beloe-polusladkoe",
+      "reading": "winery: ABRACH-D'ORSAY\nwine_name: \ncolor: игристое\nwine_type: игристое\nraw_text: ABRACH-D'ORSAY | de la maison",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Бренд",
+          "value": "ABRACH-D'ORSAY"
+        },
+        {
+          "label": "Название",
+          "value": "ABRACH-D'ORSAY"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Дагестан"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Бренд",
+          "value": "ABRACH-D'ORSAY"
+        },
+        {
+          "label": "Название",
+          "value": "ABRACH-D'ORSAY"
+        },
+        {
+          "label": "Сладость",
+          "value": "брют"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "игристое"
+        },
+        {
+          "label": "Регион",
+          "value": "Дагестан"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "abrau-dyurso-victor-dravigny-brut-rose-pino-nuar-rozovoe-bryut-12",
+        "abrau-dyurso-russkoe-igristoe-koshernoe-polusladkoe-shardone-beloe-12",
+        "abrau-dyurso-russkoe-igristoe-koshernoe-bryut-shardone-beloe-13",
+        "abrau-dyurso-victor-dravigny-polusuhoe-pino-blan-beloe-12",
+        "abrau-dyurso-russkoe-igristoe-polusladkoe-shardone-beloe-12"
+      ],
+      "text_candidates": [
+        "abrau-dyurso-fizz-beloe-bryut",
+        "abrau-dyurso-imperatorskoe-bryut-shardone-beloe-12",
+        "abrau-dyurso-victor-dravigny-bryut",
+        "abrau-dyurso-spumante-bryut-roze-shardone-rozovoe-12",
+        "abrau-dyurso-az-abrau-madrasa-krasnoe-suhoe-14"
+      ],
+      "top1": "abrau-dyurso-fizz-beloe-bryut",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 39821.3,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "абрау дюрсо премиум.jpg",
+      "photo": "img/20.jpg",
+      "scenario": "not_found",
+      "status": "not_found",
+      "human_label": "абрау дюрсо премиум",
+      "expected_slug": "abrau-dyurso-abrau-dyurso-pino-nuar-krasnoe-suhoe-13",
+      "reading": "winery: 1870\nwine_name: АБРАУ-ДЮРСО\nvintage: 1870\ncolor: игристое\nwine_type: игристое\nraw_text: 1870 | АБРАУ-ДЮРСО | ПРЕМИУМ | de la collection | 2018",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Бренд",
+          "value": "АБРАУ-ДЮРСО"
+        },
+        {
+          "label": "Название",
+          "value": "АБРАУ-ДЮРСО"
+        },
+        {
+          "label": "Год",
+          "value": "1870"
+        },
+        {
+          "label": "Сладость",
+          "value": "сухое"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "тихое"
+        },
+        {
+          "label": "Регион",
+          "value": "Дагестан"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "Абрау-Дюрсо"
+        },
+        {
+          "label": "Бренд",
+          "value": "АБРАУ-ДЮРСО"
+        },
+        {
+          "label": "Название",
+          "value": "АБРАУ-ДЮРСО"
+        },
+        {
+          "label": "Сладость",
+          "value": "сухое"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "тихое"
+        },
+        {
+          "label": "Регион",
+          "value": "Дагестан"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "abrau-dyurso-victor-dravigny-krasnoe-polusladkoe-kaberne-sovinon-125",
+        "abrau-dyurso-victor-dravigny-brut-rose-pino-nuar-rozovoe-bryut-12",
+        "abrau-dyurso-russkoe-igristoe-polusladkoe-shardone-beloe-12",
+        "abrau-dyurso-victor-dravigny-extra-brut-shardone-beloe-bryut-125",
+        "abrau-dyurso-russkoe-igristoe-polusladkoe-krasnoe-kaberne-sovinon-12"
+      ],
+      "text_candidates": [
+        "abrau-dyurso-abrau-dyurso-pino-nuar-krasnoe-suhoe-13",
+        "abrau-dyurso-fizz-beloe-bryut",
+        "abrau-dyurso-fizz-beloe-polusladkoe",
+        "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-bryut",
+        "abrau-dyurso-udelnoe-vedomstvo-imperatorskoe-beloe-polusladkoe"
+      ],
+      "top1": "abrau-dyurso-abrau-kupazh-svetlyy-suhoe-shardone-beloe-125",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 41110.3,
+      "reader_ms": 0.0
+    },
+    {
+      "file": "казахстан бахус.jpeg",
+      "photo": "img/21.jpeg",
+      "scenario": "not_found",
+      "status": "not_found",
+      "human_label": "казахстан бахус",
+      "expected_slug": "katharon-brut",
+      "reading": "winery: БАХУС\nwine_name: КАЗАКСТАН\nvolume: 0.5 L\nraw_text: БАХУС | КАЗАКСТАН | 40% | 0.5 L | 3",
+      "reading_fields": [
+        {
+          "label": "Винодельня",
+          "value": "Агролайн"
+        },
+        {
+          "label": "Бренд",
+          "value": "БАХУС"
+        },
+        {
+          "label": "Название",
+          "value": "Казакан"
+        },
+        {
+          "label": "Сладость",
+          "value": "сухое"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "тихое"
+        },
+        {
+          "label": "Регион",
+          "value": "Кубань"
+        }
+      ],
+      "normalized": [
+        {
+          "label": "Винодельня",
+          "value": "Агролайн"
+        },
+        {
+          "label": "Бренд",
+          "value": "БАХУС"
+        },
+        {
+          "label": "Название",
+          "value": "Казакан"
+        },
+        {
+          "label": "Сладость",
+          "value": "сухое"
+        },
+        {
+          "label": "Цвет",
+          "value": "Бледно-соломенный"
+        },
+        {
+          "label": "Тип",
+          "value": "тихое"
+        },
+        {
+          "label": "Регион",
+          "value": "Кубань"
+        }
+      ],
+      "normalized_source": "llm",
+      "candidates": [
+        "valeriy-zaharin-bakkal-su-saperavi-bastardo-kaberne-sovinon-krasnoe-polusladkoe-11",
+        "valeriy-zaharin-bakkal-su-kaberne-kaberne-sovinon-krasnoe-suhoe-125",
+        "massandra-kokur-desertnyy-surozh-beloe-sladkoe-16",
+        "massandra-muskat-pozdnego-sbora-muskat-belyy-beloe-sladkoe-16",
+        "valeriy-zaharin-saperavi-kaberne-sovinon-bakkal-su-krasnoe-suhoe-12"
+      ],
+      "text_candidates": [
+        "agrolayn-mountain-eagle-aleatico-rose-aleatiko-rozovoe-suhoe-125",
+        "agrolayn-mountain-eagle-muscat-muskat-beloe-suhoe-125",
+        "agrolayn-mountain-eagle-sauvignon-blanc-sovinon-blan-beloe-suhoe-125",
+        "agrolayn-mountain-eagle-marselan-marselan-krasnoe-suhoe-13",
+        "agrolayn-mountain-eagle-traminer-traminer-beloe-suhoe-12"
+      ],
+      "top1": "agrolayn-mountain-eagle-pedro-ximenez-pedro-himenes-beloe-suhoe-11",
+      "not_found": false,
+      "path": "llm_llm",
+      "latency_ms": 36180.4,
+      "reader_ms": 0.0
+    }
+  ]
+}
