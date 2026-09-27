@@ -1,0 +1,66 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-086>
+    <IntentSummary>Добавить в README позитивный раздел «Почему такая система»: реальные ситуации, где
+      классическое сравнение картинок не справляется, а гибридный LLM-конвейер работает, и путь клиента
+      (первое сканирование → правильный ответ → доверие и возврат). Только документация; код и метрики
+      не меняются; коммит не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-086/spec.xml</Value></MustExist>
+      <MustExist><Value>README.md</Value></MustExist>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustVerify><Module>M-DEPLOY</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>grep -q "Почему такая система" README.md</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustVerify><Module>M-DEPLOY</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-WEB</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-DEPLOY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-WEB/>
+      <M-DEPLOY/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>README.md</Path>
+      <Path>.grace/verification/VD-M5-WEB.xml</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Раздел «Почему такая система» в README (M-WEB)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Раздел расположен в начале (после «До/После»), в позитивном стиле, с примерами
+            ситуаций, где классика не работает.</Criterion>
+          <Criterion>Есть путь клиента (первое сканирование → правильный ответ → доверие); числа
+            соответствуют C-085.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "Почему такая система" README.md</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Verification, roadmap, финальные гейты и архив (M-DEPLOY)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>verification/AGENTS.md отражают C-086; grace lint 0/0; полный pytest; make gate без
+            изменений; бандл в archive/C-086 applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-086>
+</GraceChangePlan>
