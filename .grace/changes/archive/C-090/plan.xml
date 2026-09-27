@@ -1,0 +1,65 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-090>
+    <IntentSummary>Актуализировать README под факты C-073…C-089: числа (579 тестов, lint 214/189/196,
+      88 бандлов, прокси p50/p95 119.0/131.4), актуальный LLM-путь (acc@1 0.4545, acc@5 0.7273,
+      not_found 0.76→0.0), скрытые возможности winery_key и reader_cache. Только документация; код и
+      метрики не меняются; коммит не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-090/spec.xml</Value></MustExist>
+      <MustExist><Value>README.md</Value></MustExist>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustVerify><Module>M-DEPLOY</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>grep -q "579" README.md &amp;&amp; grep -q "winery_key" README.md &amp;&amp; grep -q "reader_cache" README.md</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+      <MustVerify><Module>M-DEPLOY</Module></MustVerify>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-WEB</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-DEPLOY</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-WEB/>
+      <M-DEPLOY/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>README.md</Path>
+      <Path>.grace/verification/VD-M5-WEB.xml</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Актуализация README по фактам (M-WEB)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Числа тестов/lint/бандлов/латентности соответствуют реальным прогонам.</Criterion>
+          <Criterion>LLM-путь описан актуально; добавлены winery_key и reader_cache; near-dup 0.7619
+            сохранён как отдельная метрика.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "579" README.md &amp;&amp; grep -q "winery_key" README.md</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Verification, roadmap, гейты и архив (M-DEPLOY)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>verification/AGENTS.md отражают C-090; grace lint 0/0; полный pytest; make gate без
+            изменений; бандл в archive/C-090 applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-002>
+    </ImplementationPlan>
+  </C-090>
+</GraceChangePlan>

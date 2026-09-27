@@ -66,7 +66,8 @@
 - **Работает на реальных фото, а не только на синтетике.** 21 магазинное фото: identity-match@1
   **0.53**, @5 **0.63** по российским винам (C-025; @5 поднят транслитом лат↔кир, C-027), корректный
   отказ для не-российских вин — **100%** (`docs/METRICS.md`). Синтетический proxy (in-distribution):
-  acc@1 **0.775**, acc@5 **0.970**.
+  acc@1 **0.775**, acc@5 **0.970**. LLM-путь на тех же 21 фото: acc@1 **0.4545**, acc@5 **0.7273**,
+  ложные отказы убраны (**not_found 0.76 → 0.0**, C-085).
 - **Каскад по цене и скорости, LLM — ядро качества.** Дешёвый Tier-1 (эмбеддинг + геоверификация) даёт
   ответ за ~160 мс; OCR-сигнал и VLM подключаются при неуверенности, и каждый уровень деградирует
   корректно — без OCR/VLM система отдаёт результат Tier-1 (`services/gateway/app/pipeline.py:222`).
@@ -87,8 +88,9 @@
   Object Storage, Managed PostgreSQL + pgvector (`deploy/yandex/`).
 - **Только permissive-лицензии.** SigLIP 2, DINOv2, RapidOCR, OpenCV, FastAPI, Nuxt, PyTorch —
   Apache-2.0/MIT. AGPL (Ultralytics) не используется. Чистый clean-room относительно `old/`.
-- **Инженерная дисциплина.** GRACE 4: 184 governed-файла, контракты, assertion-гейты, 83 завершённых
-  change (C-001…C-084) с машино-проверяемыми критериями; `make gate` — один коммит-гейт качества и SLA.
+- **Инженерная дисциплина.** GRACE 4: 189 governed-файлов (проверяется 214), контракты, assertion-гейты,
+  88 завершённых change (C-001…C-089; C-045 поглощён C-046) с машино-проверяемыми критериями;
+  `make gate` — один коммит-гейт качества и SLA.
 
 ---
 
@@ -99,6 +101,7 @@
 | **LLM-ядро распознавания** (чтение 26b → нормализация e4b → матчер) | `packages/common/llm/`, `services/vlm/` | Понимает сложные этикетки (ракурс, блик, графичные шрифты, латиница), где OCR ошибается |
 | **LLM-нормализатор под каталог** без жёсткого словаря | `packages/common/llm/normalizer.py` | Сводит «Château Tamagne» → «Кубань-Вино / Шато Тамань»; словарь строится из каталога, новые бренды подхватываются сами |
 | **LLM-матчер с честным отказом** | `packages/common/llm/matcher.py` | Выбирает slug только из реального пула кандидатов; выдумать несуществующее вино не может |
+| **Канонический ключ бренда `winery_key`** (транслит + омоглифы) | `packages/common/brands.py`, `llm/matcher.py` | «Абрау-Дюрсо» = «ABRAU-DURSO» = «АБРАУ-ДЮРСO»: бренд сопоставляется по стандарту, а не по буквам; гибкий матчер убрал ложные отказы (not_found 0.76 → 0.0, C-085) |
 | **LLM Router** с 5 провайдерами, fallback-цепочкой, per-provider circuit breaker и cost-velocity breaker | `packages/common/llm/router.py`, `config/providers.yaml` | Смена модели/провайдера — только через YAML/env, без правок кода; отказ провайдера не роняет фичу |
 | **4 OCR-движка**: `rapidocr` (дефолт), `cyrillic` (PP-OCRv5), `fusion` (лат+кир), `paddleocr_vl` | `packages/common/ocr*.py`, `services/ocr/` | Быстрый онлайн-сигнал (250–290 мс) + лучший офлайн-ридер для обогащения |
 | **Плугабельные энкодеры**: `siglip2` / `dinov2` / `clip`; бэкенды `numpy` / `faiss` / `pgvector` | `services/retrieval/app/encoder.py`, `.env.example` | Смена представления и векторного стора без переписывания сервиса |
@@ -113,6 +116,7 @@
 | **Yandex Cloud deployment** (Serverless Containers + Workflow + Lockbox + pgvector) | `deploy/yandex/` | Архитектура готова к внедрению, а не только к демо |
 | **Explain-trace пути решения** (`EXPLAIN_ENABLED=1`) | `services/gateway/app/pipeline.py`, `apps/web/` | UI показывает, каким путём получен ответ (retrieval → geo → OCR → LLM) — витрина «как это работает» для судей, без секретов |
 | **Структурированный вывод LLM**: ремонт JSON, нормализация enum, один повтор, валидация по схеме | `packages/common/llm/structured.py` | Форма ответа гарантируется на нашей стороне независимо от провайдера; исходы (`exact`/`repaired`/`retried`/`failed`) видны в `/v1/telemetry/summary` |
+| **Постоянный кэш чтений этикетки** (sha256(фото)+модель+версия промпта) | `packages/common/reader_cache.py`, `scripts/eval/llm_match_eval.py` | Повторный прогон оценки не гоняет 26b заново: 10.1 с → 0.00 с; инвалидация при смене фото/модели/промпта (C-087) |
 | **Реестр словарей `dict_audit`** | `packages/common/dict_audit.py` | Делает устаревание жёстких словарей наблюдаемым: словарь — детерминированный фолбэк, LLM-нормализация — обобщение поверх него |
 | **Внутренние LLM-эндпоинты** `/observe` · `/match` · `/normalize-reading` · `/extract` | `services/vlm/app/main.py` | Раздельные шаги: чтение этикетки, выбор slug из пула кандидатов, приведение к каталогу, извлечение полей |
 | **Честные off-флаги** (прототипы виноделен, цветовой tie-break, text-first/RRF, cross-encoder, cylinder unwrap) | `config.py`, `packages/common/{text_ce,palette,cylinder}.py` | Проверенные эксперименты с отрицательным результатом сохранены за флагом — воспроизводимость решений, а не удаление |
@@ -337,12 +341,13 @@ curl -s "http://127.0.0.1:8080/v1/enotourism/kokur-suhoe-2025"
 `reports/vision_bench.md`). Классический retrieval на этих фото не различает визуально похожие
 этикетки, поэтому решающую роль играет LLM-чтение:
 
-| Что мерили | Лучший результат | Контекст |
+| Что мерили | Результат | Контекст |
 |---|---|---|
 | Качество чтения этикетки | **title_sim 0.8158** (`gemma4:26b`) | против OCR-слияния 0.5657 и кириллицы 0.4653 |
 | Чтение бренда | **0.5** (`gemma4:26b`) | доля фото, где винодельня прочитана |
+| Точность LLM-пути | **acc@1 0.4545 · acc@5 0.7273** | гибкий матчер по `winery_key`, strict@1 0.75 (C-085) |
 | Нормализация под каталог | «Château Tamagne» → `Кубань-Вино / Шато Тамань` | закрыла кейс, где матчер раньше отказывал |
-| Честный отказ LLM-пути | **not_found 0.7619** | не выдаёт случайное вино вне каталога |
+| Ложные отказы закрыты | **not_found 0.76 → 0.0** | матчер больше не отказывает, когда верное вино есть в пуле (C-085) |
 
 Примеры сквозного результата (фото → чтение → нормализация → slug):
 
@@ -555,12 +560,12 @@ make gate     # финальный гейт: lint + тесты + eval (acc@1 ≥
 
 | Метрика | Значение | Источник |
 |---|---|---|
-| Тестов | **563** (61 файл) | `pytest -q` (123 с, все зелёные) |
-| syntax/grammar lint | 0 errors / 0 warnings (209 файлов, 184 governed) | `grace lint` |
+| Тестов | **579** (64 файла) | `pytest -q` (120 с, все зелёные) |
+| syntax/grammar lint | 0 errors / 0 warnings (214 файлов, 189 governed, 196 XML) | `grace lint` |
 | acc@1 (in-distribution proxy, n=200, seed 42) | **0.775** | `reports/final.json` |
 | acc@5 | **0.970** | `reports/final.json` |
 | near-duplicate acc@1 | **0.7619** | `reports/final.json` |
-| latency p50 / p95 | **133.8 / 158.1 мс** | `reports/final.json` |
+| latency p50 / p95 | **119.0 / 131.4 мс** | `reports/final.json` |
 | identity@1 / @5 (21 реальное фото, RU) | **0.526 / 0.632** | `reports/real_field.json` (C-025; @5 поднят транслитом, C-027) |
 | корректный `not_found` на реальных фото | **82.6%** | `docs/METRICS.md` |
 | отказ для не-российских вин | **100%** | `docs/METRICS.md` |
@@ -589,16 +594,16 @@ make gate     # финальный гейт: lint + тесты + eval (acc@1 ≥
 
 ```text
 $ grace lint --path .
-Files checked: 209 · Governed files: 184 · XML artifacts checked: 186
+Files checked: 214 · Governed files: 189 · XML artifacts checked: 196
 Errors: 0 · Warnings: 0 — No issues found.
 
 $ make test   # pytest tests/ -q
-563 passed, 2 warnings in 123.19s
+579 passed, 2 warnings in 120.21s
 
 $ make eval   # → reports/final.json
 acc@1 0.775 · acc@5 0.97 · группа acc@1 0.785 · near-dup acc@1 0.7619 (n=21)
-latency p50 133.8 мс · p95 158.1 мс (SLA 3000.0)
-=== ГЕЙТ ПРОЙДЕН: acc@1 0.775 ≥ 0.75, p95 158.1 мс ≤ 3000.0 мс ===
+latency p50 119.0 мс · p95 131.4 мс (SLA 3000.0)
+=== ГЕЙТ ПРОЙДЕН: acc@1 0.775 ≥ 0.75, p95 131.4 мс ≤ 3000.0 мс ===
 
 $ scripts/eval/check_contract.py   # живой POST /v1/eval/predict
 HTTP 200 · ответ: {"slug": "nebo-rossii-glera"} — плоский ответ, контракт соблюдён
@@ -637,7 +642,7 @@ exit 0 · сервисы: postgres, gateway, normalize, retrieval, vlm, matcher,
 
 ## План развития
 
-**Сделано (C-001…C-084, 83 change):**
+**Сделано (C-001…C-089, 88 change):**
 
 - ✅ **M0** — скелет репозитория, ETL каталога (2103 slug), self-evaluator.
 - ✅ **M1** — Tier-1 retrieval (SigLIP2-so400m + обученная голова), full-frame вход + P&S,
@@ -654,7 +659,8 @@ exit 0 · сервисы: postgres, gateway, normalize, retrieval, vlm, matcher,
   организатора (100/100), решение по observer и доказательство воспроизводимости (C-070).
 - ✅ **M6+** — калиброванный гейт уверенности (C-061), датасет подтверждённых пар (C-078), реестр
   словарей `dict_audit` (C-079), честный отрицательный результат по матчеру 26b/e4b (C-080),
-  рефакторинг-гигиена и маркер-логирование (C-081…C-084).
+  гибкий матчер по каноническому бренду `winery_key` (C-085, not_found 0.76 → 0.0), постоянный
+  кэш чтений этикетки (C-087), рефакторинг-гигиена и маркер-логирование (C-081…C-084, C-088, C-089).
 
 **В плане:**
 
@@ -681,7 +687,7 @@ services/
   catalog/                # ETL и хранение каталога
   active_learning/        # логи, ревью, аугментация, дообучение
 packages/contracts/       # Pydantic-схемы публичных ответов
-packages/common/          # общий код: catalog, preprocess, ocr*, text_norm, llm/{router,matcher,normalizer,structured,circuit}
+packages/common/          # общий код: catalog, preprocess, ocr*, text_norm, brands, reader_cache, llm/{router,matcher,normalizer,structured,circuit}
 scripts/{catalog,eval,kb,train,flywheel,llm}/
 config/providers.yaml     # LLM-провайдеры и цепочки
 deploy/{docker,yandex}/   # базовые образы, манифесты Yandex Cloud
