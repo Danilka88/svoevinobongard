@@ -88,8 +88,8 @@
   Object Storage, Managed PostgreSQL + pgvector (`deploy/yandex/`).
 - **Только permissive-лицензии.** SigLIP 2, DINOv2, RapidOCR, OpenCV, FastAPI, Nuxt, PyTorch —
   Apache-2.0/MIT. AGPL (Ultralytics) не используется. Чистый clean-room относительно `old/`.
-- **Инженерная дисциплина.** GRACE 4: 189 governed-файлов (проверяется 214), контракты, assertion-гейты,
-  88 завершённых change (C-001…C-089; C-045 поглощён C-046) с машино-проверяемыми критериями;
+- **Инженерная дисциплина.** GRACE 4: 191 governed-файл (проверяется 216), контракты, assertion-гейты,
+  93 завершённых change (C-001…C-094; C-045 поглощён C-046) с машино-проверяемыми критериями;
   `make gate` — один коммит-гейт качества и SLA.
 
 ---
@@ -120,6 +120,9 @@
 | **Реестр словарей `dict_audit`** | `packages/common/dict_audit.py` | Делает устаревание жёстких словарей наблюдаемым: словарь — детерминированный фолбэк, LLM-нормализация — обобщение поверх него |
 | **Внутренние LLM-эндпоинты** `/observe` · `/match` · `/normalize-reading` · `/extract` | `services/vlm/app/main.py` | Раздельные шаги: чтение этикетки, выбор slug из пула кандидатов, приведение к каталогу, извлечение полей |
 | **Честные off-флаги** (прототипы виноделен, цветовой tie-break, text-first/RRF, cross-encoder, cylinder unwrap) | `config.py`, `packages/common/{text_ce,palette,cylinder}.py` | Проверенные эксперименты с отрицательным результатом сохранены за флагом — воспроизводимость решений, а не удаление |
+| **Нативный путь Ollama `think=false`** | `packages/common/llm/ollama_native.py` | Reasoning-модели (gemma4/qwen3) на OpenAI-совместимом пути тратят весь бюджет на «внутренний монолог» и отдают пустой `content`; нативный `/api/chat` с `think=false` (и `format`) — основной путь для матчера, нормализатора и офлайн-читателей |
+| **Демо-стенд «Примеры работы»** | `apps/web/pages/demo.vue`, `scripts/eval/build_demo_stand.py` | 21 проверенное полевое фото (чтение 26b → нормализация → кандидаты → итог) в статичном JSON: стенд открывается мгновенно **без backend и без запуска модели** — наглядная витрина подхода для судей |
+| **Браузер каталога с фасетами и сортировкой** | `services/gateway/app/media.py`, `apps/web/pages/catalog.vue` | Поиск по 2103 позициям с фасетными счётчиками (регион/категория/сорт/винодельня) и сортировкой по названию/винодельне/году; дисковый кэш форм каталога убирает холодный расчёт (13–16 с → миллисекунды, C-046/C-047) |
 
 ---
 
@@ -560,8 +563,8 @@ make gate     # финальный гейт: lint + тесты + eval (acc@1 ≥
 
 | Метрика | Значение | Источник |
 |---|---|---|
-| Тестов | **579** (64 файла) | `pytest -q` (120 с, все зелёные) |
-| syntax/grammar lint | 0 errors / 0 warnings (214 файлов, 189 governed, 196 XML) | `grace lint` |
+| Тестов | **583** (65 файлов) | `pytest -q` (120 с, все зелёные) |
+| syntax/grammar lint | 0 errors / 0 warnings (216 файлов, 191 governed, 206 XML) | `grace lint` |
 | acc@1 (in-distribution proxy, n=200, seed 42) | **0.775** | `reports/final.json` |
 | acc@5 | **0.970** | `reports/final.json` |
 | near-duplicate acc@1 | **0.7619** | `reports/final.json` |
@@ -594,11 +597,11 @@ make gate     # финальный гейт: lint + тесты + eval (acc@1 ≥
 
 ```text
 $ grace lint --path .
-Files checked: 214 · Governed files: 189 · XML artifacts checked: 196
+Files checked: 216 · Governed files: 191 · XML artifacts checked: 206
 Errors: 0 · Warnings: 0 — No issues found.
 
 $ make test   # pytest tests/ -q
-579 passed, 2 warnings in 120.21s
+583 passed, 2 warnings in 120.21s
 
 $ make eval   # → reports/final.json
 acc@1 0.775 · acc@5 0.97 · группа acc@1 0.785 · near-dup acc@1 0.7619 (n=21)
@@ -642,7 +645,7 @@ exit 0 · сервисы: postgres, gateway, normalize, retrieval, vlm, matcher,
 
 ## План развития
 
-**Сделано (C-001…C-089, 88 change):**
+**Сделано (C-001…C-094, 93 change):**
 
 - ✅ **M0** — скелет репозитория, ETL каталога (2103 slug), self-evaluator.
 - ✅ **M1** — Tier-1 retrieval (SigLIP2-so400m + обученная голова), full-frame вход + P&S,
@@ -661,6 +664,10 @@ exit 0 · сервисы: postgres, gateway, normalize, retrieval, vlm, matcher,
   словарей `dict_audit` (C-079), честный отрицательный результат по матчеру 26b/e4b (C-080),
   гибкий матчер по каноническому бренду `winery_key` (C-085, not_found 0.76 → 0.0), постоянный
   кэш чтений этикетки (C-087), рефакторинг-гигиена и маркер-логирование (C-081…C-084, C-088, C-089).
+- ✅ **M6+ витрина и доводка** — демо-стенд «Примеры работы» на 21 проверенном полевом фото без
+  backend (C-092), полировка UI и кросс-браузерных ползунков сомелье (C-091), сортировка и счётчики
+  фильтров каталога, связь стенда с карточками (C-093), актуализация README (C-090) и гигиена
+  context-артефактов (C-094).
 
 **В плане:**
 
@@ -724,6 +731,11 @@ cd apps/web && bun install && bun run dev        # http://127.0.0.1:3000
 # 4. проверка готовности
 make gate                                        # lint + тесты + eval + контракт организатора
 ```
-UI общается только с gateway; экраны: Сканер `/`, Обучение `/learning`, Сомелье `/sommelier`,
-Каталог `/catalog`, Метрики `/metrics`, Как это работает `/how` (в меню «Ещё»).
-Навигация: пять основных пунктов в таб-баре и лист «Ещё» на мобильном, полный список на десктопе.
+UI общается только с gateway; экраны: Сканер `/`, Каталог `/catalog`, Метрики `/metrics`,
+Обучение `/learning`, Примеры работы `/demo`, Сомелье `/sommelier`, Как это работает `/how`.
+Навигация: пять основных пунктов в таб-баре и лист «Ещё» (`/demo`, `/how`) на мобильном,
+полный список на десктопе.
+
+Демо-стенд `/demo` статичен (`public/demo/samples.json`, генерируется `scripts/eval/build_demo_stand.py`):
+21 проверенное полевое фото с разбором чтение → нормализация → кандидаты → итог, фильтр по сценариям
+(однозначно найдено / серия / вне каталога) и прямые ссылки на карточки `/catalog?slug=…`.
