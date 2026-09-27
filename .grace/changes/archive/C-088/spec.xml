@@ -1,0 +1,32 @@
+<GraceChangeSpec graceVersion="4.0" status="applied">
+  <C-088>
+    <Summary>Синхронизация context-артефакта technology.xml с фактической реализацией LLM-подключения.
+      Блок &lt;vlmConnector&gt; описывал устаревший env-набор (VLM_PROVIDER, VLM_BASE_URL, VLM_API_KEY,
+      VLM_MODEL, VLM_MODEL_FAST) как единственный способ подключения, тогда как реализация C-008 использует
+      LLM Router с цепочкой провайдеров из config/providers.yaml и LLM_*-переменными (LLM_PROVIDERS_FILE,
+      LLM_LOCAL_ONLY, LLM_OLLAMA_BASE_URL и т.д.). Также устарел блок &lt;testing&gt;: «tests/ пока только
+      README» — фактически 580+ тестов, governor-разметка и assertion-гейты. Артефакт приводится к факту;
+      поведение кода не меняется.</Summary>
+    <Goals>(1) Устранить doc-drift технологии: vlmConnector описывает реальный LLM Router и его env.
+      (2) Обновить блок testing под фактическое состояние тестов. (3) Не менять код и метрики.
+      (4) Подтвердить grace lint 0/0.</Goals>
+    <Constraints>Правки только в .grace/context/technology.xml. Код не меняется. Метрики make gate не
+      меняются. Анкоры/грамматика GRACE сохраняются. Коммит не создаётся.</Constraints>
+    <NonGoals>Не менять router, providers.yaml, .env.example. Не переписывать другие context-артефакты.</NonGoals>
+    <AcceptanceCriteria>
+      <Criterion>technology.xml: &lt;vlmConnector&gt; описывает LLM Router (providers.yaml, цепочка,
+        circuit/cost breaker, LLM_LOCAL_ONLY) и фактический env-набор LLM_*; legacy VLM_* упомянуты как
+        env конкретного VLM-сервиса, а не как способ подключения провайдеров.</Criterion>
+      <Criterion>technology.xml: &lt;testing&gt; отражает реальность (pytest, 580+ тестов, governor-разметка,
+        assertion-гейты) вместо «tests/ пока только README».</Criterion>
+      <Criterion>grace lint --path . 0 errors / 0 warnings; полный pytest зелёный; метрики make gate не
+        изменились.</Criterion>
+    </AcceptanceCriteria>
+    <AffectedAreas>
+      <M-COMMON/>
+      <M-DEPLOY/>
+    </AffectedAreas>
+    <VerificationIntent>Синхронизация проверяется grace lint (грамматика) и сверкой с реальными
+      config/providers.yaml и .env.example; отсутствие регрессий — pytest и неизменные метрики гейта.</VerificationIntent>
+  </C-088>
+</GraceChangeSpec>

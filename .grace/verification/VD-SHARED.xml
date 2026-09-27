@@ -148,6 +148,14 @@
         tests/test_c085_brands.py (6 тестов). normalizer возвращает winery_key.
         Гибкий матчер: бренд + признаки (сладость/тип/цвет), год не обязателен. Перезамер 21 фото:
         acc@1 0.3636→0.4545, acc@5 0.6364→0.7273, not_found 0.76→0.0. grace lint 0/0.</Evidence>
+      <Scenario id="S-COMMON-17">C-088: context-артефакт technology.xml синхронизирован с реализацией —
+        vlmConnector описывает LLM Router (config/providers.yaml, роли, fallback, circuit/cost breaker,
+        LLM_LOCAL_ONLY) и фактические LLM_*-env; VLM_* отмечены как env VLM-сервиса; testing отражает
+        pytest 580+/governor-разметку/assertion-гейты.</Scenario>
+      <Evidence note="C088-context-sync">C-088: .grace/context/technology.xml — устаревший env-набор
+        (VLM_PROVIDER/BASE_URL/API_KEY/MODEL/FAST) заменён на LLM Router с providers.yaml и LLM_*-env;
+        блок testing обновлён с «tests/ пока только README» на факт (pytest 580+, governor, assertion-гейты).
+        Сверено с config/providers.yaml и .env.example. Код и метрики гейта не менялись; grace lint 0/0.</Evidence>
     </V-M-COMMON>
   </VD-SHARED>
 </GraceVerificationDocument>

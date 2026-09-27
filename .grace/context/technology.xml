@@ -61,16 +61,28 @@
   </ml>
 
   <vlmConnector>
-    <pattern>Единый OpenAI-совместимый коннектор (ADR-003): ollama | lmstudio | openrouter | yandex | custom</pattern>
-    <env>VLM_PROVIDER, VLM_BASE_URL, VLM_API_KEY, VLM_MODEL, VLM_MODEL_FAST, VLM_TIMEOUT_S, VLM_TEMPERATURE, VLM_MAX_TOKENS</env>
-    <requirement>temperature=0, строгая JSON-схема, constrained decoding (Outlines) + fallback-парсер/ремонт JSON</requirement>
+    <pattern>Единый LLM Router (C-008, ADR-003): роли vision_model / text_model / embedding_model,
+      цепочка провайдеров из config/providers.yaml (ollama | lmstudio | openrouter | yandex | custom),
+      подмена провайдера только через YAML/env, без правок кода</pattern>
+    <env>LLM_PROVIDERS_FILE (путь к providers.yaml), LLM_LOCAL_ONLY, LLM_OLLAMA_BASE_URL,
+      LLM_OLLAMA_API_KEY, LLM_LMSTUDIO_BASE_URL, LLM_LMSTUDIO_API_KEY, LLM_OPENROUTER_BASE_URL,
+      LLM_YANDEX_BASE_URL, ${VAR}-подстановка секретов из env</env>
+    <resilience>per-provider circuit breaker (threshold 3, cooldown 30 с), глобальный cost-velocity
+      breaker (cost_plan_tokens_per_min 20000, multiplier 10), fallback по цепочке ролей</resilience>
+    <serviceEnv>VLM_URL, VLM_FALLBACK_ENABLED, VLM_ONLINE_MODEL, VLM_MAX_TOKENS, VLM_TIMEOUT_S,
+      VLM_NUM_CTX, VLM_REASONING_EFFORT — переменные конкретного VLM-сервиса (M-VLM), а не способ
+      подключения провайдеров</serviceEnv>
+    <requirement>temperature=0, строгая JSON-схема, constrained decoding + fallback-парсер/ремонт JSON
+      (packages/common/llm/structured.py)</requirement>
   </vlmConnector>
 
   <testing>
-    <runner>pytest (де-факто; tests/ пока только README)</runner>
-    <assertion>pytest-assert / plain asserts</assertion>
+    <runner>pytest (580+ тестов в tests/, запуск make test)</runner>
+    <assertion>pytest-assert / plain asserts; GRACE assertion-гейты (grace lint --change C-XXX --assertions
+      target --run-commands); финальный quality/SLA-гейт make gate</assertion>
+    <governance>обязательная семантическая разметка MODULE_CONTRACT/MODULE_MAP у каждого исходника,
+      тест-стража test_governance_markup.py</governance>
     <mock>локальные фикстуры; Ollama/Postgres — через docker-compose или mock</mock>
-    <existing>scripts/eval/evaluate.py — офлайн-эвалюатор (stdlib): accuracy@1/@5, macro-F1, latency p50/p95</existing>
   </testing>
 
   <observability>
