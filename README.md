@@ -7,6 +7,14 @@
 > **Конкурс:** РСХБ / ЛЦТ. **Задача:** найти карточку вина в каталоге (2103 позиции) по «полевому»
 > фото этикетки. **Цель:** 90–100% top-1, SLA < 3 с (жёсткий лимит скрипта организатора — 10 с).
 
+> **⚠️ Платформа и LLM-модели.** Проект разработан и измерен на **Apple Silicon (macOS, MPS)**,
+> поэтому в `.env.example` и `config/providers.yaml` указаны **MLX-сборки** LLM (`gemma4:26b-mlx`,
+> `gemma4:12b-mlx`, `gemma4:e4b-mlx`). Суффикс **`-mlx`** означает сборку под Apple Silicon — на
+> **Linux / Windows / x86 без Metal** эти теги не запустятся, их нужно заменить на обычные
+> (**без `-mlx`**) теги из библиотеки Ollama либо на облачные провайдеры. Полная таблица замен и
+> пошаговая инструкция для чужого ПК — в разделе
+> **[Запуск на другом ПК](#запуск-на-другом-пк-пошагово)**.
+
 ---
 
 ## До / После
@@ -89,7 +97,7 @@
 - **Только permissive-лицензии.** SigLIP 2, DINOv2, RapidOCR, OpenCV, FastAPI, Nuxt, PyTorch —
   Apache-2.0/MIT. AGPL (Ultralytics) не используется. Чистый clean-room относительно `old/`.
 - **Инженерная дисциплина.** GRACE 4: 191 governed-файл (проверяется 216), контракты, assertion-гейты,
-  93 завершённых change (C-001…C-094; C-045 поглощён C-046) с машино-проверяемыми критериями;
+  95 завершённых change (C-001…C-096; C-045 поглощён C-046) с машино-проверяемыми критериями;
   `make gate` — один коммит-гейт качества и SLA.
 
 ---
@@ -123,6 +131,7 @@
 | **Нативный путь Ollama `think=false`** | `packages/common/llm/ollama_native.py` | Reasoning-модели (gemma4/qwen3) на OpenAI-совместимом пути тратят весь бюджет на «внутренний монолог» и отдают пустой `content`; нативный `/api/chat` с `think=false` (и `format`) — основной путь для матчера, нормализатора и офлайн-читателей |
 | **Демо-стенд «Примеры работы»** | `apps/web/pages/demo.vue`, `scripts/eval/build_demo_stand.py` | 21 проверенное полевое фото (чтение 26b → нормализация → кандидаты → итог) в статичном JSON: стенд открывается мгновенно **без backend и без запуска модели** — наглядная витрина подхода для судей |
 | **Браузер каталога с фасетами и сортировкой** | `services/gateway/app/media.py`, `apps/web/pages/catalog.vue` | Поиск по 2103 позициям с фасетными счётчиками (регион/категория/сорт/винодельня) и сортировкой по названию/винодельне/году; дисковый кэш форм каталога убирает холодный расчёт (13–16 с → миллисекунды, C-046/C-047) |
+| **Переключатель движка на сканере** (`mode=classic\|llm`) | `services/gateway/app/main.py` (`/v1/scan`), `pipeline.run_scan(llm_mode=…)` | Один и тот же эндпоинт умеет и **быстрый классический контур** (только Tier-1/OCR, без LLM), и **полный LLM-контур** (чтение 26b → нормализация e4b → матчер 12b): сравнение путей на живом трафике без пересборки (C-096) |
 
 ---
 
@@ -244,6 +253,10 @@ pgvector; секреты — Lockbox; образы — Container Registry (`depl
   не проникает в код.
 - **Реализация:** `packages/common/llm/adapters.py`, `router.py`, `circuit.py`, `config/providers.yaml`.
 - **Управление:** `LLM_LOCAL_ONLY=1`; cost breaker: `cost_plan_tokens_per_min`, `cost_multiplier`.
+- **⚠️ Платформа:** дефолтные модели — **MLX-сборки под Apple Silicon** (`…-mlx`, требуют Metal/MPS).
+  На Linux/Windows/x86 без Metal нужно заменить их на обычные (без `-mlx`) теги Ollama или на
+  облачные провайдеры — замену делает одна строка в `.env` / `config/providers.yaml`, код не меняется
+  (см. [Запуск на другом ПК](#запуск-на-другом-пк-пошагово)).
 
 #### API (FastAPI) + UI (Nuxt 3)
 
@@ -419,13 +432,195 @@ make web-build && make web-preview
 
 ---
 
+## Запуск на другом ПК (пошагово)
+
+Инструкция рассчитана на человека, который видит репозиторий впервые. Ключевой момент:
+**MLX-модели работают только на Apple Silicon** — на другой машине их нужно заменить
+(шаг 3B). Есть два способа поднять проект: **пересобрать данные** (нужны материалы конкурса,
+~60 мин на индекс) или **перенести готовые `data/` и `models/`** с рабочей машины (быстрее всего).
+
+### 0. Что понадобится
+
+| Компонент | Зачем | Проверка |
+|---|---|---|
+| **Python 3.11+** (в проекте — 3.14) | сервисы, ETL, индекс, тесты | `python3 --version` |
+| **Ollama** ≥ 0.3 | локальные LLM (чтение/матчер/нормализация/сомелье) | `ollama --version` |
+| **Bun** (или Node 20+) | UI Nuxt 3 | `bun --version` |
+| **Docker + Compose** | опционально: весь стек в контейнерах | `docker compose version` |
+| **Материалы конкурса** | `make etl` (только если пересобираете данные) | папка `Датасет/` с `*.csv` + `wines_sitemap_*.xml` |
+| **~10 ГБ RAM / 15 ГБ диска** | веса энкодера + индекс + модели LLM | — |
+
+> Энкодер **SigLIP 2** скачается с HuggingFace при `make index` (нужен интернет ~2 ГБ).
+> Официальное обогащение карточек обращается к `api.vino-svoe.ru` (можно пропустить — карточка
+> покажет только каталожные поля).
+
+### 1. Получить код
+
+```bash
+git clone <repository-url> svoe-vino-scanner
+cd svoe-vino-scanner
+```
+
+### 2A. Быстрый путь: перенести данные с рабочей машины (рекомендуется)
+
+`data/` и `models/` в `.gitignore` — в репозитории их нет. С машины, где проект уже собран:
+
+```bash
+# на ИСХОДНОЙ машине (откуда переносим):
+rsync -av --progress data/ user@NEW_HOST:/path/to/svoe-vino-scanner/data/
+rsync -av --progress models/ user@NEW_HOST:/path/to/svoe-vino-scanner/models/
+```
+
+Это переносит каталог, готовый индекс (`data/index`), голову (`models/head.pt`) и кэши. После
+переноса переходите сразу к **шагу 4**. Если переносить нечего — идите по пути **2B**.
+
+### 2B. Полный путь: пересобрать данные из материалов конкурса
+
+Положите материалы рядом с проектом так, как их ждёт ETL (путь по умолчанию —
+`../материалы для конкурса/Датасет`), либо укажите свой путь флагом `--materials`:
+
+```
+project/
+├─ svoe-vino-scanner/     # репозиторий
+└─ материалы для конкурса/
+   └─ Датасет/            # *.csv (strapi_output) + wines_sitemap_*.xml
+```
+
+### 3. Зависимости и окружение
+
+```bash
+# 3.1. Python-окружение (venv + torch/transformers/opencv/rapidocr + bun install для UI)
+make setup
+
+# 3.2. Конфиг: копируем шаблон (в git он не попадёт)
+cp .env.example .env
+```
+
+**3B. ⚠️ Заменить MLX-модели, если ПК не на Apple Silicon.**
+
+В `.env` (строки `OBSERVER_MODEL`, `LLM_MATCHER_MODEL`, `NORMALIZER_MODEL`, `VLM_ONLINE_MODEL`,
+`VLM_26B_MODEL`, `LLM_MODEL`) и в `config/providers.yaml` модели идут с суффиксом **`-mlx`** —
+это сборки под Apple Silicon (Metal). На **Linux / Windows / x86 / CUDA-машине** замените их на
+обычные (без `-mlx`) теги или на облако:
+
+| Роль | Переменная | Apple Silicon (как есть) | Другие ОС (без MLX) |
+|---|---|---|---|
+| Чтение этикетки | `OBSERVER_MODEL` | `gemma4:26b-mlx` | `gemma4:26b` (GGUF) |
+| LLM-матчер | `LLM_MATCHER_MODEL` | `gemma4:12b-mlx` | `gemma4:12b` |
+| Нормализатор | `NORMALIZER_MODEL` | `gemma4:e4b-mlx` | `gemma4:e4b` |
+| Офлайн-обогащение | `VLM_26B_MODEL` | `gemma4:26b-mlx` | `gemma4:26b` |
+| Сомелье (текст) | `LLM_MODEL` | `qwen3.5:9b` | `qwen3.5:9b` |
+| Онлайн-VLM (опция) | `VLM_ONLINE_MODEL` | `gemma4:e4b` | `gemma4:e4b` |
+
+Правило простое: **уберите суффикс `-mlx`**. Если точного тега нет в библиотеке Ollama — возьмите
+ближайшую модель того же класса (тот же размер) и укажите её имя в переменной.
+
+- **Вариант «облако без локальных моделей»:** впишите `OPENROUTER_API_KEY` (или `YANDEX_API_KEY` +
+  `YANDEX_FOLDER_ID`) и поставьте `LLM_LOCAL_ONLY=0`; цепочки провайдеров — в `config/providers.yaml`.
+- **Вариант «Apple на другой Apple»:** ничего не меняйте, но при инференсе проверьте
+  `ENCODER_DEVICE=auto` (на Apple выберется `mps`).
+- **Без Metal и без GPU:** поставьте `ENCODER_DEVICE=cpu` в `.env` — retrieval будет медленнее, но
+  функционал сохранится. `VECTOR_BACKEND=numpy` работает везде (оставьте как есть).
+
+### 3C. Скачать LLM-модели в Ollama
+
+```bash
+ollama serve &            # запустить сервер (macOS с brew — обычно уже как сервис)
+```
+
+```bash
+# Apple Silicon (MLX):
+ollama pull gemma4:26b-mlx && ollama pull gemma4:12b-mlx && \
+ollama pull gemma4:e4b-mlx && ollama pull qwen3.5:9b
+
+# Linux / Windows / x86 (обычные GGUF, без -mlx):
+ollama pull gemma4:26b && ollama pull gemma4:12b && \
+ollama pull gemma4:e4b && ollama pull qwen3.5:9b
+```
+
+> Модели LLM нужны **только** для «качественного режима» (LLM-ядро на каждом запросе). Если LLM не
+> поднята, проект **не падает**: путь штатно деградирует до классического Tier-1 (см. флаги
+> `OBSERVER_ENABLED`, `LLM_MATCHER_ENABLED`, `NORMALIZER_ENABLED`). Для быстрого «просто посмотреть»
+> поставьте их в `0` — тогда Ollama вообще не нужна.
+
+### 4. Каталог и индекс
+
+```bash
+make etl        # CSV + sitemap → data/catalog/ (2103 slug)   [пропустите, если перенесли data/]
+make index      # эмбеддинги эталонов + признаки гео (+ голова); 6 видов ≈50–60 мин
+```
+
+### 5. Запустить сервисы
+
+```bash
+PYTHONPATH=. .venv/bin/python -m uvicorn services.normalize.app.main:app --port 8081 &
+PYTHONPATH=. .venv/bin/python -m uvicorn services.retrieval.app.main:app --port 8082 &
+PYTHONPATH=. .venv/bin/python -m uvicorn services.matcher.app.main:app   --port 8084 &
+PYTHONPATH=. .venv/bin/python -m uvicorn services.gateway.app.main:app   --port 8080 &
+# при VLM-fallback / OCR-движке (обычно не нужны в онлайн-пути):
+# PYTHONPATH=. .venv/bin/python -m uvicorn services.vlm.app.main:app     --port 8083 &
+# PYTHONPATH=. .venv/bin/python -m uvicorn services.ocr.app.main:app     --port 8085 &
+
+make warm       # прогрев retrieval — первый запрос не платит за загрузку модели
+```
+
+### 6. Проверить, что всё живо
+
+```bash
+curl -s http://127.0.0.1:8080/v1/health | jq
+curl -s -X POST -F image=@data/samples/eval_queries/019c68d0.jpg \
+  http://127.0.0.1:8080/v1/eval/predict | jq          # плоский контракт: {"slug": "..."}
+```
+
+### 7. Поднять UI
+
+```bash
+make web-dev    # Nuxt dev на http://127.0.0.1:3000 (нужен bun)
+```
+
+### 8. Альтернатива: всё в Docker
+
+```bash
+make images                 # один раз: базовые образы svoe-base / svoe-ml-base
+cp .env.example .env        # + учтите замену -mlx-моделей (шаг 3B)
+docker compose up --build -d
+make warm
+# gateway http://127.0.0.1:8080  ·  UI http://127.0.0.1:3000
+```
+
+В контейнерах Ollama слушает **на хосте** и доступна как `host.docker.internal:11434`
+(настроено в `docker-compose.yml`). Для GPU в контейнере retrieval задайте `ENCODER_DEVICE=cuda`.
+
+### 9. Финальная проверка
+
+```bash
+make test       # pytest
+make gate       # lint + тесты + eval (acc@1 ≥ 0.75, p95 ≤ 3000 мс) + живой контракт организатора
+```
+
+### Частые проблемы
+
+| Симптом | Причина / решение |
+|---|---|
+| `model requires … mlx` / модель не найдена | На ПК не Apple Silicon — замените `…-mlx` на обычный тег (шаг 3B) и перезапустите Ollama |
+| `Cannot connect to Ollama` / LLM-таймауты | Не запущен `ollama serve` либо не подняты модели (`ollama pull …`); проект при этом деградирует к Tier-1 |
+| `OMP Error #15` при загрузке энкодера | Конфликт `faiss`+`torch` (актуально на macOS arm64) — оставьте `VECTOR_BACKEND=numpy` |
+| `make etl` падает «no *.csv» | Не найдена папка материалов — положите её рядом с проектом или задайте `--materials /путь/Датасет` |
+| UI пустой / ошибки сети | `NUXT_PUBLIC_API_BASE` должен указывать на gateway (по умолчанию `http://127.0.0.1:8080`), а gateway — быть запущен |
+| Энкодер качается очень долго | Первый `make index` тянет SigLIP 2 (~2 ГБ) с HuggingFace; проверьте интернет/`HF_HOME` |
+| Нет GPU / всё медленно | `ENCODER_DEVICE=cpu`; LLM-путь можно отключить (`OBSERVER_ENABLED=0`, `LLM_MATCHER_ENABLED=0`, `NORMALIZER_ENABLED=0`) |
+
+---
+
 ## API
 
 Все эндпоинты публикует `gateway` (единственная точка входа). Контракты — `packages/contracts/schemas.py`.
 
 ### `POST /v1/scan` — основной сценарий
 
-- **Request:** `multipart/form-data`, поле `image` (JPG/PNG/WebP, ≤ `MAX_UPLOAD_MB`).
+- **Request:** `multipart/form-data`, поле `image` (JPG/PNG/WebP, ≤ `MAX_UPLOAD_MB`);
+  необязательное поле `mode` — переключатель движка (C-096): `llm` (LLM-ядро),
+  `classic` (только Tier-1/OCR, без LLM) или пусто (как задано в `.env`).
 - **Медиа:** картинки отдаются рабочими адресами портала через прокси изображений
   (`https://api.vino-svoe.ru/v1/img/str-api/{w}/{h}/resize/uploads/<file>.webp`, 600 для карточек и 1200 для крупных).
   Сырой путь `/uploads/...` отдаёт 404, поэтому проверять загрузку нужно **GET**-запросом: HEAD на прокси отвечает 404.
@@ -498,7 +693,13 @@ make web-build && make web-preview
 
 ## Установка и конфигурация
 
+> **Первый запуск на новом ПК** — пошаговая инструкция с требованиями, заменой MLX-моделей и
+> частыми проблемами: раздел [Запуск на другом ПК](#запуск-на-другом-пк-пошагово).
+> Ниже — краткая карта конфигурации.
+
 - Docker + Docker Compose; Python 3.11+ (для ETL/оценки); Node/Bun (UI); PostgreSQL + pgvector — в compose.
+- **Платформа:** проект измерен на **Apple Silicon**; LLM по умолчанию — **MLX-сборки** (`…-mlx`).
+  На Linux/Windows/x86 замените их на обычные (без `-mlx`) теги Ollama или облачные провайдеры.
 - **Зависимости Python — `requirements.txt`** (Python 3.14): `fastapi`, `uvicorn`, `httpx`, `pydantic`, `PyYAML`,
   `jsonschema` (валидация структурированного вывода моделей), `numpy`, `rapidfuzz`, `Pillow`,
   `opencv-python-headless`; тяжёлые `torch`/`transformers` — опционально и закомментированы.
@@ -518,6 +719,7 @@ make web-build && make web-preview
 | LLM Router | `LLM_PROVIDERS_FILE`, `LLM_LOCAL_ONLY`, ключи провайдеров |
 | Текстовый фьюжн | `TEXT_FUSION_MODE`, `TEXT_FUSION_WEIGHT` |
 | LLM-ядро (quality mode) | `OBSERVER_ENABLED`, `OBSERVER_ALWAYS`, `LLM_MATCHER_ENABLED`, `NORMALIZER_ENABLED`, `OBSERVER_MODEL`, `OBSERVER_TIMEOUT_S` |
+| Модели LLM (платформа) | `OBSERVER_MODEL`, `LLM_MATCHER_MODEL`, `NORMALIZER_MODEL`, `VLM_ONLINE_MODEL`, `VLM_26B_MODEL`, `LLM_MODEL` — теги `…-mlx` только для Apple Silicon |
 | Калибровка / near-dup | `CALIBRATION_ENABLED`, `NEAR_DUP_DISAMBIGUATION`, `NEAR_DUP_THRESHOLD`, `SCAN_TOP_K` |
 | Сомелье / CORS | `SOMMELIER_LLM_TIMEOUT_S`, `SOMMELIER_WARMUP_ENABLED`, `CORS_ORIGINS` |
 | SLA | `WARMUP_ON_START`, `SERVICE_TIMEOUT_S` |
@@ -563,7 +765,7 @@ make gate     # финальный гейт: lint + тесты + eval (acc@1 ≥
 
 | Метрика | Значение | Источник |
 |---|---|---|
-| Тестов | **583** (65 файлов) | `pytest -q` (120 с, все зелёные) |
+| Тестов | **587 собрано** (66 файлов) | `pytest -q --collect-only` (C-096 добавил `test_c096_scan_mode.py`) |
 | syntax/grammar lint | 0 errors / 0 warnings (216 файлов, 191 governed, 206 XML) | `grace lint` |
 | acc@1 (in-distribution proxy, n=200, seed 42) | **0.775** | `reports/final.json` |
 | acc@5 | **0.970** | `reports/final.json` |
@@ -572,6 +774,13 @@ make gate     # финальный гейт: lint + тесты + eval (acc@1 ≥
 | identity@1 / @5 (21 реальное фото, RU) | **0.526 / 0.632** | `reports/real_field.json` (C-025; @5 поднят транслитом, C-027) |
 | корректный `not_found` на реальных фото | **82.6%** | `docs/METRICS.md` |
 | отказ для не-российских вин | **100%** | `docs/METRICS.md` |
+
+> **Проверка на чистом checkout.** Полный `make test` зелёный на клоне без `data/` (583 passed на
+> прогоне C-070; +4 теста C-096 → 587). Один тест — инвариант C-072
+> (`test_leak_invariant_field21`) — **зависит от локального состояния**: он сканирует `data/flywheel`
+> и падает, если в логе накопились хеши полевых фото после локальных сканов. Это не дефект кода, а
+> накопленное dev-состояние; очистить можно `scripts/eval/field21_gold.py::clean_flywheel_leak`
+> (или удалить `data/flywheel/*.db` перед прогоном). На чистом checkout тест проходит.
 
 ### Совместимость с настоящим скриптом организатора (C-067)
 
@@ -645,7 +854,7 @@ exit 0 · сервисы: postgres, gateway, normalize, retrieval, vlm, matcher,
 
 ## План развития
 
-**Сделано (C-001…C-094, 93 change):**
+**Сделано (C-001…C-096, 95 change):**
 
 - ✅ **M0** — скелет репозитория, ETL каталога (2103 slug), self-evaluator.
 - ✅ **M1** — Tier-1 retrieval (SigLIP2-so400m + обученная голова), full-frame вход + P&S,
@@ -666,8 +875,9 @@ exit 0 · сервисы: postgres, gateway, normalize, retrieval, vlm, matcher,
   кэш чтений этикетки (C-087), рефакторинг-гигиена и маркер-логирование (C-081…C-084, C-088, C-089).
 - ✅ **M6+ витрина и доводка** — демо-стенд «Примеры работы» на 21 проверенном полевом фото без
   backend (C-092), полировка UI и кросс-браузерных ползунков сомелье (C-091), сортировка и счётчики
-  фильтров каталога, связь стенда с карточками (C-093), актуализация README (C-090) и гигиена
-  context-артефактов (C-094).
+  фильтров каталога, связь стенда с карточками (C-093), актуализация README (C-090, C-095) и гигиена
+  context-артефактов (C-094); переключатель движка на сканере `classic`/`llm` — сравнение путей без
+  пересборки (C-096).
 
 **В плане:**
 

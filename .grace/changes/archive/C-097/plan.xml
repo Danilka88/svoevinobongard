@@ -1,0 +1,81 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-097>
+    <IntentSummary>Актуализация README: платформенное ограничение MLX, пошаговый запуск на другом ПК,
+      переключатель движка C-096 и синхронизация чисел. Код и метрики не меняются.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-097/spec.xml</Value></MustExist>
+      <MustExist><Value>README.md</Value></MustExist>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>grep -q "Запуск на другом ПК" README.md</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "\-mlx" README.md &amp;&amp; grep -qi "Apple Silicon" README.md</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "mode=classic" README.md &amp;&amp; grep -q "C-096" README.md</Command></MustPassCommand>
+      <MustPassCommand><Command>test $(( $(grep -c '^```' README.md) % 2 )) -eq 0</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-WEB</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-WEB/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>README.md</Path>
+      <Path>.grace/verification/VD-M5-WEB.xml</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Платформа и модели: предупреждение про MLX (M-WEB)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>README явно говорит, что модели …-mlx — под Apple Silicon, и даёт таблицу замен
+            на GGUF для других ОС.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "\-mlx" README.md &amp;&amp; grep -qi "Apple Silicon" README.md</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>Пошаговый запуск на другом ПК (M-WEB)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Раздел покрывает данные (rsync или пересборка), окружение, замену моделей, ETL/индекс,
+            запуск сервисов, UI, Docker, финальный гейт и частые проблемы.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "Запуск на другом ПК" README.md</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>Скрытые возможности и API: переключатель движка C-096 (M-WEB)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>mode=classic|llm и run_scan(llm_mode) описаны в hidden-features и в разделе API.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "mode=classic" README.md &amp;&amp; grep -q "C-096" README.md</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Числа, разметка, verification и архив (M-WEB)</Title>
+        <DependsOn>T-001, T-002, T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Числа синхронны факту; ограждения код-блоков парные; verification и AGENTS.md отражают
+            C-097; grace lint 0/0; бандл в archive/C-097 applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>test $(( $(grep -c '^```' README.md) % 2 )) -eq 0 &amp;&amp; grace lint --path .</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-097>
+</GraceChangePlan>

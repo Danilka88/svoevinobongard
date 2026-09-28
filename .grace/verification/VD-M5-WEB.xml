@@ -253,6 +253,19 @@
         apps/web/utils/contrast.test.ts (bun test, 5 passed) проверяет WCAG AA на всех четырёх реальных
         градиентах каталога (светлый #FCFBDF→#F0EFD5 получает тёмный текст, винный #A51B3A→#741D30 — белый).
         nuxt build без ошибок; grace lint 0/0; полный pytest зелёный; метрики гейта не менялись.</Evidence>
+      <Scenario id="S-WEB-NAV-9">C-097: README предупреждает, что дефолтные LLM-модели — MLX-сборки под
+        Apple Silicon, и даёт пошаговый запуск на другом ПК (данные, окружение, замена MLX→GGUF, ETL/индекс,
+        сервисы, UI, Docker, частые проблемы); переключатель движка mode=classic|llm (C-096) отражён в
+        скрытых возможностях и API; числа синхронны факту.</Scenario>
+      <Evidence note="C097-readme-run-anywhere">C-097: README.md — hero-callout и «Технологический стек»
+        предупреждают про `…-mlx` (Apple Silicon/Metal) и необходимость обычных GGUF-тегов на Linux/Windows/x86;
+        новый раздел «Запуск на другом ПК (пошагово)» из 9 шагов с таблицей замен моделей (OBSERVER_MODEL,
+        LLM_MATCHER_MODEL, NORMALIZER_MODEL, VLM_26B_MODEL), двумя путями данных (rsync data/+models/ либо
+        пересборка из материалов конкурса) и таблицей «Частые проблемы»; добавлены hidden-feature
+        mode=classic|llm (C-096) и поле mode в POST /v1/scan; числа актуализированы (95 change C-001…C-096,
+        587 тестов, 66 файлов). Проверки: grep ключевых разделов, чётность ограждений код-блоков (56),
+        анкор #запуск-на-другом-пк-пошагово резолвится (3 ссылки), grace lint 0/0. Существующий контент
+        сохранён; удалены только устаревшие числа. Код и метрики не менялись.</Evidence>
     </V-M-WEB>
   </VD-M5-WEB>
 </GraceVerificationDocument>
