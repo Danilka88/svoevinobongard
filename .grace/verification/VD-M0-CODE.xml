@@ -411,6 +411,14 @@
         Живые проверки: не-изображение — 200 slug null; пустой файл — 200 slug null; битый jpg — 200 slug null за 1.2 мс (было 503).
         Недоступность retrieval по-прежнему 503 — это инфраструктура, а не плохой вход, и скрипт организатора трактует не-200 как null.
         Плоский контракт защищён стражем tests/test_c067_organizer_contract.py (плоская форма, null на битом входе, 503 на недоступном retrieval).</Evidence>
+      <Scenario id="S-GW-27">POST /v1/scan принимает необязательный mode (llm | classic): classic не обращается к сервису vlm
+        (observe/match/normalize-reading), llm проходит полный LLM-контур, пусто — поведение как задано в .env.</Scenario>
+      <Evidence note="C096-scan-mode">C-096: run_scan получил параметр llm_mode (None|True|False), /v1/scan — поле mode.
+        Флаги observer_on/normalizer_on/matcher_on вычисляются из llm_mode; при llm_mode=True наблюдение форсируется
+        (observer_always), при False LLM-методы не вызываются вовсе. Машинные доказательства в
+        tests/test_c096_scan_mode.py (4 passed): classic — observe/normalize_reading/match вызваны 0 раз, path=retrieval,
+        observation и normalization пусты; llm — observe вызван, path=llm_match, slug выбран; те же проверки через
+        /v1/scan с формой mode=classic|llm. Метрики классического пути не менялись; /v1/eval/predict не затронут.</Evidence>
     </V-M-GATEWAY>
   </VD-M0-CODE>
 </GraceVerificationDocument>

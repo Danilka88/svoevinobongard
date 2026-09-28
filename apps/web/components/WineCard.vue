@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Card } from '~/composables/useGateway';
+import { heroInk } from '~/utils/contrast';
 
 // Карточка вина (C-036): hero с градиентом категории и бутылкой, характеристики, сорта
 // с миниатюрами, гастрономия с картинками, регион с изображением. Метрики уверенности
@@ -11,6 +12,10 @@ const FALLBACK_GRADIENT = 'linear-gradient(135deg, var(--accent-strong), var(--a
 const heroStyle = computed(() => ({
   background: props.card.category_gradient || FALLBACK_GRADIENT,
 }));
+// C-096: цвет текста поверх градиента выбирается по контрасту — на светлых
+// категорийных фонах портала белый текст невидим.
+const ink = computed(() => heroInk(props.card.category_gradient || FALLBACK_GRADIENT));
+const heroTextStyle = computed(() => ({ color: ink.value.title, '--hero-sub': ink.value.sub }));
 const bottle = computed(() => props.card.image_url || '');
 const chips = computed(() => {
   const items: string[] = [];
@@ -39,7 +44,7 @@ const wineryHref = computed(() => (props.card.winery_url ? `https://vino-svoe.ru
   <section class="card" style="padding: 0; overflow: hidden" aria-labelledby="wine-title">
     <div class="wine-hero" :style="heroStyle">
       <AppImage v-if="bottle" class="wine-hero-bottle" :src="bottle" :alt="props.card.name || props.slug" loading="lazy" />
-      <div class="wine-hero-text">
+      <div class="wine-hero-text" :style="heroTextStyle">
         <h2 id="wine-title" class="wine-title">{{ props.card.name || props.slug }}</h2>
         <p class="wine-sub">
           <a v-if="wineryHref" :href="wineryHref" target="_blank" rel="noopener">{{ props.card.winery }}</a>
@@ -114,10 +119,11 @@ const wineryHref = computed(() => (props.card.winery_url ? `https://vino-svoe.ru
   width: 96px; height: 140px; object-fit: contain; flex: none;
   filter: drop-shadow(0 12px 24px rgba(0, 0, 0, .35));
 }
+/* C-096: краска текста задаётся контрастом (heroInk), а не жёстким белым. */
 .wine-hero-text { min-width: 0; }
-.wine-hero .wine-title { color: #fff; margin: 0 0 4px; }
-.wine-hero .wine-sub { color: rgba(255, 255, 255, .9); }
-.wine-hero .wine-sub a { color: #fff; text-decoration: underline; }
+.wine-hero .wine-title { color: inherit; margin: 0 0 4px; }
+.wine-hero .wine-sub { color: var(--hero-sub, rgba(255, 255, 255, .9)); }
+.wine-hero .wine-sub a { color: inherit; text-decoration: underline; }
 .wine-hero-cat { margin: 8px 0 0; font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; opacity: .85; }
 .chip-thumb { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; }
 .chip-grape { padding-left: 6px; }

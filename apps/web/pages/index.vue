@@ -8,6 +8,8 @@ const busy = ref(false);
 const error = ref('');
 // C-048/REG-001: сбой связи показываем как недоступность сервиса, а не как отказ распознавания.
 const unavailable = ref(false);
+// Переключатель движка: LLM-ядро (точно, но медленно при свопе моделей) или только классика (быстро).
+const engine = ref<'llm' | 'classic'>('llm');
 let lastFile: File | null = null;
 const current = ref<ScanResponse | null>(null);
 const similarItems = ref<SimilarItem[]>([]);
@@ -31,7 +33,7 @@ async function onFile(file: File) {
   current.value = null;
   similarItems.value = [];
   try {
-    const result = await scan(file);
+    const result = await scan(file, engine.value);
     current.value = result;
     telemetry.track('scan', {
       action: result.not_found ? 'scan_not_found' : 'scan_done',
@@ -100,6 +102,27 @@ const pathLabel = computed(() => PATH_LABELS[current.value?.path || ''] || curre
     </div>
 
     <div class="page">
+      <div class="engine-toggle" role="group" aria-label="Движок распознавания">
+        <span class="muted small">Движок:</span>
+        <button
+          type="button"
+          class="ghost engine-pill"
+          :class="{ 'engine-pill--active': engine === 'llm' }"
+          :aria-pressed="engine === 'llm'"
+          :disabled="busy"
+          @click="engine = 'llm'"
+        >LLM</button>
+        <button
+          type="button"
+          class="ghost engine-pill"
+          :class="{ 'engine-pill--active': engine === 'classic' }"
+          :aria-pressed="engine === 'classic'"
+          :disabled="busy"
+          @click="engine = 'classic'"
+        >Только классика</button>
+        <span class="muted small">{{ engine === 'llm' ? 'точнее, но дольше' : 'быстро, без LLM-ядра' }}</span>
+      </div>
+
       <ScanUploader :busy="busy" @selected="onFile" />
 
       <ServiceUnavailable v-if="unavailable" :detail="error" action="Повторить снимок" @retry="retry" />
@@ -139,3 +162,18 @@ const pathLabel = computed(() => PATH_LABELS[current.value?.path || ''] || curre
     </div>
   </div>
 </template>
+
+<style scoped>
+.engine-toggle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.engine-pill--active {
+  background: var(--accent, #a51b3a);
+  color: #fff;
+  border-color: transparent;
+}
+</style>

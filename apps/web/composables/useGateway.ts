@@ -91,9 +91,11 @@ export function useGateway() {
   // LLM собственным таймаутом, а интерфейс не должен сдаваться раньше и объявлять недоступность.
   const sommelierTimeoutMs = Number(config.public.apiSommelierTimeoutMs || 12000);
 
-  async function scan(file: File): Promise<ScanResponse> {
+  // mode: переключатель движка из UI — 'llm' (LLM-ядро) или 'classic' (только классика).
+  async function scan(file: File, mode?: 'llm' | 'classic'): Promise<ScanResponse> {
     const body = new FormData();
     body.append('image', file, file.name || 'label.jpg');
+    if (mode) body.append('mode', mode);
     return await telemetry.time('scan', 'scan_request',
       async () => await $fetch<ScanResponse>(`${base}/v1/scan`, { method: 'POST', body, headers: hdr(), signal: requestTimeout(scanTimeoutMs) }));
   }

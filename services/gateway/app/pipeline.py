@@ -302,6 +302,7 @@ async def run_scan(
     official_index: dict[str, dict] | None = None,
     trace: PipelineTrace | None = None,
     session_id: str = "",
+    llm_mode: bool | None = None,
 ) -> ScanResponse:
     """Прогоняет изображение по пайплайну Tier-1.
 
@@ -321,6 +322,12 @@ async def run_scan(
     started = time.perf_counter()
     diagnostics = trace if trace is not None else PipelineTrace()
     active_clients = clients or ServiceClients()
+
+    # Переключатель движка (UI: «LLM» / «только классика»). None — как задано в .env,
+    # True — принудительно LLM-ядро, False — принудительно только классический Tier-1.
+    observer_on = settings.observer_enabled if llm_mode is None else llm_mode
+    normalizer_on = settings.normalizer_enabled if llm_mode is None else llm_mode
+    matcher_on = settings.llm_matcher_enabled if llm_mode is None else llm_mode
 
     normalize_started = time.perf_counter()
     normalized = await active_clients.normalize(image_bytes, filename)
@@ -488,7 +495,7 @@ async def run_scan(
     observer_used = False
     # C-074: LLM — ядро на каждом запросе. При observer_always наблюдение запускается независимо
     # от уверенности retrieval: мы не знаем, какое фото придёт от клиента.
-    if settings.observer_enabled and (settings.observer_always or escalation_trigger(
+    if observer_on and (settings.observer_always or llm_mode is True or escalation_trigger(
             _calibrated_probability(best.score), confident, settings.observer_threshold)):
         observed = await active_clients.observe(payload, "query.png")
         if observed and observed.get("ok"):
@@ -517,7 +524,7 @@ async def run_scan(
     # на каждом запросе, опираясь на список виноделен и перечисления каталога. При недоступной LLM
     # возвращается фолбэк (транслит), поэтому путь не обрывается; нормализатор не выбирает товар.
     normalization: dict = {}
-    if settings.normalizer_enabled and observation:
+    if normalizer_on and observation:
         normalized = await active_clients.normalize_reading(observation)
         if normalized and normalized.get("source") != "degraded":
             normalization = dict(normalized)
@@ -542,7 +549,7 @@ async def run_scan(
     # C-074/C-075: LLM-матчер. Пул кандидатов — находки наблюдения по всему каталогу ПЛЮС визуальный
     # top-N (C-075: верное вино часто есть в визуальном топе, но не доходит до текстового поиска).
     # LLM выбирает из пула лучшее совпадение или честно отказывается; slug вне списка не принимается.
-    if settings.llm_matcher_enabled and observation:
+    if matcher_on and observation:
         records = store.slug_to_record()
         pool: list[str] = []
         for slug, _score in observer_hits:

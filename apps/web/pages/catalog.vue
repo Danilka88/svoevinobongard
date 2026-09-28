@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Card, EnotourismResponse } from '~/composables/useGateway';
+import { heroInk } from '~/utils/contrast';
 
 // Экран каталога (C-039): поиск с задержкой, фильтры из фасетов, витрина с медиа
 // и переход в полную карточку в нижней шторке. Тяжёлых моделей нет — только /v1/catalog
@@ -32,6 +33,10 @@ const sheetLoading = ref(false);
 const sheetCard = ref<Card | null>(null);
 const sheetSlug = ref('');
 const sheetEnotourism = ref<EnotourismResponse | null>(null);
+
+// C-096: краска текста в шапке карточки выбирается по контрасту фона (светлые категорийные
+// градиенты портала делали белый текст невидимым).
+const sheetInk = computed(() => heroInk(sheetCard.value?.category_gradient || ''));
 
 const hasFilters = computed(() => Boolean(query.value || region.value || category.value || grape.value || winery.value));
 const activeFilters = computed(() => [query.value, region.value, category.value, grape.value, winery.value]
@@ -238,8 +243,8 @@ onMounted(() => {
           <div class="sheet-hero" :style="{ background: sheetCard.category_gradient || 'linear-gradient(135deg, var(--accent-strong), var(--accent))' }">
             <AppImage v-if="sheetCard.image_url" :src="sheetCard.image_url" :alt="sheetCard.name" class="sheet-photo" />
             <div>
-              <h2 class="wine-title" style="color: #fff; margin: 0 0 4px">{{ sheetCard.name }}</h2>
-              <p style="color: rgba(255,255,255,.9); margin: 0">{{ sheetCard.winery }}<template v-if="sheetCard.region"> · {{ sheetCard.region }}</template></p>
+              <h2 class="wine-title" :style="{ color: sheetInk.title, margin: '0 0 4px' }">{{ sheetCard.name }}</h2>
+              <p :style="{ color: sheetInk.sub, margin: 0 }">{{ sheetCard.winery }}<template v-if="sheetCard.region"> · {{ sheetCard.region }}</template></p>
             </div>
           </div>
 

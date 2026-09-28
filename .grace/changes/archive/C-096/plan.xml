@@ -1,0 +1,102 @@
+<GraceChangePlan graceVersion="4.0" status="applied">
+  <C-096>
+    <IntentSummary>Переключатель движка (classic | llm) на экране сканера и читаемость текста шапок карточек
+      на светлых градиентах. Backend распознавания, индекс и метрики не меняются; коммит не создаётся.</IntentSummary>
+
+    <BaselineAssertions>
+      <MustExist><Value>.grace/changes/active/C-096/spec.xml</Value></MustExist>
+      <MustExist><Value>services/gateway/app/pipeline.py</Value></MustExist>
+      <MustExist><Value>services/gateway/app/main.py</Value></MustExist>
+      <MustExist><Value>apps/web/pages/index.vue</Value></MustExist>
+      <MustExist><Value>apps/web/components/WineCard.vue</Value></MustExist>
+      <MustExist><Value>apps/web/pages/catalog.vue</Value></MustExist>
+      <MustVerify><Module>M-GATEWAY</Module></MustVerify>
+      <MustVerify><Module>M-WEB</Module></MustVerify>
+    </BaselineAssertions>
+
+    <TargetAssertions>
+      <MustPassCommand><Command>grep -q "llm_mode" services/gateway/app/pipeline.py</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "classic" services/gateway/app/main.py</Command></MustPassCommand>
+      <MustPassCommand><Command>grep -q "heroInk" apps/web/components/WineCard.vue &amp;&amp; grep -q "heroInk" apps/web/pages/catalog.vue</Command></MustPassCommand>
+      <MustPassCommand><Command>cd apps/web &amp;&amp; bun test utils/contrast.test.ts</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c096_scan_mode.py -q</Command></MustPassCommand>
+      <MustPassCommand><Command>grace lint --path .</Command></MustPassCommand>
+      <MustPassCommand><Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command></MustPassCommand>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-GATEWAY</Anchor></MustOwn>
+      <MustOwn><Owner>GD-001</Owner><Anchor>M-WEB</Anchor></MustOwn>
+    </TargetAssertions>
+
+    <DurableScope>
+      <M-GATEWAY/>
+      <M-WEB/>
+    </DurableScope>
+
+    <ObservedWriteScope>
+      <Path>services/gateway/app/pipeline.py</Path>
+      <Path>services/gateway/app/main.py</Path>
+      <Path>apps/web/composables/useGateway.ts</Path>
+      <Path>apps/web/pages/index.vue</Path>
+      <Path>apps/web/pages/catalog.vue</Path>
+      <Path>apps/web/components/WineCard.vue</Path>
+      <Path>apps/web/utils/contrast.ts</Path>
+      <Path>apps/web/utils/contrast.test.ts</Path>
+      <Path>tests/test_c096_scan_mode.py</Path>
+      <Path>.grace/verification/VD-M0-CODE.xml</Path>
+      <Path>.grace/verification/VD-M5-WEB.xml</Path>
+      <Path>AGENTS.md</Path>
+      <Path>.grace/changes/</Path>
+    </ObservedWriteScope>
+
+    <ImplementationPlan>
+      <T-001>
+        <Title>Gateway: параметр режима сканирования (M-GATEWAY)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>run_scan принимает llm_mode (None|True|False): None — как в .env, True — LLM-ядро
+            принудительно, False — только классика; /v1/scan принимает mode=llm|classic.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/test_c096_scan_mode.py -q</Command>
+        </Verification>
+      </T-001>
+
+      <T-002>
+        <Title>UI: переключатель движка на экране сканера (M-WEB)</Title>
+        <DependsOn>T-001</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>На экране сканера есть выбор «LLM / Только классика»; выбранный режим уходит
+            в POST /v1/scan полем mode; по умолчанию LLM.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grep -q "engine" apps/web/pages/index.vue &amp;&amp; grep -q "mode" apps/web/composables/useGateway.ts</Command>
+        </Verification>
+      </T-002>
+
+      <T-003>
+        <Title>UI: читаемость текста на градиентах карточек (M-WEB)</Title>
+        <DependsOn></DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>Краска текста шапки выбирается по WCAG-контрасту фона: на светлых градиентах
+            тёмная, на тёмных — белая; на всех реальных градиентах порог 4.5 достигнут.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>cd apps/web &amp;&amp; bun test utils/contrast.test.ts</Command>
+        </Verification>
+      </T-003>
+
+      <T-004>
+        <Title>Verification, гейты и архив (M-GATEWAY, M-WEB)</Title>
+        <DependsOn>T-001, T-002, T-003</DependsOn>
+        <AcceptanceCriteria>
+          <Criterion>verification и AGENTS.md отражают C-096; grace lint 0/0; полный pytest; nuxt build
+            без ошибок; бандл в archive/C-096 applied.</Criterion>
+        </AcceptanceCriteria>
+        <Verification>
+          <Command>grace lint --path . &amp;&amp; grace status --path .</Command>
+          <Command>cd apps/web &amp;&amp; bun run build</Command>
+          <Command>PYTHONPATH=. WARMUP_ON_START=0 .venv/bin/python -m pytest tests/ -q</Command>
+        </Verification>
+      </T-004>
+    </ImplementationPlan>
+  </C-096>
+</GraceChangePlan>

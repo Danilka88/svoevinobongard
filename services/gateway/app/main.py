@@ -42,7 +42,7 @@ from pathlib import Path
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, File, Header, HTTPException, Request, Response, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, Request, Response, UploadFile
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
@@ -860,8 +860,15 @@ async def eval_predict(image: UploadFile = File(...),
 
 @app.post("/v1/scan")
 async def scan(image: UploadFile = File(...),
+               mode: str = Form(default=""),
                x_session_id: str = Header(default="", alias="X-Session-Id")) -> ScanResponse:
-    """Rich-ответ основного сценария сканирования."""
+    """Rich-ответ основного сценария сканирования.
+
+    Args:
+        mode: переключатель движка из UI: "llm" — LLM-ядро, "classic" — только классический
+            Tier-1, пусто — как задано в .env.
+    """
+    llm_mode = {"llm": True, "classic": False}.get(mode.strip().lower())
     data = await _read_image_upload(image)
     if _image_too_small(data):
         log_marker("M-GATEWAY", "scan", "IMAGE_TOO_SMALL")
@@ -872,7 +879,8 @@ async def scan(image: UploadFile = File(...),
     try:
         store = get_store()
         response = await run_scan(data, store, filename=image.filename or "query.jpg",
-                                  official_index=get_official(), session_id=x_session_id[:40])
+                                  official_index=get_official(), session_id=x_session_id[:40],
+                                  llm_mode=llm_mode)
         if not response.trace:  # C-038/C-040: витрина уже собрана в пайплайне
             response.trace = build_trace(response)
         if response.card is not None and response.slug:
